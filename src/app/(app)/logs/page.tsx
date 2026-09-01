@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
+
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "排便の記録",
 };
 
