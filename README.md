@@ -2,39 +2,107 @@
 
 AI駆動でうんこ支援開発するぞ
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+モバイルWebで「揺らして戦う → 排便ログを残す → 仲間になる」体験を提供するアプリ。
+設計方針は [`docs/architecture.md`](docs/architecture.md)、企画は [`docs/IDEA.md`](docs/IDEA.md) を参照。
 
-## Getting Started
+## 技術スタック
 
-First, run the development server:
+| 領域 | 技術 |
+| --- | --- |
+| Webアプリ | Next.js 16 (App Router) + TypeScript |
+| UI | Tailwind CSS v4 + shadcn/ui |
+| アニメーション | Framer Motion |
+| 一時状態 | Zustand (`persist`) |
+| 認証・DB・画像 | Supabase (`@supabase/supabase-js`, `@supabase/ssr`) |
+| デプロイ | Vercel |
+
+## 必要環境
+
+- Node.js 24（`flake.nix` で固定）
+- npm
+
+[direnv](https://direnv.net/) と [Nix](https://nixos.org/) を使う場合は、リポジトリ直下で
+`direnv allow` を実行すると `flake.nix` の開発シェル（Node.js 24）が自動で有効になる。
+使わない場合は Node.js 24 を各自で用意する。
+
+> `.envrc` は Node.js のツールチェーンを用意するだけで、アプリの環境変数は読み込まない。
+> 環境変数は次節の `.env.local` から Next.js が読み込む。
+
+## セットアップ
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. 依存関係をインストール（ロックファイルどおりに固定して導入）
+npm ci
+
+# 2. 環境変数ファイルを作成
+cp .env.local.example .env.local
+
+# 3. .env.local に Supabase の値を記入する
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 環境変数
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`.env.local` に以下を設定する。値は Supabase Dashboard の
+**Project Settings > API** から取得する。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| 変数名 | 内容 |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | SupabaseプロジェクトのURL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | 公開可能キー（Publishable key / anon key） |
 
-## Learn More
+読み込みの仕組み:
 
-To learn more about Next.js, take a look at the following resources:
+- Next.js が起動時に `.env.local` を自動で読み込む。dotenv 等の追加設定は不要。
+- `NEXT_PUBLIC_` を付けた変数のみがブラウザへ配信される。付けない変数はサーバー側
+  （Server Component / Server Action / Route Handler）からのみ参照できる。
+- `.env.local` は `.gitignore` 済みでコミットされない。コミットするのは
+  `.env.local.example` のみ。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 秘密鍵の扱い
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Service Role Key はリポジトリにも `.env.local.example` にも置かない。**
+- 秘密情報に `NEXT_PUBLIC_` を付けない。付けるとクライアントバンドルへ埋め込まれる。
+- 秘密鍵を要する処理は Server Action または Route Handler に置く。
+- Vercel へは Dashboard の Environment Variables から設定する。
 
-## Deploy on Vercel
+## 開発
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run dev     # 開発サーバー (http://localhost:3000)
+npm run build   # 本番ビルド
+npm run start   # 本番サーバー
+npm run lint    # ESLint
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 実機での検証について
+
+`DeviceMotionEvent`（揺れ判定）と `getUserMedia()`（カメラ）は **HTTPS でのみ動作する**。
+スマートフォン実機からローカルの HTTP サーバーへ直接アクセスしても利用できないため、
+Vercel の Preview Deployment か HTTPS トンネルを使って検証する。
+
+## Next.js 16 の規約メモ
+
+このプロジェクトは Next.js 16 を使う。訓練データや過去バージョンと異なる点があるため、
+実装前に `node_modules/next/dist/docs/` の該当ガイドを確認する。
+
+- **App Router**: ルーティングと画面の組み立てのみを `app/` に置く。
+  ゲームロジックや DB アクセスは書かない（`docs/architecture.md` の責務ルール参照）。
+- **Proxy**: Next.js 16 で `middleware` は **`proxy` に改称**された（機能は同じ）。
+  リクエスト完了前に実行する処理は、`app/` と同じ階層（プロジェクト直下、`src/` を
+  使う場合は `src/` 直下）に置いた **`proxy.ts`** に書く。1プロジェクトにつき1ファイルのみ。
+  関数は default export または名前付き `proxy` export として公開する。
+  Supabase のセッション Cookie 更新はここで行う。
+
+  ```ts
+  // proxy.ts
+  import type { NextRequest } from 'next/server'
+
+  export async function proxy(request: NextRequest) {
+    // Supabase セッション Cookie の更新など
+  }
+
+  export const config = { matcher: [/* ... */] }
+  ```
+
+  ※ Proxy はセッション管理・認可の完全な代替ではない。認可判定は Server Action や
+  Server Component 側でも行う。
