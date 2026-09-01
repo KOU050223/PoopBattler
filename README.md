@@ -85,16 +85,18 @@ Vercel の Preview Deployment か HTTPS トンネルを使って検証する。
 このプロジェクトは Next.js 16 を使う。訓練データや過去バージョンと異なる点があるため、
 実装前に `node_modules/next/dist/docs/` の該当ガイドを確認する。
 
-- **App Router**: ルーティングと画面の組み立てのみを `app/` に置く。
+- **ディレクトリ**: ソースは `src/` 配下に置く（`docs/architecture.md` の構成に準拠）。
+  パスエイリアス `@/*` は `src/*` を指す。
+- **App Router**: ルーティングと画面の組み立てのみを `src/app/` に置く。
   ゲームロジックや DB アクセスは書かない（`docs/architecture.md` の責務ルール参照）。
 - **Proxy**: Next.js 16 で `middleware` は **`proxy` に改称**された（機能は同じ）。
-  リクエスト完了前に実行する処理は、`app/` と同じ階層（プロジェクト直下、`src/` を
-  使う場合は `src/` 直下）に置いた **`proxy.ts`** に書く。1プロジェクトにつき1ファイルのみ。
+  リクエスト完了前に実行する処理は、`app/` と同じ階層である **`src/proxy.ts`** に書く。
+  1プロジェクトにつき1ファイルのみ。
   関数は default export または名前付き `proxy` export として公開する。
   Supabase のセッション Cookie 更新はここで行う。
 
   ```ts
-  // proxy.ts
+  // src/proxy.ts
   import type { NextRequest } from 'next/server'
 
   export async function proxy(request: NextRequest) {
