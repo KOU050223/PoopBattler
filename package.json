@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "db:types": "supabase gen types --local --lang typescript > src/types/database.types.ts",
     "db:types:check": "./scripts/check-db-types.sh",
     "prepare": "lefthook install",
