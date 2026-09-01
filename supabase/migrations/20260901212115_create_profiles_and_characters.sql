@@ -53,6 +53,15 @@ create trigger on_auth_user_created
   for each row
   execute function public.handle_new_user();
 
+-- トリガーは以降のINSERTしか処理しない。匿名サインインは既にリリース済みのため、
+-- このマイグレーション以前に作られた auth.users のプロフィールを補完する。
+-- created_at は元のサインイン時刻を引き継ぐ（default の now() を使うと、
+-- 全ての既存ユーザーがマイグレーション実行時刻に作られたことになってしまう）。
+insert into public.profiles (id, created_at)
+select id, created_at
+from auth.users
+on conflict (id) do nothing;
+
 -- ---------------------------------------------------------------------------
 -- characters: 敵・図鑑のマスターデータ
 -- ---------------------------------------------------------------------------
