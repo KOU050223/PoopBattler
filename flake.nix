@@ -20,7 +20,10 @@
     {
       devShells = forEachSupportedSystem (pkgs: {
         default = pkgs.mkShellNoCC {
-          packages = [ pkgs.nodejs_24 ];
+          packages = [
+            pkgs.nodejs_24
+            pkgs.supabase-cli
+          ];
         };
       });
 

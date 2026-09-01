@@ -1,0 +1,119 @@
+-- ユーザー所有データ（profiles）と、敵・図鑑の参照元（characters）を定義する。
+-- profiles は匿名サインイン直後に auth.users のトリガーで自動作成する。
+
+-- ---------------------------------------------------------------------------
+-- profiles: auth.users と 1:1 のユーザープロフィール
+-- ---------------------------------------------------------------------------
+create table public.profiles (
+  id uuid primary key references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+comment on table public.profiles is
+  '匿名サインインを含む全ユーザーのプロフィール。auth.users と 1:1 で対応する。';
+
+alter table public.profiles enable row level security;
+
+-- 本人のみ SELECT できる。INSERT / UPDATE / DELETE のポリシーは作らないため、
+-- RLS 有効かつポリシー不在で全て拒否される（作成はトリガーのみが行う）。
+create policy "profiles_select_own"
+  on public.profiles
+  for select
+  to authenticated
+  using ((select auth.uid()) = id);
+
+-- ---------------------------------------------------------------------------
+-- auth.users への INSERT でプロフィールを自動作成するトリガー
+-- ---------------------------------------------------------------------------
+-- 挿入を行うのは supabase_auth_admin ロールで public スキーマの権限を持たないため、
+-- security definer が必要。search_path は固定し、参照は全て schema 修飾する。
+create function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.profiles (id)
+  values (new.id)
+  on conflict (id) do nothing;
+
+  return new;
+end;
+$$;
+
+comment on function public.handle_new_user() is
+  'auth.users の INSERT 後に public.profiles を1件だけ作成するトリガー関数。';
+
+-- 権限昇格する関数を API から直接呼べないようにする。
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row
+  execute function public.handle_new_user();
+
+-- トリガーは以降のINSERTしか処理しない。匿名サインインは既にリリース済みのため、
+-- このマイグレーション以前に作られた auth.users のプロフィールを補完する。
+-- created_at は元のサインイン時刻を引き継ぐ（default の now() を使うと、
+-- 全ての既存ユーザーがマイグレーション実行時刻に作られたことになってしまう）。
+insert into public.profiles (id, created_at)
+select id, created_at
+from auth.users
+on conflict (id) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- characters: 敵・図鑑のマスターデータ
+-- ---------------------------------------------------------------------------
+-- 属性・レアリティは enum 型で定義する。CHECK 制約と違い、生成される
+-- TypeScript の型（Database["public"]["Enums"]）へそのまま反映されるため、
+-- DBとアプリで列挙値の定義を1か所に保てる。
+
+-- MVPの属性。食事タグから敵属性を決めるため、値を固定する。
+create type public.character_attribute as enum (
+  'curry',
+  'vegetable',
+  'spicy',
+  'meat',
+  'sweet',
+  'dairy',
+  'normal'
+);
+
+-- MVPのレアリティ。仲間化抽選の重み付けに使う。
+create type public.character_rarity as enum (
+  'common',
+  'rare',
+  'epic',
+  'legendary'
+);
+
+create table public.characters (
+  id text primary key,
+  name text not null,
+  attribute public.character_attribute not null,
+  rarity public.character_rarity not null,
+  image_key text,
+  created_at timestamptz not null default now()
+);
+
+comment on table public.characters is
+  'うんちくんのマスターデータ。更新はサーバー処理のみが行い、クライアントは読み取り専用。';
+
+alter table public.characters enable row level security;
+
+-- サインイン済みユーザー（匿名ユーザーを含む）は読み取りのみ可能。
+-- 書き込みポリシーを作らないことで INSERT / UPDATE / DELETE を全て拒否する。
+create policy "characters_select_authenticated"
+  on public.characters
+  for select
+  to authenticated
+  using (true);
+
+-- 属性・レアリティでの図鑑の絞り込みを想定したインデックス。
+create index characters_attribute_idx on public.characters (attribute);
+create index characters_rarity_idx on public.characters (rarity);
+
+-- マスターの更新はサーバー処理（secret key）に限定するため、
+-- 公開ロールからは権限レベルでも書き込みを取り上げる。
+revoke insert, update, delete on public.characters from anon, authenticated;
