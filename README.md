@@ -108,3 +108,25 @@ Vercel の Preview Deployment か HTTPS トンネルを使って検証する。
 
   ※ Proxy はセッション管理・認可の完全な代替ではない。認可判定は Server Action や
   Server Component 側でも行う。
+# Poop Battler
+
+## 開発環境
+
+依存関係を取得した後、ブラウザ自動操作・画面検証に使う `agent-browser` の実行用ブラウザを一度だけ取得します。
+
+```bash
+npm install
+npm run browser:install
+```
+
+動作確認には次を実行します。
+
+```bash
+npm run browser:doctor
+```
+
+以降は、ローカル依存として実行できます。
+
+```bash
+npm exec agent-browser -- --help
+```
