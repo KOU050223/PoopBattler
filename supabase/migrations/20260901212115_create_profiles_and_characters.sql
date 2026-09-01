@@ -56,15 +56,34 @@ create trigger on_auth_user_created
 -- ---------------------------------------------------------------------------
 -- characters: 敵・図鑑のマスターデータ
 -- ---------------------------------------------------------------------------
+-- 属性・レアリティは enum 型で定義する。CHECK 制約と違い、生成される
+-- TypeScript の型（Database["public"]["Enums"]）へそのまま反映されるため、
+-- DBとアプリで列挙値の定義を1か所に保てる。
+
+-- MVPの属性。食事タグから敵属性を決めるため、値を固定する。
+create type public.character_attribute as enum (
+  'curry',
+  'vegetable',
+  'spicy',
+  'meat',
+  'sweet',
+  'dairy',
+  'normal'
+);
+
+-- MVPのレアリティ。仲間化抽選の重み付けに使う。
+create type public.character_rarity as enum (
+  'common',
+  'rare',
+  'epic',
+  'legendary'
+);
+
 create table public.characters (
   id text primary key,
   name text not null,
-  -- MVPの属性。食事タグから敵属性を決めるため、値を固定する。
-  attribute text not null check (
-    attribute in ('curry', 'vegetable', 'spicy', 'meat', 'sweet', 'dairy', 'normal')
-  ),
-  -- MVPのレアリティ。仲間化抽選の重み付けに使う。
-  rarity text not null check (rarity in ('common', 'rare', 'epic', 'legendary')),
+  attribute public.character_attribute not null,
+  rarity public.character_rarity not null,
   image_key text,
   created_at timestamptz not null default now()
 );

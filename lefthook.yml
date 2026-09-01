@@ -1,0 +1,18 @@
+# コミット前の検査。Docker を必要とする重い処理はここでは実行せず、
+# 生成物の再生成漏れという現実的なミスだけを即座に捕まえる。
+# 「再生成した結果が実際に一致するか」の検証は CI が担当する。
+pre-commit:
+  parallel: true
+  commands:
+    db-types-staged:
+      # マイグレーションを変更したなら、生成された型も一緒にコミットされているはず。
+      glob: "supabase/migrations/*.sql"
+      run: |
+        if ! git diff --cached --name-only | grep -q '^src/types/database.types\.ts$'; then
+          echo "エラー: マイグレーションを変更したが src/types/database.types.ts が更新されていない。"
+          echo "  npm run db:types を実行し、生成結果をステージしてからコミットすること。"
+          exit 1
+        fi
+    lint:
+      glob: "*.{ts,tsx,mts}"
+      run: npm run lint
