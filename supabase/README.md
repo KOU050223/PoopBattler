@@ -53,6 +53,24 @@ RLSやトリガー、関数を変更した後は、次のコマンドで問題�
 supabase db advisors --local
 ```
 
+### RLSを検証する
+
+ポリシーやテーブル権限を変更したら、実際に2ユーザー分のセッションを作って
+検証する。
+
+```bash
+npm run db:test:rls
+```
+
+`scripts/sql/rls-verify.sql` が、匿名ユーザー2人分のデータに対して
+「本人の行は許可・他人の行はSELECT/INSERT/UPDATE/DELETEすべて拒否」と、
+公開ロールに余計なテーブル権限が残っていないことを検査する。1件でも
+期待と違えば非ゼロで落ちる。
+
+検証は `set local role authenticated` と `request.jwt.claims` を設定した状態で
+実行する。`postgres` ロールはRLSをバイパスするため、これを忘れると全ての
+検査が素通りして「合格」に見えてしまう。
+
 ### 型を再生成する
 
 スキーマを変更したら、TypeScriptの型を必ず生成し直してコミットする。
@@ -129,3 +147,18 @@ type CharacterAttribute = Database["public"]["Enums"]["character_attribute"];
   DBとアプリで定義が二重管理にならない。
 - `security definer` 関数は `set search_path = ''` を付け、参照を全てschema修飾し、
   公開ロールから `EXECUTE` をrevokeする。
+- UPDATEポリシーには `USING` と `WITH CHECK` の両方を書く。`WITH CHECK` を省略すると
+  `USING` が更新後の行にも適用される仕様だが、暗黙の挙動に頼らず明示する。
+- Supabaseは `public` の新しいテーブルへ `anon` / `authenticated` 双方に
+  SELECT/INSERT/UPDATE/DELETE を自動付与する。RLSだけに頼らず、使わない操作は
+  マイグレーションで明示的にrevokeする。
+
+### 書き込み経路の制限
+
+`bowel_logs` と `user_characters` にはINSERT/UPDATEポリシーを作っていない。
+これらは「本人のactiveなバトルに対して1件だけ」という、行単位の述語では
+表現しきれない不変条件のもとでのみ増えるため。
+
+したがって `completeBattleAction` は、この2つのテーブルへ**ユーザーセッションから
+直接書き込めない**。`security definer` のRPC（`set search_path = ''`、公開ロールから
+`EXECUTE` をrevoke）を用意するか、secret keyを使うサーバー処理として実装すること。
