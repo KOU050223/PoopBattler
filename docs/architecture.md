@@ -101,7 +101,23 @@ src/
 
 1. `app/` にはルーティングと画面の組み立てだけを書く。ゲーム・DBのロジックを書かない。
 2. 機能に固有のコードは必ず `features/<機能名>/` に置く。
-3. Supabaseへのアクセスは `features/*/actions.ts` または `lib/supabase/` 経由に限定する。コンポーネントから直接アクセスしない。
+3. Supabaseへのアクセスは `features/<機能名>/actions.ts` または `lib/supabase/` に限定する。
+   Supabaseクライアントを生成してよいのは次の場所だけで、これは ESLint の
+   `no-restricted-imports` で強制している。
+
+   | 場所 | 使うクライアント |
+   | --- | --- |
+   | `features/<機能名>/actions.ts` | `lib/supabase/server.ts`（Server Action） |
+   | `lib/supabase/` | 各クライアントの実装本体 |
+   | `proxy.ts` | `lib/supabase/proxy.ts`（セッション更新） |
+
+   UI側 — `app/`、`components/`、`features/*/components/`、`features/*/hooks/` —
+   から `lib/supabase/client` `lib/supabase/server` をimportするとlintが落ちる。
+   UIは Server Component から渡されたデータか、`features/<機能名>/actions.ts` の
+   Server Actionだけを呼ぶ。
+   認証（`auth.signInAnonymously()` など）はDB操作ではないため例外とするが、
+   ディレクトリ単位では緩めず、呼び出し箇所に `eslint-disable-next-line` と
+   理由を書いて明示する（`features/auth/components/anonymous-sign-in.tsx` を参照）。
 4. バトル中のHP、コンボ、ゲージ、センサー値は Zustand でローカル管理する。`persist` で未完了バトルを `sessionStorage` に復元可能にし、Supabaseには確定結果だけを保存する。
 5. 共通化できないコンポーネントを `components/` に置かない。機能固有のものは各 `features/` の配下に置く。
 6. 環境変数とService Role Keyはクライアントへ公開しない。秘密鍵を要する処理はServer ActionまたはRoute Handlerに置く。

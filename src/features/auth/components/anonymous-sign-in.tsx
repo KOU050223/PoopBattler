@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ensureAnonymousSession } from "@/lib/supabase/anonymous-session";
+// 匿名サインインはDB操作ではなくauth APIの呼び出しのため、データアクセス境界の
+// 対象外とする。このコンポーネントからテーブルを読み書きしてはならない。
+// eslint-disable-next-line no-restricted-imports
 import { createClient } from "@/lib/supabase/client";
 
 type Status = "loading" | "ready" | "error";

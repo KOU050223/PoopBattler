@@ -74,6 +74,43 @@ npm run start   # 本番サーバー
 npm run lint    # ESLint
 ```
 
+## データベースと型
+
+スキーマは Supabase CLI のマイグレーションで管理し、TypeScript の型は
+そこから生成する。詳細な手順は [`supabase/README.md`](supabase/README.md) を参照。
+
+### 前提
+
+- Supabase CLI（`flake.nix` の開発シェルに含まれる）
+- Docker（型生成は `--local` でローカルDBに接続するため必要）
+
+### 型を生成する
+
+```bash
+npm run db:types         # src/types/database.types.ts を生成する
+npm run db:types:check   # 生成物がマイグレーションと一致するか検証する
+```
+
+`db:types` はローカルDBのスキーマから型を作る。`supabase start` していない場合は
+`db:types:check` が一時的にDBだけ起動して検証し、終了時に停止する。
+
+**マイグレーションを追加・変更したら必ず `npm run db:types` を実行し、生成された
+`src/types/database.types.ts` を同じコミットに含める。** 再生成漏れは pre-commit
+フック（型がステージされていなければ落ちる）と CI（実際に生成し直して差分を検証）
+の2段階で検出する。
+
+生成された型は `src/lib/supabase/` の各クライアントに型引数として渡してあるため、
+テーブル名・カラム名・列挙値の補完と検査がそのまま効く。
+
+### データアクセスの境界
+
+Supabase クライアントを生成してよいのは `features/<機能名>/actions.ts` と
+`lib/supabase/`、`src/proxy.ts` だけ。UI側（`src/app/`、`src/components/`、
+`src/features/*/components/`、`src/features/*/hooks/`）から
+`lib/supabase/client` `lib/supabase/server` を import すると ESLint が落とす。
+UI は Server Component から渡されたデータか、機能ごとの Server Action を呼ぶ。
+責務の詳細は [`docs/architecture.md`](docs/architecture.md) を参照。
+
 ### 実機での検証について
 
 `DeviceMotionEvent`（揺れ判定）と `getUserMedia()`（カメラ）は **HTTPS でのみ動作する**。
