@@ -1,6 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 import { MEAL_TAGS, type MealTag } from "@/features/meal/meal.types";
 
@@ -20,9 +22,23 @@ export function MealSaveConfirmationModal({
   onCancel,
   onConfirm,
 }: MealSaveConfirmationModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
   const tagLabel = MEAL_TAGS.find((mealTag) => mealTag.value === tag)?.label;
 
-  return (
+  useEffect(() => {
+    if (isOpen) {
+      previouslyFocusedElementRef.current = document.activeElement as HTMLElement;
+      dialogRef.current?.focus();
+      return;
+    }
+
+    previouslyFocusedElementRef.current?.focus();
+  }, [isOpen]);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -36,6 +52,31 @@ export function MealSaveConfirmationModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="meal-confirmation-title"
+            ref={dialogRef}
+            tabIndex={-1}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !isSaving) {
+                onCancel();
+                return;
+              }
+
+              if (event.key !== "Tab") return;
+
+              const focusableElements = dialogRef.current?.querySelectorAll<HTMLElement>(
+                "button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])",
+              );
+              if (!focusableElements?.length) return;
+
+              const firstElement = focusableElements[0];
+              const lastElement = focusableElements[focusableElements.length - 1];
+              if (event.shiftKey && document.activeElement === firstElement) {
+                event.preventDefault();
+                lastElement.focus();
+              } else if (!event.shiftKey && document.activeElement === lastElement) {
+                event.preventDefault();
+                firstElement.focus();
+              }
+            }}
             initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
@@ -51,6 +92,7 @@ export function MealSaveConfirmationModal({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

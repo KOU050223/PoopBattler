@@ -98,7 +98,12 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
   };
 
   return (
-    <form onSubmit={requestConfirmation} className="flex max-w-md flex-col gap-6" noValidate>
+    <form
+      onSubmit={requestConfirmation}
+      className="flex max-w-md flex-col gap-6"
+      noValidate
+      inert={isConfirming}
+    >
       <div className="flex flex-col gap-2">
         <label htmlFor={photoInputId} className="font-medium">
           食事の写真 <span aria-hidden="true">*</span>
