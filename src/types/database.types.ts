@@ -34,6 +34,112 @@ export type Database = {
   }
   public: {
     Tables: {
+      battle_results: {
+        Row: {
+          companionship_result: boolean | null
+          completed_at: string | null
+          enemy_attribute: Database["public"]["Enums"]["character_attribute"]
+          enemy_character_id: string
+          id: string
+          meal_log_id: string | null
+          started_at: string
+          status: Database["public"]["Enums"]["battle_status"]
+          user_id: string
+        }
+        Insert: {
+          companionship_result?: boolean | null
+          completed_at?: string | null
+          enemy_attribute: Database["public"]["Enums"]["character_attribute"]
+          enemy_character_id: string
+          id?: string
+          meal_log_id?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["battle_status"]
+          user_id: string
+        }
+        Update: {
+          companionship_result?: boolean | null
+          completed_at?: string | null
+          enemy_attribute?: Database["public"]["Enums"]["character_attribute"]
+          enemy_character_id?: string
+          id?: string
+          meal_log_id?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["battle_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_results_enemy_character_id_fkey"
+            columns: ["enemy_character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_results_meal_log_id_fkey"
+            columns: ["meal_log_id"]
+            isOneToOne: false
+            referencedRelation: "meal_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_results_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bowel_logs: {
+        Row: {
+          amount: string
+          battle_result_id: string
+          color: string
+          ease: string
+          hardness: number
+          id: string
+          logged_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: string
+          battle_result_id: string
+          color: string
+          ease: string
+          hardness: number
+          id?: string
+          logged_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: string
+          battle_result_id?: string
+          color?: string
+          ease?: string
+          hardness?: number
+          id?: string
+          logged_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bowel_logs_battle_result_id_fkey"
+            columns: ["battle_result_id"]
+            isOneToOne: true
+            referencedRelation: "battle_results"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bowel_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       characters: {
         Row: {
           attribute: Database["public"]["Enums"]["character_attribute"]
@@ -61,6 +167,44 @@ export type Database = {
         }
         Relationships: []
       }
+      meal_logs: {
+        Row: {
+          created_at: string
+          eaten_at: string
+          id: string
+          image_path: string
+          note: string | null
+          tag: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          eaten_at?: string
+          id?: string
+          image_path: string
+          note?: string | null
+          tag: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          eaten_at?: string
+          id?: string
+          image_path?: string
+          note?: string | null
+          tag?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -76,6 +220,52 @@ export type Database = {
         }
         Relationships: []
       }
+      user_characters: {
+        Row: {
+          acquired_at: string
+          acquired_from_battle_id: string | null
+          character_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          acquired_at?: string
+          acquired_from_battle_id?: string | null
+          character_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          acquired_at?: string
+          acquired_from_battle_id?: string | null
+          character_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_characters_acquired_from_battle_id_fkey"
+            columns: ["acquired_from_battle_id"]
+            isOneToOne: true
+            referencedRelation: "battle_results"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_characters_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_characters_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -84,6 +274,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      battle_status: "active" | "won" | "completed"
       character_attribute:
         | "curry"
         | "vegetable"
@@ -223,6 +414,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      battle_status: ["active", "won", "completed"],
       character_attribute: [
         "curry",
         "vegetable",
