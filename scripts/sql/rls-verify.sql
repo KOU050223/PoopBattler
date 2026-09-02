@@ -328,11 +328,11 @@ begin
     pg_temp.allowed(format('update public.user_characters set character_id = ''golden-poop'' where user_id = %L', a)),
     false);
 
-  -- DELETE: 削除機能は無く、本人の行でも消せない ---------------------------
+  -- DELETE: 食事ログは本人だけが削除できる ----------------------------------
   perform pg_temp.expect(
-    'meal_logs DELETE 本人でも拒否',
+    'meal_logs DELETE 本人',
     pg_temp.allowed(format('delete from public.meal_logs where id = %L', meal_a)),
-    false);
+    true);
   perform pg_temp.expect(
     'meal_logs DELETE 他人',
     pg_temp.allowed(format('delete from public.meal_logs where id = %L', meal_b)),
@@ -444,6 +444,7 @@ begin
       ('authenticated', 'meal_logs', 'SELECT'),
       ('authenticated', 'meal_logs', 'INSERT'),
       ('authenticated', 'meal_logs', 'UPDATE'),
+      ('authenticated', 'meal_logs', 'DELETE'),
       ('authenticated', 'battle_results', 'SELECT'),
       ('authenticated', 'battle_results', 'INSERT'),
       ('authenticated', 'battle_results', 'UPDATE'),

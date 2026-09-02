@@ -7,7 +7,7 @@
 食事写真は必須にしない。写真が1枚もなくてもバトルは成立し、写真がある場合だけバトル中に「あげる」ことができる。
 
 - フロントエンドとサーバー処理は **Next.js App Router** に集約する。
-- 認証、データベース、画像保存は **Supabase** をBaaSとして利用する。
+- 認証とデータベースは **Supabase** をBaaSとして利用し、食事画像は端末内のIndexedDBへ保存する。
 - バトル中の状態はブラウザ内で管理し、終了時の結果だけを保存する。
 - 敵の出現と仲間化の抽選はServer Actionで確定し、クライアントは抽選結果を決めない。
 - 本格ARではなく、カメラ映像にキャラクターを重ねるAR風演出にする。バトル中は常時この表示にする。
@@ -19,10 +19,11 @@
 | --- | --- | --- |
 | Webアプリ | Next.js + TypeScript | App Router、画面、Server Actions |
 | UI | Tailwind CSS + shadcn/ui | 画面構築と共通UI |
-| アニメーション | Framer Motion | 攻撃、ダメージ、撃破、仲間化演出 |
+| アニメーション | Framer Motion | うんちくんのレイヤー（部位ごと）、攻撃、ダメージ、撃破、仲間化演出 |
 | センサー | `DeviceMotionEvent` | 加速度を使った攻撃判定 |
 | カメラ | `getUserMedia()` | 食事写真撮影、バトル中の「あげる」、仲間化のAR風演出 |
-| 認証・DB・画像 | Supabase | 匿名ログイン、Postgres、Storage |
+| 認証・DB | Supabase | 匿名ログイン、Postgres |
+| 食事画像 | IndexedDB | 画像本体を端末内へ非公開で保存 |
 | 一時状態 | Zustand + `persist` | バトル中のHP、コンボ、ゲージ、リロード復元用の下書き |
 | デプロイ | Vercel | HTTPSでの公開と実機デモ |
 
@@ -81,10 +82,14 @@ src/
 │  │  ├─ components/
 │  │  ├─ actions.ts
 │  │  └─ bowel-log.types.ts
-│  └─ collection/
+│  ├─ collection/
+│  │  ├─ components/
+│  │  └─  actions.ts
+│  └─ puupm/
+│     ├─ assets/            # 同梱パーツ（SVG / PNG）
 │     ├─ components/
-│     ├─ actions.ts
-│     └─ character.types.ts
+│     ├─ puupm.appearances.ts
+│     └─ puupm.types.ts
 │
 ├─ components/
 │  ├─ ui/                  # 汎用UIのみ
@@ -142,7 +147,34 @@ src/
 5. 共通化できないコンポーネントを `components/` に置かない。機能固有のものは各 `features/` の配下に置く。
 6. 環境変数とService Role Keyはクライアントへ公開しない。秘密鍵を要する処理はServer ActionまたはRoute Handlerに置く。
 7. 個人データを持つ全テーブルでRLSを有効化し、`auth.uid() = user_id` を基本ポリシーにする。マスターの `characters` は読み取り専用、更新はサーバー処理に限定する。
-8. 食事画像は非公開Storageバケットに置き、本人のオブジェクトだけをRLSで許可する。画面表示には短期限の署名URLを発行する。
+8. 食事画像はIndexedDBに置き、`meal_logs.image_path` には画像本体ではなくローカル画像IDだけを保存する。画像はサーバーへ送信せず、同じ端末・ブラウザプロファイル内でのみ参照できる。食事ログの削除・写真差し替え時は、不要になったローカル画像も削除する。
+
+## うんちくんの描画（puupm）
+
+見た目の約束は [`puupm.md`](./puupm.md)。コードは `features/puupm/`。バトルと図鑑はここを import する。
+
+パーツは `src/features/puupm/assets/` にリポジトリ同梱する。SVG と PNG は同じ重ね描画に混在してよい。互いに排他ではない。胴体の色変えは SVG の fill が向く。PNG は塗替えしにくいので、色が乗る面（胴体）は SVG にする。
+
+見た目は`characters.id` をキーにした TS マップ（`puupm.appearances.ts`）。キーは seed の `id` と一致させる。`characters.image_key` は読まない。列は残してよい。見た目用の列は足さない。
+
+型は次の3層に分ける。後ろ向きはマップに持たない。
+
+```ts
+type PuupmAppearance = {
+  head: HeadId;
+  eyes: EyeId;
+  mouth: MouthId;
+  color: string;
+};
+
+type PuupmFigureProps = {
+  appearance: PuupmAppearance;
+  facing: "front" | "back";
+  motion: "idle" | "hit" | "eat";
+};
+```
+
+`HeadId` などはパーツ ID の string union。DB の `characters` 行（`id` / `name` / `attribute` / `rarity`）とは別物。パーツの追加・削除は assets と TS union / TS マップを同じ差分で更新する。
 
 ## センサー・画面状態の扱い
 
@@ -185,11 +217,11 @@ AI画像解析は行わず、食事登録時に選ぶ簡易タグを属性へ対
 | `profiles` | `id → auth.users.id`。匿名ログイン直後にDBトリガーで作成するプロフィール |
 | `meal_logs` | `user_id → profiles.id`、食事日時、画像パス、料理タグ、任意メモ |
 | `bowel_logs` | `user_id → profiles.id`、`battle_result_id → battle_results.id`（一意）、硬さ、量、色、出しやすさ、記録日時 |
-| `characters` | キャラクターのマスターデータ、属性、レアリティ |
+| `characters` | マスター。`id` / `name` / `attribute` / `rarity`。見た目はコードのマップ（上記 puupm）。`image_key` は使わない |
 | `user_characters` | `user_id → profiles.id`、`character_id → characters.id`、`acquired_from_battle_id → battle_results.id` |
 | `battle_results` | `user_id → profiles.id`、`meal_log_id → meal_logs.id`（nullable。「あげる」を行った場合のみ入る）、敵キャラクター・属性、勝敗、抽選状態、開始・完了日時 |
 
-すべてのユーザー固有テーブルでRLSを有効にし、本人の行だけを `auth.uid() = user_id` で読み書き可能にする。食事画像はSupabase Storageの非公開バケットに保存し、`meal_logs` には画像データではなくパスを保存する。画像表示は本人だけが発行できる短期限の署名URLを使い、排便ログと食事画像を他ユーザーへ公開しない。
+すべてのユーザー固有テーブルでRLSを有効にし、本人の行だけを `auth.uid() = user_id` で読み書き可能にする。食事画像は端末内のIndexedDBへ保存し、`meal_logs` には画像データではなくローカル画像IDを保存する。画像はサーバーへ送信しないため、Storageの公開URL・署名URL・Storageポリシーは使わない。
 
 ## 認証
 
@@ -205,11 +237,11 @@ AI画像解析は行わず、食事登録時に選ぶ簡易タグを属性へ対
 
 食事写真が任意になったため、バトルは食事機能に依存しない。3を2より先に着手してもよい。
 
-1. Next.jsの初期化、Tailwind、Supabase接続、Anonymous Sign-Ins、RLS、非公開Storageバケット、`src/proxy.ts`。
+1. Next.jsの初期化、Tailwind、Supabase接続、Anonymous Sign-Ins、RLS、`src/proxy.ts`。
 2. 敵生成（ランダム属性）、`startBattleAction`、バトル画面、揺れによる攻撃判定、権限フォールバック、画面スリープ抑止。
 3. `completeBattleAction`、撃破演出、排便ログ入力、仲間化抽選、図鑑。
    ここまでで**食事写真なしのループが一周する**ので、先にこの状態を動かす。
-4. 食事写真の撮影・Storage保存と簡易タグ入力。
+4. 食事写真の撮影・IndexedDB保存と簡易タグ入力。
 5. バトル中の「あげる」導線と `feedMealAction`。カメラ起動は「あげる」を選んだときだけとし、
    終了後はバトル画面へ戻す。バトル中ずっとカメラを表示すると、揺れによる攻撃判定と競合するため。
 6. カメラ映像を使う仲間化演出（便器から這い出てくる）と、未完了バトルのリロード復元。
