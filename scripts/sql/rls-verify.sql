@@ -209,6 +209,11 @@ begin
     false);
 
   perform pg_temp.expect(
+    'battle_results INSERT 本人名義',
+    pg_temp.allowed(format(
+      'insert into public.battle_results (user_id, enemy_character_id, enemy_attribute) values (%L, ''curry-poop'', ''curry'')', a)),
+    true);
+  perform pg_temp.expect(
     'battle_results INSERT 他人名義（偽装）',
     pg_temp.allowed(format(
       'insert into public.battle_results (user_id, enemy_character_id, enemy_attribute) values (%L, ''curry-poop'', ''curry'')', b)),
@@ -350,40 +355,44 @@ do $$
 declare
   leftover text;
 begin
-  -- anon は個人データのテーブルに一切権限を持たない。
-  select string_agg(format('%s/%s/%s', table_name, grantee, privilege_type), ', ')
+  -- 直接付与された権限（information_schema.role_table_grants）ではなく、
+  -- has_table_privilege で実効権限を見る。role_table_grants は PUBLIC への
+  -- grant や他ロール経由で継承した権限を grantee='anon' の行として返さないため、
+  -- 実際にはアクセスできるのに「権限なし」と表示されてしまう。
+  --
+  -- 期待する権限の一覧と実効権限を突き合わせ、差分があれば落とす。
+  -- 「余計な権限がある」だけでなく「必要な権限が消えている」も検出する。
+  select string_agg(format('%s/%s/%s', r.role, t.tbl, p.priv), ', ' order by r.role, t.tbl, p.priv)
   into leftover
-  from information_schema.role_table_grants
-  where table_schema = 'public'
-    and grantee = 'anon'
-    and table_name in ('profiles', 'meal_logs', 'battle_results', 'bowel_logs', 'user_characters')
-    and privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'DELETE');
+  from (values ('anon'), ('authenticated')) as r(role)
+  cross join (values
+    ('profiles'), ('characters'), ('meal_logs'),
+    ('battle_results'), ('bowel_logs'), ('user_characters')
+  ) as t(tbl)
+  cross join (values ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE')) as p(priv)
+  where has_table_privilege(r.role, 'public.' || t.tbl, p.priv)
+    <> ((r.role, t.tbl, p.priv) in (
+      -- マスターは全員が読める。
+      ('anon', 'characters', 'SELECT'),
+      ('authenticated', 'characters', 'SELECT'),
+      -- プロフィールは本人が読むだけ（作成はトリガー）。
+      ('authenticated', 'profiles', 'SELECT'),
+      -- 食事とバトルはクライアントが作成・更新する。
+      ('authenticated', 'meal_logs', 'SELECT'),
+      ('authenticated', 'meal_logs', 'INSERT'),
+      ('authenticated', 'meal_logs', 'UPDATE'),
+      ('authenticated', 'battle_results', 'SELECT'),
+      ('authenticated', 'battle_results', 'INSERT'),
+      ('authenticated', 'battle_results', 'UPDATE'),
+      -- 排便ログと所有キャラクターは読み取り専用。
+      ('authenticated', 'bowel_logs', 'SELECT'),
+      ('authenticated', 'user_characters', 'SELECT')
+    ));
 
   if leftover is not null then
-    raise exception 'FAIL: anon に権限が残っている — %', leftover;
+    raise exception 'FAIL: テーブル権限が設計と違う（過不足）— %', leftover;
   end if;
-  raise notice 'ok: anon には個人データの権限が無い';
-
-  -- authenticated には設計上必要な権限しか残さない。
-  select string_agg(format('%s/%s', table_name, privilege_type), ', ')
-  into leftover
-  from information_schema.role_table_grants
-  where table_schema = 'public'
-    and grantee = 'authenticated'
-    and privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
-    and (table_name, privilege_type) not in (
-      ('profiles', 'SELECT'),
-      ('characters', 'SELECT'),
-      ('meal_logs', 'SELECT'), ('meal_logs', 'INSERT'), ('meal_logs', 'UPDATE'),
-      ('battle_results', 'SELECT'), ('battle_results', 'INSERT'), ('battle_results', 'UPDATE'),
-      ('bowel_logs', 'SELECT'),
-      ('user_characters', 'SELECT')
-    );
-
-  if leftover is not null then
-    raise exception 'FAIL: authenticated に想定外の権限がある — %', leftover;
-  end if;
-  raise notice 'ok: authenticated の権限は設計どおり';
+  raise notice 'ok: anon / authenticated の実効テーブル権限は設計どおり';
 end;
 $$;
 
