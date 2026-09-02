@@ -6,7 +6,7 @@ import { useMealCamera, type MealCameraStatus } from "@/features/meal/hooks/use-
 
 export const MEAL_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export const MEAL_PHOTO_ACCEPT = MEAL_PHOTO_MIME_TYPES.join(",");
-// Storageバケット作成時にも同じ5MB制限を設定する。現時点ではUI側の単一の定義元。
+// IndexedDBへ保存するローカル画像の上限。UI側の単一の定義元として扱う。
 export const MEAL_PHOTO_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
 type MealPhotoPickerProps = {
