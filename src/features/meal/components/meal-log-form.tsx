@@ -3,11 +3,10 @@
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { MealPhotoPicker } from "./meal-photo-picker";
 import { MealSaveConfirmationModal } from "./meal-save-confirmation-modal";
 import { MealTagSelector } from "./meal-tag-selector";
 import { type MealLogDraft, type MealTag } from "@/features/meal/meal.types";
-
-const supportedPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 type FieldErrors = Partial<Record<"photo" | "tag" | "eatenAt" | "save", string>>;
 
@@ -24,16 +23,7 @@ function currentLocalDateTime() {
   return new Date(now.getTime() - offset).toISOString().slice(0, 16);
 }
 
-function validatePhoto(photo: File | null) {
-  if (!photo) return "写真を選択してください。";
-  if (!supportedPhotoTypes.has(photo.type)) {
-    return "JPEG、PNG、WebPの画像を選択してください。";
-  }
-  return undefined;
-}
-
 export function MealLogForm({ onSave }: MealLogFormProps) {
-  const photoInputId = useId();
   const tagGroupId = useId();
   const previewUrlRef = useRef<string | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
@@ -54,8 +44,7 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
 
   const validate = () => {
     const nextErrors: FieldErrors = {};
-    const photoError = validatePhoto(photo);
-    if (photoError) nextErrors.photo = photoError;
+    if (!photo) nextErrors.photo = "写真を選択してください。";
     if (!tag) nextErrors.tag = "食事タグを1つ選択してください。";
     if (!eatenAt || Number.isNaN(new Date(eatenAt).getTime())) {
       nextErrors.eatenAt = "食事した日時を入力してください。";
@@ -105,25 +94,20 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
       inert={isConfirming}
     >
       <div className="flex flex-col gap-2">
-        <label htmlFor={photoInputId} className="font-medium">
+        <p className="font-medium">
           食事の写真 <span aria-hidden="true">*</span>
-        </label>
-        <input
-          id={photoInputId}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          aria-describedby={errors.photo ? `${photoInputId}-error` : undefined}
-          aria-invalid={Boolean(errors.photo)}
-          onChange={(event) => {
-            const selectedPhoto = event.currentTarget.files?.[0] ?? null;
+        </p>
+        <MealPhotoPicker
+          error={errors.photo}
+          onPhotoSelected={(selectedPhoto) => {
             if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-            const nextPreviewUrl = selectedPhoto ? URL.createObjectURL(selectedPhoto) : null;
+            const nextPreviewUrl = URL.createObjectURL(selectedPhoto);
             previewUrlRef.current = nextPreviewUrl;
             setPreviewUrl(nextPreviewUrl);
             setPhoto(selectedPhoto);
-            setErrors((current) => ({ ...current, photo: validatePhoto(selectedPhoto) }));
+            setErrors((current) => ({ ...current, photo: undefined }));
           }}
-          className="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white dark:file:bg-zinc-100 dark:file:text-black"
+          onValidationError={(message) => setErrors((current) => ({ ...current, photo: message }))}
         />
         {previewUrl && (
           <Image
@@ -135,7 +119,6 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
             className="aspect-video w-full rounded-lg border border-zinc-200 object-cover dark:border-zinc-800"
           />
         )}
-        {errors.photo && <p id={`${photoInputId}-error`} className="text-sm text-red-600">{errors.photo}</p>}
       </div>
 
       <div className="flex flex-col gap-2">
