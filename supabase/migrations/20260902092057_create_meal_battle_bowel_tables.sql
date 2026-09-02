@@ -109,5 +109,10 @@ create index meal_logs_user_id_eaten_at_idx
 create index battle_results_user_id_started_at_idx
   on public.battle_results (user_id, started_at desc);
 
+-- 排便ログ一覧に加えて、user_id が先頭なのでアカウント削除時の
+-- CASCADE（bowel_logs_user_id_fkey）の探索にもこの索引が効く。
+create index bowel_logs_user_id_logged_at_idx
+  on public.bowel_logs (user_id, logged_at desc);
+
 create index user_characters_user_id_acquired_at_idx
   on public.user_characters (user_id, acquired_at desc);
