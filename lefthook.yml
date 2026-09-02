@@ -21,14 +21,17 @@ pre-commit:
         if git diff --cached --name-only | grep -q '^src/types/database\.types\.ts$'; then
           exit 0
         fi
-        staged_sql=$(git diff --cached --name-only --diff-filter=ACMR -- 'supabase/migrations/*.sql')
+        staged_sql=$(git diff --cached --name-only --diff-filter=ACMRD -- 'supabase/migrations/*.sql')
         [ -z "$staged_sql" ] && exit 0
-        # 追加された行のうち、テーブル・列・型（enum・composite）の定義を変える文だけを拾う。
-        # index / policy / grant / revoke / comment だけの変更はここに引っかからない。
+        # 追加行と削除行の両方を見る。追加だけを見ると、テーブルや列の定義を
+        # 「消しただけ」の変更が素通りする（新規チェックアウトで replay すると
+        # スキーマは変わるのに、フックは型変更なしと判定してしまう）。
+        # create or replace も拾う。RPCやビューの署名変更で型が変わるため。
         if ! git diff --cached -U0 -- $staged_sql \
-          | grep -E '^\+' \
-          | grep -viE '^\+\s*--' \
-          | grep -qiE '(create|alter|drop)[[:space:]]+(table|type|domain|view|materialized|function|procedure)|add[[:space:]]+column|drop[[:space:]]+column|alter[[:space:]]+column|add[[:space:]]+value'; then
+          | grep -E '^[+-]' \
+          | grep -vE '^(\+\+\+|---)' \
+          | grep -viE '^[+-][[:space:]]*--' \
+          | grep -qiE '(create([[:space:]]+or[[:space:]]+replace)?|alter|drop)[[:space:]]+(table|type|domain|view|materialized|function|procedure)|add[[:space:]]+column|drop[[:space:]]+column|alter[[:space:]]+column|add[[:space:]]+value'; then
           echo "マイグレーションは変更されたが、型定義に影響する文が無いため続行する。"
           echo "  （再生成結果の一致は CI の db:types:check が検証する）"
           exit 0

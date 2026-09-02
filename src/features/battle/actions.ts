@@ -46,13 +46,13 @@ function createGateway(supabase: SupabaseClient): StartBattleGateway {
     },
 
     async findCharacterById(id) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("characters")
         .select(CHARACTER_COLUMNS)
         .eq("id", id)
         .maybeSingle();
 
-      return data ?? null;
+      return { character: data ?? null, failed: Boolean(error) };
     },
 
     async findCharactersByAttribute(attribute) {

@@ -28,7 +28,9 @@ export type StartBattleGateway = {
     battle: ActiveBattleRow | null;
     failed: boolean;
   }>;
-  findCharacterById: (id: string) => Promise<CharacterRow | null>;
+  findCharacterById: (
+    id: string,
+  ) => Promise<{ character: CharacterRow | null; failed: boolean }>;
   findCharactersByAttribute: (
     attribute: CharacterRow["attribute"],
   ) => Promise<{ characters: CharacterRow[]; failed: boolean }>;
@@ -76,11 +78,18 @@ export async function startBattle(
   }
 
   if (existing) {
-    const character = await gateway.findCharacterById(
-      existing.enemy_character_id,
-    );
+    const { character, failed: characterFailed } =
+      await gateway.findCharacterById(existing.enemy_character_id);
 
-    // 再開対象の敵が引けない場合だけ、この行を諦めて新規作成へ進む。
+    // 読み出しに失敗しただけなら、進行中のバトルを捨てて新規作成してはいけない。
+    // enemy_character_id には外部キーがあるので、行が引けないのは通常
+    // 「一時的に読めなかった」であって「敵が消えた」ではない。
+    // ここで新規作成に倒すと、既存のactiveを放置したまま別のバトルを作る。
+    if (characterFailed) {
+      return { status: "error", message: START_ERROR };
+    }
+
+    // 敵が本当に存在しない場合だけ、この行を諦めて新規作成へ進む。
     if (character) {
       return {
         status: "started",

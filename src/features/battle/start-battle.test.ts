@@ -31,7 +31,7 @@ function createGateway(
   return {
     getUserId: vi.fn().mockResolvedValue({ userId: "user-1", failed: false }),
     findActiveBattle: vi.fn().mockResolvedValue({ battle: null, failed: false }),
-    findCharacterById: vi.fn().mockResolvedValue(curry),
+    findCharacterById: vi.fn().mockResolvedValue({ character: curry, failed: false }),
     findCharactersByAttribute: vi
       .fn()
       .mockResolvedValue({ characters: [curry], failed: false }),
@@ -97,6 +97,48 @@ describe("startBattle", () => {
 
     expect(result).toMatchObject({ status: "started", resumed: false });
     expect(findCharactersByAttribute).toHaveBeenLastCalledWith("normal");
+  });
+
+  it("再開対象の敵の読み出しに失敗したら、新規作成せず失敗を返す", async () => {
+    // 読み出し失敗を「敵がいない」と誤読して新規作成に倒すと、
+    // 進行中のバトルを放置したまま別のバトルができてしまう。
+    const insertBattle = vi.fn();
+    const result = await startBattle(
+      createGateway({
+        findActiveBattle: vi.fn().mockResolvedValue({
+          battle: { id: "battle-existing", enemy_character_id: "curry-poop" },
+          failed: false,
+        }),
+        findCharacterById: vi
+          .fn()
+          .mockResolvedValue({ character: null, failed: true }),
+        insertBattle,
+      }),
+      () => 0,
+    );
+
+    expect(result.status).toBe("error");
+    expect(insertBattle).not.toHaveBeenCalled();
+  });
+
+  it("再開対象の敵が本当に存在しなければ新規作成へ進む", async () => {
+    const insertBattle = vi.fn().mockResolvedValue({ battleId: "battle-new" });
+    const result = await startBattle(
+      createGateway({
+        findActiveBattle: vi.fn().mockResolvedValue({
+          battle: { id: "battle-existing", enemy_character_id: "gone" },
+          failed: false,
+        }),
+        findCharacterById: vi
+          .fn()
+          .mockResolvedValue({ character: null, failed: false }),
+        insertBattle,
+      }),
+      () => 0,
+    );
+
+    expect(result).toMatchObject({ battleId: "battle-new", resumed: false });
+    expect(insertBattle).toHaveBeenCalledOnce();
   });
 
   it("未認証ならバトルを作らずに失敗を返す", async () => {
