@@ -6,13 +6,36 @@ pre-commit:
   commands:
     db-types-staged:
       # マイグレーションを変更したなら、生成された型も一緒にコミットされているはず。
+      #
+      # ただし要求するのは「型が変わる変更」だけにする。インデックス・制約・
+      # ポリシーの追加のように、スキーマの形が変わらないマイグレーションでは
+      # db:types を再生成しても差分が出ない。そこで型のステージを強制すると、
+      # 正しい変更がコミットできず --no-verify を常用させることになり、
+      # 検査そのものが形骸化する。
+      #
+      # ここでは Docker を使う重い検証（db:types:check）は行わない。
+      # 静的に「型に影響しうる文か」だけを見て、影響しない変更は通す。
+      # 実際に再生成結果が一致するかの検証は CI が担当する。
       glob: "supabase/migrations/*.sql"
       run: |
-        if ! git diff --cached --name-only | grep -q '^src/types/database.types\.ts$'; then
-          echo "エラー: マイグレーションを変更したが src/types/database.types.ts が更新されていない。"
-          echo "  npm run db:types を実行し、生成結果をステージしてからコミットすること。"
-          exit 1
+        if git diff --cached --name-only | grep -q '^src/types/database\.types\.ts$'; then
+          exit 0
         fi
+        staged_sql=$(git diff --cached --name-only --diff-filter=ACMR -- 'supabase/migrations/*.sql')
+        [ -z "$staged_sql" ] && exit 0
+        # 追加された行のうち、テーブル・列・型（enum・composite）の定義を変える文だけを拾う。
+        # index / policy / grant / revoke / comment だけの変更はここに引っかからない。
+        if ! git diff --cached -U0 -- $staged_sql \
+          | grep -E '^\+' \
+          | grep -viE '^\+\s*--' \
+          | grep -qiE '(create|alter|drop)[[:space:]]+(table|type|domain|view|materialized|function|procedure)|add[[:space:]]+column|drop[[:space:]]+column|alter[[:space:]]+column|add[[:space:]]+value'; then
+          echo "マイグレーションは変更されたが、型定義に影響する文が無いため続行する。"
+          echo "  （再生成結果の一致は CI の db:types:check が検証する）"
+          exit 0
+        fi
+        echo "エラー: マイグレーションを変更したが src/types/database.types.ts が更新されていない。"
+        echo "  npm run db:types を実行し、生成結果をステージしてからコミットすること。"
+        exit 1
     lint:
       glob: "*.{ts,tsx,mts}"
       run: npm run lint
