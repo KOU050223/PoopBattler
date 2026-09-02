@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { MealPhotoPicker } from "./meal-photo-picker";
 import { MealSaveConfirmationModal } from "./meal-save-confirmation-modal";
@@ -25,6 +26,7 @@ function currentLocalDateTime() {
 }
 
 export function MealLogForm({ onSave }: MealLogFormProps) {
+  const router = useRouter();
   const tagGroupId = useId();
   const previewUrlRef = useRef<string | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
@@ -75,6 +77,7 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
       });
       setIsConfirming(false);
       setIsComplete(true);
+      router.refresh();
     } catch (error) {
       if (photoId) await deleteMealPhoto(photoId).catch(() => undefined);
       setErrors({
