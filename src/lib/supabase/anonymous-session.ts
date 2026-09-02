@@ -1,3 +1,5 @@
+import { createClient } from "./client";
+
 type AuthError = {
   message: string;
 };
@@ -44,4 +46,10 @@ export async function ensureAnonymousSession(
   }
 
   return { status: "ready" };
+}
+
+// 匿名サインインだけを公開し、DB操作が可能なクライアントをUIへ渡さないための入口。
+// これによりコンポーネント側はデータアクセス境界の例外を必要としない。
+export async function signInAnonymouslyFromBrowser(): Promise<AnonymousSessionResult> {
+  return ensureAnonymousSession(createClient().auth);
 }

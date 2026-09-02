@@ -74,6 +74,66 @@ npm run start   # 本番サーバー
 npm run lint    # ESLint
 ```
 
+## データベースと型
+
+スキーマは Supabase CLI のマイグレーションで管理し、TypeScript の型は
+そこから生成する。詳細な手順は [`supabase/README.md`](supabase/README.md) を参照。
+
+### 前提
+
+- Supabase CLI（`flake.nix` の開発シェルに含まれる）
+- Docker（型生成は `--local` でローカルDBに接続するため必要）
+
+### 型を生成する
+
+`db:types` は**起動中のDBの現状**から型を作る。マイグレーションのファイルを
+読むわけではないので、次の2つを先に済ませておく必要がある。
+
+```bash
+supabase start           # 未起動なら起動する
+supabase db reset        # migrations を適用してスキーマを最新にする
+npm run db:types         # src/types/database.types.ts を生成する
+```
+
+`supabase start` は既存のDBを立ち上げるだけで、**追加したマイグレーションを
+適用しない**。`db reset` を飛ばすと、スキーマ変更が反映されていない古い型が
+そのまま生成される（エラーにならないので気づきにくい）。
+`db reset` はDBを作り直すためローカルのデータは消える。
+
+検証だけなら事前の起動は不要。`db:types:check` は未起動のときに一時的にDBだけ
+起動し、いずれの場合も `db reset` でマイグレーションを適用してから検証する。
+**このコマンドもローカルDBを作り直すため、データは消える。**
+
+```bash
+npm run db:types:check   # 生成物がマイグレーションと一致するか検証する
+```
+
+**マイグレーションを追加・変更したら必ず上記の手順で型を生成し直し、生成された
+`src/types/database.types.ts` を同じコミットに含める。** 再生成漏れは pre-commit
+フック（型がステージされていなければ落ちる）と CI（実際に生成し直して差分を検証）
+の2段階で検出する。
+
+生成された型は `src/lib/supabase/` の各クライアントに型引数として渡してあるため、
+テーブル名・カラム名・列挙値の補完と検査がそのまま効く。
+
+### データアクセスの境界
+
+Supabase クライアントを生成してよいのは `features/<機能名>/actions.ts`、
+`lib/supabase/`、`src/proxy.ts` の3か所だけ。ESLint は **`src/` 全体を既定で
+禁止し、この3か所だけを解除する**許可リスト方式で構成してある。新しく
+ディレクトリが増えても自動的に禁止側に入るため、黙って穴が空かない。
+
+塞いでいる経路は次のとおり。
+
+- `@/lib/supabase/client` `@/lib/supabase/server`（相対パス表記も含む）
+- 生のSDK（`@supabase/ssr`、`@supabase/supabase-js`）からの直接生成
+- 上記いずれかの動的 import（`await import(...)`）
+- 対象拡張子は `.ts` `.tsx` `.mts` `.js` `.jsx`（tsconfig が読む範囲すべて）
+
+UI は Server Component から渡されたデータか、機能ごとの Server Action を呼ぶ。
+認証も `lib/supabase/` の関数を経由するため、この規則に例外はない。
+責務の詳細は [`docs/architecture.md`](docs/architecture.md) を参照。
+
 ### 実機での検証について
 
 `DeviceMotionEvent`（揺れ判定）と `getUserMedia()`（カメラ）は **HTTPS でのみ動作する**。

@@ -101,7 +101,34 @@ src/
 
 1. `app/` にはルーティングと画面の組み立てだけを書く。ゲーム・DBのロジックを書かない。
 2. 機能に固有のコードは必ず `features/<機能名>/` に置く。
-3. Supabaseへのアクセスは `features/*/actions.ts` または `lib/supabase/` 経由に限定する。コンポーネントから直接アクセスしない。
+3. Supabaseへのアクセスは `features/<機能名>/actions.ts` または `lib/supabase/` に限定する。
+   Supabaseクライアントを生成してよいのは次の場所だけで、これは ESLint の
+   `no-restricted-imports` で強制している。
+
+   | 場所 | 使うクライアント |
+   | --- | --- |
+   | `features/<機能名>/actions.ts` | `lib/supabase/server.ts`（Server Action） |
+   | `lib/supabase/` | 各クライアントの実装本体 |
+   | `proxy.ts` | `lib/supabase/proxy.ts`（セッション更新） |
+
+   lintは **`src/` 全体を既定で禁止し、上の表の3か所だけを解除する**許可リスト方式。
+   禁止リスト方式にすると、`stores/` や `features/*/` 直下のような後から増えた
+   場所が黙って穴になるため。塞いでいるのは次の経路。
+
+   - `lib/supabase/client` `lib/supabase/server`（エイリアス・相対パスの双方）
+   - 生のSDK（`@supabase/ssr`、`@supabase/supabase-js`）からの直接生成
+   - 上記いずれかの動的import（`no-restricted-imports` は `import()` を見ないため、
+     `no-restricted-syntax` で別途塞ぐ。esquery の属性比較はグロブを展開しないので
+     セレクタは正規表現で書く）
+   - 対象拡張子は `.ts` `.tsx` `.mts` `.js` `.jsx`（tsconfig が読む範囲すべて）
+
+   UIは Server Component から渡されたデータか、`features/<機能名>/actions.ts` の
+   Server Actionだけを呼ぶ。
+
+   認証もこの規則の例外にしない。匿名サインインは
+   `lib/supabase/anonymous-session.ts` の `signInAnonymouslyFromBrowser()` が
+   クライアントの生成を内側に閉じ込め、UIには結果だけを返す。DB操作が可能な
+   クライアントをコンポーネントへ渡さないことで、境界にlint抑制を置かずに済む。
 4. バトル中のHP、コンボ、ゲージ、センサー値は Zustand でローカル管理する。`persist` で未完了バトルを `sessionStorage` に復元可能にし、Supabaseには確定結果だけを保存する。
 5. 共通化できないコンポーネントを `components/` に置かない。機能固有のものは各 `features/` の配下に置く。
 6. 環境変数とService Role Keyはクライアントへ公開しない。秘密鍵を要する処理はServer ActionまたはRoute Handlerに置く。

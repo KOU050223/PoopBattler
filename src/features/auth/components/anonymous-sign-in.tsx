@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ensureAnonymousSession } from "@/lib/supabase/anonymous-session";
-import { createClient } from "@/lib/supabase/client";
+import { signInAnonymouslyFromBrowser } from "@/lib/supabase/anonymous-session";
 
 type Status = "loading" | "ready" | "error";
 
@@ -17,7 +16,7 @@ export function AnonymousSignIn() {
     setMessage("");
 
     try {
-      const result = await ensureAnonymousSession(createClient().auth);
+      const result = await signInAnonymouslyFromBrowser();
 
       if (result.status === "error") {
         setStatus("error");
