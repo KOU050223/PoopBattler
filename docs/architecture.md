@@ -111,10 +111,15 @@ src/
    | `lib/supabase/` | 各クライアントの実装本体 |
    | `proxy.ts` | `lib/supabase/proxy.ts`（セッション更新） |
 
-   UI側 — `app/`、`components/`、`features/*/components/`、`features/*/hooks/` —
-   から `lib/supabase/client` `lib/supabase/server` をimportするとlintが落ちる。
-   生のSDK（`@supabase/ssr`、`@supabase/supabase-js`）を直接importして
-   ラッパーを迂回する経路も同様に塞いである。
+   lintは **`src/` 全体を既定で禁止し、上の表の3か所だけを解除する**許可リスト方式。
+   禁止リスト方式にすると、`stores/` や `features/*/` 直下のような後から増えた
+   場所が黙って穴になるため。塞いでいるのは次の経路。
+
+   - `lib/supabase/client` `lib/supabase/server`（エイリアス・相対パスの双方）
+   - 生のSDK（`@supabase/ssr`、`@supabase/supabase-js`）からの直接生成
+   - 上記いずれかの動的import（`no-restricted-imports` は `import()` を見ないため、
+     `no-restricted-syntax` で別途塞ぐ）
+
    UIは Server Component から渡されたデータか、`features/<機能名>/actions.ts` の
    Server Actionだけを呼ぶ。
 

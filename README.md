@@ -86,22 +86,28 @@ npm run lint    # ESLint
 
 ### 型を生成する
 
-`db:types` はローカルDBのスキーマから型を作るため、**先にローカルスタックを
-起動しておく必要がある**。
+`db:types` は**起動中のDBの現状**から型を作る。マイグレーションのファイルを
+読むわけではないので、次の2つを先に済ませておく必要がある。
 
 ```bash
-supabase start           # 未起動なら先に実行する
+supabase start           # 未起動なら起動する
+supabase db reset        # migrations を適用してスキーマを最新にする
 npm run db:types         # src/types/database.types.ts を生成する
 ```
 
+`supabase start` は既存のDBを立ち上げるだけで、**追加したマイグレーションを
+適用しない**。`db reset` を飛ばすと、スキーマ変更が反映されていない古い型が
+そのまま生成される（エラーにならないので気づきにくい）。
+`db reset` はDBを作り直すためローカルのデータは消える。
+
 検証だけなら起動は不要。`db:types:check` は未起動のときに一時的にDBだけ
-起動して検証し、終了時に停止する。
+起動し、マイグレーションを適用した状態で検証して、終了時に停止する。
 
 ```bash
 npm run db:types:check   # 生成物がマイグレーションと一致するか検証する
 ```
 
-**マイグレーションを追加・変更したら必ず `npm run db:types` を実行し、生成された
+**マイグレーションを追加・変更したら必ず上記の手順で型を生成し直し、生成された
 `src/types/database.types.ts` を同じコミットに含める。** 再生成漏れは pre-commit
 フック（型がステージされていなければ落ちる）と CI（実際に生成し直して差分を検証）
 の2段階で検出する。
@@ -111,14 +117,20 @@ npm run db:types:check   # 生成物がマイグレーションと一致する�
 
 ### データアクセスの境界
 
-Supabase クライアントを生成してよいのは `features/<機能名>/actions.ts` と
-`lib/supabase/`、`src/proxy.ts` だけ。UI側（`src/app/`、`src/components/`、
-`src/features/*/components/`、`src/features/*/hooks/`）から
-`lib/supabase/client` `lib/supabase/server` を import すると ESLint が落とす。
-生のSDK（`@supabase/ssr`、`@supabase/supabase-js`）を直接 import する迂回路も
-同様に塞いである。UI は Server Component から渡されたデータか、機能ごとの
-Server Action を呼ぶ。認証も `lib/supabase/` の関数を経由するため、この規則に
-例外はない。責務の詳細は [`docs/architecture.md`](docs/architecture.md) を参照。
+Supabase クライアントを生成してよいのは `features/<機能名>/actions.ts`、
+`lib/supabase/`、`src/proxy.ts` の3か所だけ。ESLint は **`src/` 全体を既定で
+禁止し、この3か所だけを解除する**許可リスト方式で構成してある。新しく
+ディレクトリが増えても自動的に禁止側に入るため、黙って穴が空かない。
+
+塞いでいる経路は次のとおり。
+
+- `@/lib/supabase/client` `@/lib/supabase/server`（相対パス表記も含む）
+- 生のSDK（`@supabase/ssr`、`@supabase/supabase-js`）からの直接生成
+- 上記いずれかの動的 import（`await import(...)`）
+
+UI は Server Component から渡されたデータか、機能ごとの Server Action を呼ぶ。
+認証も `lib/supabase/` の関数を経由するため、この規則に例外はない。
+責務の詳細は [`docs/architecture.md`](docs/architecture.md) を参照。
 
 ### 実機での検証について
 
