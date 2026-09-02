@@ -11,6 +11,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "db:types": "supabase gen types --local --lang typescript > src/types/database.types.ts",
     "db:types:check": "./scripts/check-db-types.sh",
+    "db:test:rls": "./scripts/test-rls.sh",
     "prepare": "lefthook install",
     "browser:install": "agent-browser install",
     "browser:doctor": "agent-browser doctor --offline --quick"
