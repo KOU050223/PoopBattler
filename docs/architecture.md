@@ -19,7 +19,7 @@
 | --- | --- | --- |
 | Webアプリ | Next.js + TypeScript | App Router、画面、Server Actions |
 | UI | Tailwind CSS + shadcn/ui | 画面構築と共通UI |
-| アニメーション | Framer Motion | 攻撃、ダメージ、撃破、仲間化演出 |
+| アニメーション | Framer Motion | うんちくんのレイヤー（部位ごと）、攻撃、ダメージ、撃破、仲間化演出 |
 | センサー | `DeviceMotionEvent` | 加速度を使った攻撃判定 |
 | カメラ | `getUserMedia()` | 食事写真撮影、バトル中の「あげる」、仲間化のAR風演出 |
 | 認証・DB・画像 | Supabase | 匿名ログイン、Postgres、Storage |
@@ -185,7 +185,7 @@ AI画像解析は行わず、食事登録時に選ぶ簡易タグを属性へ対
 | `profiles` | `id → auth.users.id`。匿名ログイン直後にDBトリガーで作成するプロフィール |
 | `meal_logs` | `user_id → profiles.id`、食事日時、画像パス、料理タグ、任意メモ |
 | `bowel_logs` | `user_id → profiles.id`、`battle_result_id → battle_results.id`（一意）、硬さ、量、色、出しやすさ、記録日時 |
-| `characters` | キャラクターのマスターデータ、属性、レアリティ |
+| `characters` | マスター。属性、レアリティ、見た目はパーツ組み合わせ（[`puupm.md`](./puupm.md)）。 |
 | `user_characters` | `user_id → profiles.id`、`character_id → characters.id`、`acquired_from_battle_id → battle_results.id` |
 | `battle_results` | `user_id → profiles.id`、`meal_log_id → meal_logs.id`（nullable。「あげる」を行った場合のみ入る）、敵キャラクター・属性、勝敗、抽選状態、開始・完了日時 |
 
