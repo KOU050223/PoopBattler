@@ -1,6 +1,6 @@
 "use server";
 
-import { MEAL_TAGS, type MealLogDraft } from "./meal.types";
+import { MEAL_TAGS, type MealLogDraft, type MealLogSaveResult } from "./meal.types";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
@@ -38,19 +38,26 @@ function isMealLogDraft(value: unknown): value is MealLogDraft {
   return isPhotoId(draft.photoId)
     && isMealTag(draft.tag)
     && typeof draft.eatenAt === "string"
-    && !Number.isNaN(new Date(draft.eatenAt).getTime())
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(draft.eatenAt)
+    && !Number.isNaN(Date.parse(draft.eatenAt))
     && (draft.note === undefined || (typeof draft.note === "string" && draft.note.length <= 500));
 }
 
 /**
  * 画像本体はクライアントのIndexedDBへ保存済みである前提で、画像IDだけを食事ログへ保存する。
  */
-export async function saveMealLogAction(draft: MealLogDraft) {
+export async function saveMealLogAction(draft: MealLogDraft): Promise<MealLogSaveResult> {
   if (!isMealLogDraft(draft)) {
-    throw new Error("入力内容が不正です。");
+    return { success: false, message: "入力内容を確認してください。" };
   }
 
-  const { supabase, user } = await getCurrentUser();
+  let currentUser: Awaited<ReturnType<typeof getCurrentUser>>;
+  try {
+    currentUser = await getCurrentUser();
+  } catch {
+    return { success: false, message: "ログイン状態を確認できませんでした。もう一度お試しください。" };
+  }
+  const { supabase, user } = currentUser;
 
   const { error } = await supabase.from("meal_logs").insert({
     user_id: user.id,
@@ -59,8 +66,9 @@ export async function saveMealLogAction(draft: MealLogDraft) {
     tag: draft.tag,
     note: draft.note,
   });
-  if (error) throw new Error("食事ログの保存に失敗しました。");
+  if (error) return { success: false, message: "食事ログの保存に失敗しました。もう一度お試しください。" };
   revalidatePath("/meals");
+  return { success: true };
 }
 
 /** 本人の食事ログだけを新しい順に返す。画像本体はIndexedDBからクライアントで取得する。 */
