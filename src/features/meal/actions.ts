@@ -79,6 +79,7 @@ export async function getMealLogsAction(): Promise<MealLog[]> {
   const { data, error } = await supabase
     .from("meal_logs")
     .select("id, eaten_at, image_path, tag, note")
+    .eq("user_id", user.id)
     .order("eaten_at", { ascending: false });
   if (error) throw new Error("食事ログの取得に失敗しました。");
 

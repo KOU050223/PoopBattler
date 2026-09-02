@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 
-import { saveMealLogAction } from "./actions";
+import { getMealLogsAction, saveMealLogAction } from "./actions";
 
 const user = { id: "00000000-0000-4000-8000-000000000001" };
 const photoId = "00000000-0000-4000-8000-000000000002";
@@ -22,6 +22,28 @@ function createSupabase({ userData = user, insertError = null }: {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: userData }, error: null }) },
     from: vi.fn().mockReturnValue({ insert }),
     insert,
+  };
+}
+
+function createReadSupabase({
+  userData = user,
+  queryError = null,
+  mealLogs = [],
+}: {
+  userData?: typeof user | null;
+  queryError?: { message: string } | null;
+  mealLogs?: Array<{ id: string; eaten_at: string; image_path: string; tag: string; note: string | null }>;
+} = {}) {
+  const order = vi.fn().mockResolvedValue({ data: mealLogs, error: queryError });
+  const eq = vi.fn().mockReturnValue({ order });
+  const select = vi.fn().mockReturnValue({ eq });
+
+  return {
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: userData }, error: null }) },
+    from: vi.fn().mockReturnValue({ select }),
+    select,
+    eq,
+    order,
   };
 }
 
@@ -84,5 +106,36 @@ describe("saveMealLogAction", () => {
       message: "食事ログの保存に失敗しました。もう一度お試しください。",
     });
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe("getMealLogsAction", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("本人の食事ログを新しい順で取得し、画像IDをURLに変換せず返す", async () => {
+    const mealLogs = [
+      { id: "00000000-0000-4000-8000-000000000003", eaten_at: "2026-09-02T12:34:56.000Z", image_path: photoId, tag: "banana", note: null },
+    ];
+    const supabase = createReadSupabase({ mealLogs });
+    mocks.createClient.mockResolvedValue(supabase);
+
+    await expect(getMealLogsAction()).resolves.toEqual([{
+      id: mealLogs[0].id,
+      eatenAt: mealLogs[0].eaten_at,
+      photoId,
+      tag: "banana",
+      note: null,
+    }]);
+    expect(supabase.select).toHaveBeenCalledWith("id, eaten_at, image_path, tag, note");
+    expect(supabase.eq).toHaveBeenCalledWith("user_id", user.id);
+    expect(supabase.order).toHaveBeenCalledWith("eaten_at", { ascending: false });
+  });
+
+  it("未認証時はDBへ問い合わせず空配列を返す", async () => {
+    const supabase = createReadSupabase({ userData: null });
+    mocks.createClient.mockResolvedValue(supabase);
+
+    await expect(getMealLogsAction()).resolves.toEqual([]);
+    expect(supabase.from).not.toHaveBeenCalled();
   });
 });
