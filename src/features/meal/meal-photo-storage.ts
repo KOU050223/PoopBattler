@@ -41,17 +41,19 @@ function runTransaction<T>(
   mode: IDBTransactionMode,
   operation: (store: IDBObjectStore) => IDBRequest<T>,
 ) {
-  return openDatabase().then((database) => new Promise<T>((resolve, reject) => {
-    const transaction = database.transaction(PHOTO_STORE_NAME, mode);
-    const request = operation(transaction.objectStore(PHOTO_STORE_NAME));
+  return openDatabase().then((database) =>
+    // 接続の解放は成否に関わらず必要。成功時だけ閉じると、失敗経路で接続が
+    // 残り、次のDATABASE_VERSION更新がonblockedでonupgradeneededに到達しない。
+    // エラーではなく「保存が黙って壊れる」形で表面化する。
+    new Promise<T>((resolve, reject) => {
+      const transaction = database.transaction(PHOTO_STORE_NAME, mode);
+      const request = operation(transaction.objectStore(PHOTO_STORE_NAME));
 
-    request.onerror = () => reject(new MealPhotoStorageError("端末内の画像保存に失敗しました。"));
-    transaction.onabort = () => reject(new MealPhotoStorageError("端末内の画像保存に失敗しました。"));
-    transaction.oncomplete = () => {
-      database.close();
-      resolve(request.result);
-    };
-  }));
+      request.onerror = () => reject(new MealPhotoStorageError("端末内の画像保存に失敗しました。"));
+      transaction.onabort = () => reject(new MealPhotoStorageError("端末内の画像保存に失敗しました。"));
+      transaction.oncomplete = () => resolve(request.result);
+    }).finally(() => database.close()),
+  );
 }
 
 export function validateMealPhoto(photo: File) {

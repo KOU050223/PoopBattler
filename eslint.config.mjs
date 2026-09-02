@@ -40,6 +40,26 @@ const restrictedDynamicImport = {
   message: supabaseClientMessage,
 };
 
+// IndexedDBの接続は open した側が必ず close する責任を負うが、その漏れは
+// 静的解析では追えない（経路ごとの実行時の振る舞いであり、ESLintはデータ
+// フローを持たない）。代わりに「open を書ける場所」を1つに閉じ込め、
+// 接続管理のコピーが別ファイルに増える経路だけを塞ぐ。
+// 解放漏れ自体は meal-photo-storage.connection.test.ts が3経路で検証する。
+const indexedDbMessage =
+  "IndexedDBの接続は features/meal/meal-photo-storage.ts の runTransaction 経由で扱う（接続の解放を1か所に閉じ込めるため）。";
+
+const restrictedIndexedDb = {
+  // グローバルの indexedDB でも window.indexedDB でも捕まえる。
+  selector:
+    "MemberExpression[property.name='open'][object.name='indexedDB'], MemberExpression[property.name='open'][object.property.name='indexedDB']",
+  message: indexedDbMessage,
+};
+
+// IndexedDBの接続を生成してよい場所。拡張子は上の許可リストと同じ範囲を取る。
+const indexedDbAllowlist = [
+  "src/features/meal/meal-photo-storage.{ts,mts}",
+];
+
 // クライアントを生成してよい場所。architecture.md が挙げるものだけを並べる。
 // tsconfig が **/*.mts も include するため、拡張子の取りこぼしを作らない。
 const supabaseClientAllowlist = [
@@ -63,15 +83,28 @@ const eslintConfig = defineConfig([
           ],
         },
       ],
-      "no-restricted-syntax": ["error", restrictedDynamicImport],
+      "no-restricted-syntax": [
+        "error",
+        restrictedDynamicImport,
+        restrictedIndexedDb,
+      ],
     },
   },
   {
     // 許可リスト。禁止ブロックより後に置くことで解除が効く。
+    // no-restricted-syntax を "off" にすると IndexedDB ルールまで一緒に
+    // 外れるため、解除ではなく「動的importルールを外した再指定」にする。
     files: supabaseClientAllowlist,
     rules: {
       "no-restricted-imports": "off",
-      "no-restricted-syntax": "off",
+      "no-restricted-syntax": ["error", restrictedIndexedDb],
+    },
+  },
+  {
+    // IndexedDBの接続管理を許す場所。ここでも Supabase 側のルールは残す。
+    files: indexedDbAllowlist,
+    rules: {
+      "no-restricted-syntax": ["error", restrictedDynamicImport],
     },
   },
   // Override default ignores of eslint-config-next.
