@@ -22,6 +22,10 @@ export type MealLogDraft = {
   note?: string;
 };
 
+export type MealLogSaveResult =
+  | { success: true }
+  | { success: false; message: string };
+
 export function getMealAttribute(tag: MealTag): MealAttribute {
   return MEAL_TAGS.find((mealTag) => mealTag.value === tag)!.attribute;
 }

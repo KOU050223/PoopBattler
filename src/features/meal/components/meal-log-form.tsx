@@ -8,7 +8,7 @@ import { MealPhotoPicker } from "./meal-photo-picker";
 import { MealSaveConfirmationModal } from "./meal-save-confirmation-modal";
 import { MealTagSelector } from "./meal-tag-selector";
 import { deleteMealPhoto, isMealPhotoStorageError, saveMealPhoto } from "@/features/meal/meal-photo-storage";
-import { type MealLogDraft, type MealTag } from "@/features/meal/meal.types";
+import { type MealLogDraft, type MealLogSaveResult, type MealTag } from "@/features/meal/meal.types";
 
 type FieldErrors = Partial<Record<"photo" | "tag" | "eatenAt" | "save", string>>;
 
@@ -16,7 +16,7 @@ type MealLogFormProps = {
   /**
    * 保存先は呼び出し側が提供する。フォームはSupabaseを直接参照しない。
    */
-  onSave: (draft: MealLogDraft) => Promise<void> | void;
+  onSave: (draft: MealLogDraft) => Promise<MealLogSaveResult>;
 };
 
 function currentLocalDateTime() {
@@ -62,6 +62,16 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
     if (validate()) setIsConfirming(true);
   };
 
+  const resetForm = () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = null;
+    setPhoto(null);
+    setPreviewUrl(null);
+    setEatenAt(currentLocalDateTime());
+    setTag("");
+    setNote("");
+  };
+
   const save = async () => {
     if (!photo || !tag) return;
     setIsSaving(true);
@@ -69,14 +79,21 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
     let photoId: string | undefined;
     try {
       photoId = await saveMealPhoto(photo);
-      await onSave({
+      const result = await onSave({
         photoId,
         eatenAt: new Date(eatenAt).toISOString(),
         tag,
         note: note.trim() || undefined,
       });
+      if (!result.success) {
+        await deleteMealPhoto(photoId).catch(() => undefined);
+        setErrors({ save: result.message });
+        setIsConfirming(false);
+        return;
+      }
       setIsConfirming(false);
       setIsComplete(true);
+      resetForm();
       router.refresh();
     } catch (error) {
       if (photoId) await deleteMealPhoto(photoId).catch(() => undefined);
