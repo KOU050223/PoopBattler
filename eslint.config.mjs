@@ -8,8 +8,8 @@ import nextTs from "eslint-config-next/typescript";
 const supabaseClientMessage =
   "Supabaseクライアントは features/<機能名>/actions.ts か lib/supabase/、proxy.ts で生成する（docs/architecture.md 参照）。";
 
-// ラッパー経由（エイリアス・相対パスの双方）と、生のSDKからの直接生成を塞ぐ。
-const restrictedModules = [
+// 静的 import 用のパターン（no-restricted-imports はグロブを解釈する）。
+const restrictedImportPatterns = [
   "@/lib/supabase/client",
   "@/lib/supabase/server",
   "**/lib/supabase/client",
@@ -18,32 +18,52 @@ const restrictedModules = [
   "@supabase/supabase-js",
 ];
 
-// no-restricted-imports は静的な import/export 宣言しか見ないため、
-// import() 式は no-restricted-syntax で別途塞ぐ。
-const restrictedDynamicImports = restrictedModules.map((source) => ({
-  selector: `ImportExpression[source.value=${JSON.stringify(source)}]`,
+// 動的 import 用。esquery の属性比較はグロブを展開しないため、
+// 上のパターンをそのまま渡すと "**/..." が literal 扱いになり素通りする。
+// したがって正規表現セレクタで書き、静的側と同じ対象を1か所から導出する。
+//
+// 注意: esquery の正規表現リテラルは最初の `/` で終端されるため、
+// `\/` によるエスケープが使えない。区切り文字は文字クラス `[/]` で表す。
+const SLASH = "[/]";
+const escapeRegExp = (value) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replaceAll("/", SLASH);
+
+const dynamicImportSources = [
+  // 末尾が lib/supabase/{client,server} なら、エイリアスでも相対パスでも捕まえる。
+  `(?:.*${SLASH})?lib${SLASH}supabase${SLASH}(?:client|server)`,
+  escapeRegExp("@supabase/ssr"),
+  escapeRegExp("@supabase/supabase-js"),
+];
+
+const restrictedDynamicImport = {
+  selector: `ImportExpression[source.value=/^(?:${dynamicImportSources.join("|")})$/]`,
   message: supabaseClientMessage,
-}));
+};
 
 // クライアントを生成してよい場所。architecture.md が挙げるものだけを並べる。
+// tsconfig が **/*.mts も include するため、拡張子の取りこぼしを作らない。
 const supabaseClientAllowlist = [
-  "src/features/*/actions.ts",
-  "src/lib/supabase/**/*.{ts,tsx,js,jsx}",
-  "src/proxy.ts",
+  "src/features/*/actions.{ts,mts}",
+  "src/lib/supabase/**/*.{ts,tsx,mts,js,jsx}",
+  "src/proxy.{ts,mts}",
 ];
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    // tsconfig で allowJs が有効なため js/jsx も対象に含める。
-    files: ["src/**/*.{ts,tsx,js,jsx}"],
+    // tsconfig で allowJs と **/*.mts が有効なため、いずれの拡張子も対象に含める。
+    files: ["src/**/*.{ts,tsx,mts,js,jsx}"],
     rules: {
       "no-restricted-imports": [
         "error",
-        { patterns: [{ group: restrictedModules, message: supabaseClientMessage }] },
+        {
+          patterns: [
+            { group: restrictedImportPatterns, message: supabaseClientMessage },
+          ],
+        },
       ],
-      "no-restricted-syntax": ["error", ...restrictedDynamicImports],
+      "no-restricted-syntax": ["error", restrictedDynamicImport],
     },
   },
   {

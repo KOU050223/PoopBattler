@@ -3,6 +3,12 @@
 # マイグレーションを変更したまま型を再生成し忘れた場合に落とす。
 #
 # 既に起動しているローカルDBがあればそれを使い、無ければ一時的にDBだけ起動する。
+#
+# 注意: 起動済みDBを再利用する場合は `supabase db reset` でマイグレーションを
+# 適用し直す。これを省くと、未適用のマイグレーションがあるときに
+# 「古いDBから生成した型」と「古いコミット済みの型」を突き合わせることになり、
+# 差分が出ないまま OK と表示される（偽の合格）。
+# reset はDBを作り直すため、ローカルのデータは消える。
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -28,6 +34,12 @@ if ! supabase status >/dev/null 2>&1; then
     >/dev/null
   STARTED_BY_SCRIPT=1
 fi
+
+# 起動済みDBを再利用した場合、そのDBには未適用のマイグレーションが残りうる。
+# 検証対象は「migrations の現状」なので、生成前に必ず適用し直す。
+# 自前で起動した直後は適用済みだが、経路をひとつに保つため常に実行する。
+echo "マイグレーションを適用する（ローカルDBのデータは作り直される）..."
+supabase db reset --local >/dev/null
 
 supabase gen types --local --lang typescript > "$TMPFILE"
 

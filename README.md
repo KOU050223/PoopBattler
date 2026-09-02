@@ -100,8 +100,9 @@ npm run db:types         # src/types/database.types.ts を生成する
 そのまま生成される（エラーにならないので気づきにくい）。
 `db reset` はDBを作り直すためローカルのデータは消える。
 
-検証だけなら起動は不要。`db:types:check` は未起動のときに一時的にDBだけ
-起動し、マイグレーションを適用した状態で検証して、終了時に停止する。
+検証だけなら事前の起動は不要。`db:types:check` は未起動のときに一時的にDBだけ
+起動し、いずれの場合も `db reset` でマイグレーションを適用してから検証する。
+**このコマンドもローカルDBを作り直すため、データは消える。**
 
 ```bash
 npm run db:types:check   # 生成物がマイグレーションと一致するか検証する
@@ -127,6 +128,7 @@ Supabase クライアントを生成してよいのは `features/<機能名>/act
 - `@/lib/supabase/client` `@/lib/supabase/server`（相対パス表記も含む）
 - 生のSDK（`@supabase/ssr`、`@supabase/supabase-js`）からの直接生成
 - 上記いずれかの動的 import（`await import(...)`）
+- 対象拡張子は `.ts` `.tsx` `.mts` `.js` `.jsx`（tsconfig が読む範囲すべて）
 
 UI は Server Component から渡されたデータか、機能ごとの Server Action を呼ぶ。
 認証も `lib/supabase/` の関数を経由するため、この規則に例外はない。

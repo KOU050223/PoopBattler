@@ -118,7 +118,9 @@ src/
    - `lib/supabase/client` `lib/supabase/server`（エイリアス・相対パスの双方）
    - 生のSDK（`@supabase/ssr`、`@supabase/supabase-js`）からの直接生成
    - 上記いずれかの動的import（`no-restricted-imports` は `import()` を見ないため、
-     `no-restricted-syntax` で別途塞ぐ）
+     `no-restricted-syntax` で別途塞ぐ。esquery の属性比較はグロブを展開しないので
+     セレクタは正規表現で書く）
+   - 対象拡張子は `.ts` `.tsx` `.mts` `.js` `.jsx`（tsconfig が読む範囲すべて）
 
    UIは Server Component から渡されたデータか、`features/<機能名>/actions.ts` の
    Server Actionだけを呼ぶ。
