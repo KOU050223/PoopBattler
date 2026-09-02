@@ -3,7 +3,7 @@
 AI駆動でうんこ支援開発するぞ
 
 モバイルWebで「揺らして戦う → 排便ログを残す → 仲間になる」体験を提供するアプリ。
-設計方針は [`docs/architecture.md`](docs/architecture.md)、企画は [`docs/IDEA.md`](docs/IDEA.md) を参照。
+設計方針は [`docs/architecture.md`](docs/architecture.md)、企画は [`docs/IDEA.md`](docs/IDEA.md)、うんちくんの見た目は [`docs/puupm.md`](docs/puupm.md) を参照。
 
 ## 技術スタック
 

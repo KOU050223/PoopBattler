@@ -19,7 +19,7 @@
 | --- | --- | --- |
 | Webアプリ | Next.js + TypeScript | App Router、画面、Server Actions |
 | UI | Tailwind CSS + shadcn/ui | 画面構築と共通UI |
-| アニメーション | Framer Motion | 攻撃、ダメージ、撃破、仲間化演出 |
+| アニメーション | Framer Motion | うんちくんのレイヤー（部位ごと）、攻撃、ダメージ、撃破、仲間化演出 |
 | センサー | `DeviceMotionEvent` | 加速度を使った攻撃判定 |
 | カメラ | `getUserMedia()` | 食事写真撮影、バトル中の「あげる」、仲間化のAR風演出 |
 | 認証・DB・画像 | Supabase | 匿名ログイン、Postgres、Storage |
@@ -81,10 +81,14 @@ src/
 │  │  ├─ components/
 │  │  ├─ actions.ts
 │  │  └─ bowel-log.types.ts
-│  └─ collection/
+│  ├─ collection/
+│  │  ├─ components/
+│  │  └─  actions.ts
+│  └─ puupm/
+│     ├─ assets/            # 同梱パーツ（SVG / PNG）
 │     ├─ components/
-│     ├─ actions.ts
-│     └─ character.types.ts
+│     ├─ puupm.appearances.ts
+│     └─ puupm.types.ts
 │
 ├─ components/
 │  ├─ ui/                  # 汎用UIのみ
@@ -144,6 +148,33 @@ src/
 7. 個人データを持つ全テーブルでRLSを有効化し、`auth.uid() = user_id` を基本ポリシーにする。マスターの `characters` は読み取り専用、更新はサーバー処理に限定する。
 8. 食事画像は非公開Storageバケットに置き、本人のオブジェクトだけをRLSで許可する。画面表示には短期限の署名URLを発行する。
 
+## うんちくんの描画（puupm）
+
+見た目の約束は [`puupm.md`](./puupm.md)。コードは `features/puupm/`。バトルと図鑑はここを import する。
+
+パーツは `src/features/puupm/assets/` にリポジトリ同梱する。SVG と PNG は同じ重ね描画に混在してよい。互いに排他ではない。胴体の色変えは SVG の fill が向く。PNG は塗替えしにくいので、色が乗る面（胴体）は SVG にする。
+
+見た目は`characters.id` をキーにした TS マップ（`puupm.appearances.ts`）。キーは seed の `id` と一致させる。`characters.image_key` は読まない。列は残してよい。見た目用の列は足さない。
+
+型は次の3層に分ける。後ろ向きはマップに持たない。
+
+```ts
+type PuupmAppearance = {
+  head: HeadId;
+  eyes: EyeId;
+  mouth: MouthId;
+  color: string;
+};
+
+type PuupmFigureProps = {
+  appearance: PuupmAppearance;
+  facing: "front" | "back";
+  motion: "idle" | "hit" | "eat";
+};
+```
+
+`HeadId` などはパーツ ID の string union。DB の `characters` 行（`id` / `name` / `attribute` / `rarity`）とは別物。パーツの追加・削除は assets と TS union / TS マップを同じ差分で更新する。
+
 ## センサー・画面状態の扱い
 
 - `lib/motion.ts` は `DeviceMotionEvent.requestPermission()` をユーザーが押した開始ボタン内で呼び出す。`granted`、`denied`、未対応の状態を画面へ返し、利用不可時は「攻撃」ボタンへフォールバックする。
@@ -185,7 +216,7 @@ AI画像解析は行わず、食事登録時に選ぶ簡易タグを属性へ対
 | `profiles` | `id → auth.users.id`。匿名ログイン直後にDBトリガーで作成するプロフィール |
 | `meal_logs` | `user_id → profiles.id`、食事日時、画像パス、料理タグ、任意メモ |
 | `bowel_logs` | `user_id → profiles.id`、`battle_result_id → battle_results.id`（一意）、硬さ、量、色、出しやすさ、記録日時 |
-| `characters` | キャラクターのマスターデータ、属性、レアリティ |
+| `characters` | マスター。`id` / `name` / `attribute` / `rarity`。見た目はコードのマップ（上記 puupm）。`image_key` は使わない |
 | `user_characters` | `user_id → profiles.id`、`character_id → characters.id`、`acquired_from_battle_id → battle_results.id` |
 | `battle_results` | `user_id → profiles.id`、`meal_log_id → meal_logs.id`（nullable。「あげる」を行った場合のみ入る）、敵キャラクター・属性、勝敗、抽選状態、開始・完了日時 |
 
