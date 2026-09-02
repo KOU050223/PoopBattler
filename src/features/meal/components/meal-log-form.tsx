@@ -6,15 +6,16 @@ import { useEffect, useId, useRef, useState } from "react";
 import { MealPhotoPicker } from "./meal-photo-picker";
 import { MealSaveConfirmationModal } from "./meal-save-confirmation-modal";
 import { MealTagSelector } from "./meal-tag-selector";
+import { deleteMealPhoto, isMealPhotoStorageError, saveMealPhoto } from "@/features/meal/meal-photo-storage";
 import { type MealLogDraft, type MealTag } from "@/features/meal/meal.types";
 
 type FieldErrors = Partial<Record<"photo" | "tag" | "eatenAt" | "save", string>>;
 
 type MealLogFormProps = {
   /**
-   * 保存先は呼び出し側が提供する。フォームはSupabaseやStorageを直接参照しない。
+   * 保存先は呼び出し側が提供する。フォームはSupabaseを直接参照しない。
    */
-  onSave?: (draft: MealLogDraft) => Promise<void> | void;
+  onSave: (draft: MealLogDraft) => Promise<void> | void;
 };
 
 function currentLocalDateTime() {
@@ -61,25 +62,26 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
 
   const save = async () => {
     if (!photo || !tag) return;
-    if (!onSave) {
-      setErrors({ save: "保存処理はまだ接続されていません。" });
-      setIsConfirming(false);
-      return;
-    }
-
     setIsSaving(true);
     setErrors({});
+    let photoId: string | undefined;
     try {
+      photoId = await saveMealPhoto(photo);
       await onSave({
-        photo,
+        photoId,
         eatenAt: new Date(eatenAt).toISOString(),
         tag,
         note: note.trim() || undefined,
       });
       setIsConfirming(false);
       setIsComplete(true);
-    } catch {
-      setErrors({ save: "保存に失敗しました。通信環境を確認して再試行してください。" });
+    } catch (error) {
+      if (photoId) await deleteMealPhoto(photoId).catch(() => undefined);
+      setErrors({
+        save: isMealPhotoStorageError(error)
+          ? error.message
+          : "食事ログの保存に失敗しました。通信環境を確認して再試行してください。",
+      });
       setIsConfirming(false);
     } finally {
       setIsSaving(false);

@@ -3,27 +3,13 @@
 import { useEffect, useId, useRef } from "react";
 
 import { useMealCamera, type MealCameraStatus } from "@/features/meal/hooks/use-meal-camera";
-
-export const MEAL_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
-export const MEAL_PHOTO_ACCEPT = MEAL_PHOTO_MIME_TYPES.join(",");
-// IndexedDBへ保存するローカル画像の上限。UI側の単一の定義元として扱う。
-export const MEAL_PHOTO_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+import { MEAL_PHOTO_ACCEPT, validateMealPhoto } from "@/features/meal/meal-photo-storage";
 
 type MealPhotoPickerProps = {
   error?: string;
   onPhotoSelected: (photo: File) => void;
   onValidationError: (message: string) => void;
 };
-
-function validatePhoto(photo: File) {
-  if (!MEAL_PHOTO_MIME_TYPES.includes(photo.type as (typeof MEAL_PHOTO_MIME_TYPES)[number])) {
-    return "JPEG、PNG、WebPの画像を選択してください。";
-  }
-  if (photo.size > MEAL_PHOTO_MAX_SIZE_BYTES) {
-    return "画像は5MB以下にしてください。";
-  }
-  return undefined;
-}
 
 function getCameraMessage(status: MealCameraStatus) {
   const messages: Partial<Record<MealCameraStatus, string>> = {
@@ -54,7 +40,7 @@ export function MealPhotoPicker({ error, onPhotoSelected, onValidationError }: M
   }, [stream]);
 
   const selectPhoto = (photo: File) => {
-    const validationError = validatePhoto(photo);
+    const validationError = validateMealPhoto(photo);
     if (validationError) {
       onValidationError(validationError);
       return;
