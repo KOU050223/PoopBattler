@@ -2,11 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ensureAnonymousSession } from "@/lib/supabase/anonymous-session";
-// 匿名サインインはDB操作ではなくauth APIの呼び出しのため、データアクセス境界の
-// 対象外とする。このコンポーネントからテーブルを読み書きしてはならない。
-// eslint-disable-next-line no-restricted-imports
-import { createClient } from "@/lib/supabase/client";
+import { signInAnonymouslyFromBrowser } from "@/lib/supabase/anonymous-session";
 
 type Status = "loading" | "ready" | "error";
 
@@ -20,7 +16,7 @@ export function AnonymousSignIn() {
     setMessage("");
 
     try {
-      const result = await ensureAnonymousSession(createClient().auth);
+      const result = await signInAnonymouslyFromBrowser();
 
       if (result.status === "error") {
         setStatus("error");

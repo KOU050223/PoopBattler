@@ -16,10 +16,14 @@ const restrictedSupabaseImports = {
         {
           // エイリアス経由と相対パス経由の両方を塞ぐ。
           group: [
+            // リポジトリのラッパー経由（エイリアス・相対パスの双方）。
             "@/lib/supabase/client",
             "@/lib/supabase/server",
             "**/lib/supabase/client",
             "**/lib/supabase/server",
+            // ラッパーを迂回して生のSDKから直接生成する経路も塞ぐ。
+            "@supabase/ssr",
+            "@supabase/supabase-js",
           ],
           message: supabaseClientMessage,
         },
@@ -33,10 +37,11 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     files: [
-      "src/app/**/*.{ts,tsx}",
-      "src/components/**/*.{ts,tsx}",
-      "src/features/*/components/**/*.{ts,tsx}",
-      "src/features/*/hooks/**/*.{ts,tsx}",
+      // tsconfig で allowJs が有効なため、js/jsx も対象に含める。
+      "src/app/**/*.{ts,tsx,js,jsx}",
+      "src/components/**/*.{ts,tsx,js,jsx}",
+      "src/features/*/components/**/*.{ts,tsx,js,jsx}",
+      "src/features/*/hooks/**/*.{ts,tsx,js,jsx}",
     ],
     rules: restrictedSupabaseImports,
   },

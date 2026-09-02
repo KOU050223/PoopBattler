@@ -113,11 +113,15 @@ src/
 
    UI側 — `app/`、`components/`、`features/*/components/`、`features/*/hooks/` —
    から `lib/supabase/client` `lib/supabase/server` をimportするとlintが落ちる。
+   生のSDK（`@supabase/ssr`、`@supabase/supabase-js`）を直接importして
+   ラッパーを迂回する経路も同様に塞いである。
    UIは Server Component から渡されたデータか、`features/<機能名>/actions.ts` の
    Server Actionだけを呼ぶ。
-   認証（`auth.signInAnonymously()` など）はDB操作ではないため例外とするが、
-   ディレクトリ単位では緩めず、呼び出し箇所に `eslint-disable-next-line` と
-   理由を書いて明示する（`features/auth/components/anonymous-sign-in.tsx` を参照）。
+
+   認証もこの規則の例外にしない。匿名サインインは
+   `lib/supabase/anonymous-session.ts` の `signInAnonymouslyFromBrowser()` が
+   クライアントの生成を内側に閉じ込め、UIには結果だけを返す。DB操作が可能な
+   クライアントをコンポーネントへ渡さないことで、境界にlint抑制を置かずに済む。
 4. バトル中のHP、コンボ、ゲージ、センサー値は Zustand でローカル管理する。`persist` で未完了バトルを `sessionStorage` に復元可能にし、Supabaseには確定結果だけを保存する。
 5. 共通化できないコンポーネントを `components/` に置かない。機能固有のものは各 `features/` の配下に置く。
 6. 環境変数とService Role Keyはクライアントへ公開しない。秘密鍵を要する処理はServer ActionまたはRoute Handlerに置く。

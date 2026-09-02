@@ -86,13 +86,20 @@ npm run lint    # ESLint
 
 ### 型を生成する
 
+`db:types` はローカルDBのスキーマから型を作るため、**先にローカルスタックを
+起動しておく必要がある**。
+
 ```bash
+supabase start           # 未起動なら先に実行する
 npm run db:types         # src/types/database.types.ts を生成する
-npm run db:types:check   # 生成物がマイグレーションと一致するか検証する
 ```
 
-`db:types` はローカルDBのスキーマから型を作る。`supabase start` していない場合は
-`db:types:check` が一時的にDBだけ起動して検証し、終了時に停止する。
+検証だけなら起動は不要。`db:types:check` は未起動のときに一時的にDBだけ
+起動して検証し、終了時に停止する。
+
+```bash
+npm run db:types:check   # 生成物がマイグレーションと一致するか検証する
+```
 
 **マイグレーションを追加・変更したら必ず `npm run db:types` を実行し、生成された
 `src/types/database.types.ts` を同じコミットに含める。** 再生成漏れは pre-commit
@@ -108,8 +115,10 @@ Supabase クライアントを生成してよいのは `features/<機能名>/act
 `lib/supabase/`、`src/proxy.ts` だけ。UI側（`src/app/`、`src/components/`、
 `src/features/*/components/`、`src/features/*/hooks/`）から
 `lib/supabase/client` `lib/supabase/server` を import すると ESLint が落とす。
-UI は Server Component から渡されたデータか、機能ごとの Server Action を呼ぶ。
-責務の詳細は [`docs/architecture.md`](docs/architecture.md) を参照。
+生のSDK（`@supabase/ssr`、`@supabase/supabase-js`）を直接 import する迂回路も
+同様に塞いである。UI は Server Component から渡されたデータか、機能ごとの
+Server Action を呼ぶ。認証も `lib/supabase/` の関数を経由するため、この規則に
+例外はない。責務の詳細は [`docs/architecture.md`](docs/architecture.md) を参照。
 
 ### 実機での検証について
 
