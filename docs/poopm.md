@@ -1,8 +1,8 @@
-# うんちくん (puupm)
+# うんちくん (poopm)
 
 敵・仲間・図鑑に出るキャラクターの見た目ルール。ゲームループは [`IDEA.md`](./IDEA.md)、データは [`architecture.md`](./architecture.md) の `characters` を参照。
 
-![うんちくんのデザインスケッチ。三段うずまきの胴体、棒状の手足、頭・目・口・色が可変で手足は固定](./assets/puupm-sketch.jpg)
+![うんちくんのデザインスケッチ。三段うずまきの胴体、棒状の手足、頭・目・口・色が可変で手足は固定](./assets/poopm-sketch.jpg)
 
 遠くから見ても「うんちくん」だと分かるのは、**三段うずまきの胴体**と**細い棒状の手足**だけ。個体差は頭・目・口・色で出す。
 
@@ -50,4 +50,4 @@
 
 後ろ姿は別パーツを描かない。目と口を消し、頭だけ左右反転する。胴体と手足はそのまま。
 
-置き場・型・`characters.id` との対応は [`architecture.md`](./architecture.md) の「うんちくんの描画（puupm）」。
+置き場・型・`characters.id` との対応は [`architecture.md`](./architecture.md) の「うんちくんの描画（poopm）」。
