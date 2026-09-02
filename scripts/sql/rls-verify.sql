@@ -219,6 +219,24 @@ begin
       'insert into public.battle_results (user_id, enemy_character_id, enemy_attribute) values (%L, ''curry-poop'', ''curry'')', b)),
     false);
 
+  -- 他人の食事ログを参照するバトルは作れない。user_id が自分でも、
+  -- meal_log_id が他人のものなら拒否される（他人の食事IDの存在確認を防ぐ）。
+  perform pg_temp.expect(
+    'battle_results INSERT 本人の食事を参照',
+    pg_temp.allowed(format(
+      'insert into public.battle_results (user_id, meal_log_id, enemy_character_id, enemy_attribute) values (%L, %L, ''curry-poop'', ''curry'')', a, meal_a)),
+    true);
+  perform pg_temp.expect(
+    'battle_results INSERT 他人の食事を参照',
+    pg_temp.allowed(format(
+      'insert into public.battle_results (user_id, meal_log_id, enemy_character_id, enemy_attribute) values (%L, %L, ''curry-poop'', ''curry'')', a, meal_b)),
+    false);
+  perform pg_temp.expect(
+    'battle_results UPDATE で他人の食事へ付け替え',
+    pg_temp.allowed(format(
+      'update public.battle_results set meal_log_id = %L where id = %L', meal_b, battle_a)),
+    false);
+
   -- bowel_logs / user_characters はクライアントからのINSERTを一切許さない
   perform pg_temp.expect(
     'bowel_logs INSERT 本人名義でも拒否',
@@ -369,7 +387,12 @@ begin
     ('profiles'), ('characters'), ('meal_logs'),
     ('battle_results'), ('bowel_logs'), ('user_characters')
   ) as t(tbl)
-  cross join (values ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE')) as p(priv)
+  -- CRUDだけでなく全テーブル権限を見る。TRUNCATE と MAINTAIN は行単位の権限では
+  -- ないためRLSが効かず、CRUDだけを検査していると見落とす。
+  cross join (values
+    ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
+    ('TRUNCATE'), ('REFERENCES'), ('TRIGGER'), ('MAINTAIN')
+  ) as p(priv)
   where has_table_privilege(r.role, 'public.' || t.tbl, p.priv)
     <> ((r.role, t.tbl, p.priv) in (
       -- マスターは全員が読める。
@@ -393,6 +416,34 @@ begin
     raise exception 'FAIL: テーブル権限が設計と違う（過不足）— %', leftover;
   end if;
   raise notice 'ok: anon / authenticated の実効テーブル権限は設計どおり';
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- TRUNCATE が公開ロールから剥がれていること
+-- ---------------------------------------------------------------------------
+-- TRUNCATE は行単位の権限ではないためRLSが一切効かない。権限が残っていると
+-- 匿名ユーザー1人で全ユーザーの行を消せる（FKのcascadeで他テーブルにも波及する）。
+--
+-- この検査は pg_temp.allowed() を通さない。allowed() は row_count で判定するが、
+-- TRUNCATE は成功しても常に0行を報告するため、成功を「拒否」と誤判定してしまう。
+do $$
+declare
+  leftover text;
+begin
+  select string_agg(format('%s/%s', r.role, t.tbl), ', ' order by r.role, t.tbl)
+  into leftover
+  from (values ('anon'), ('authenticated')) as r(role)
+  cross join (values
+    ('profiles'), ('characters'), ('meal_logs'),
+    ('battle_results'), ('bowel_logs'), ('user_characters')
+  ) as t(tbl)
+  where has_table_privilege(r.role, 'public.' || t.tbl, 'TRUNCATE');
+
+  if leftover is not null then
+    raise exception 'FAIL: TRUNCATE権限が残っている（RLSが効かない）— %', leftover;
+  end if;
+  raise notice 'ok: 公開ロールに TRUNCATE 権限が無い';
 end;
 $$;
 

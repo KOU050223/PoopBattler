@@ -51,18 +51,45 @@ create policy "battle_results_select_own"
   to authenticated
   using ((select auth.uid()) = user_id);
 
+-- meal_log_id は本人の食事ログしか指せない。user_id だけを見ると、他人の
+-- 食事ログのUUIDを知っているユーザーが「自分名義だが他人の食事を参照する」
+-- バトルを作れてしまう。外部キーは行の存在しか検査しないため、所有者の一致は
+-- ポリシー側で見る必要がある（他人の食事IDの存在確認にも使えてしまう）。
+-- meal_logs のRLSに暗黙に頼らず、所有者を明示的に突き合わせる。
 create policy "battle_results_insert_own"
   on public.battle_results
   for insert
   to authenticated
-  with check ((select auth.uid()) = user_id);
+  with check (
+    (select auth.uid()) = user_id
+    and (
+      meal_log_id is null
+      or exists (
+        select 1
+        from public.meal_logs m
+        where m.id = meal_log_id
+          and m.user_id = (select auth.uid())
+      )
+    )
+  );
 
 create policy "battle_results_update_own"
   on public.battle_results
   for update
   to authenticated
   using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
+  with check (
+    (select auth.uid()) = user_id
+    and (
+      meal_log_id is null
+      or exists (
+        select 1
+        from public.meal_logs m
+        where m.id = meal_log_id
+          and m.user_id = (select auth.uid())
+      )
+    )
+  );
 
 -- ---------------------------------------------------------------------------
 -- bowel_logs: 本人が SELECT だけできる
@@ -93,25 +120,36 @@ create policy "user_characters_select_own"
 -- テーブル権限（RLSの手前の防御線）
 -- ---------------------------------------------------------------------------
 -- Supabaseは public スキーマの新しいテーブルへ anon / authenticated 双方に
--- SELECT / INSERT / UPDATE / DELETE を自動で付与する。RLSポリシーが無くても
--- 「権限はある」状態なので、将来ポリシーを1つ足した拍子に意図しない操作まで
--- 通ってしまう。characters と同じく、不要な権限は明示的に取り上げておく。
+-- 全テーブル権限（SELECT/INSERT/UPDATE/DELETE に加えて TRUNCATE、REFERENCES、
+-- TRIGGER、MAINTAIN）を自動で付与する。RLSポリシーが無くても「権限はある」状態。
+--
+-- とくに TRUNCATE は行単位の権限ではないため **RLSが一切効かない**。
+-- authenticated に残したままだと、匿名ユーザー1人が全ユーザーの行を消せる
+-- 状態になる（現時点ではPostgRESTにTRUNCATEを発行する経路が無いため到達
+-- できないが、security invoker のRPCを1つ足した時点で実際に到達する）。
+-- MAINTAIN（PG17〜）も同様に行単位ではない。
+--
+-- 個別にrevokeを並べると今回のような取りこぼしが起きるため、
+-- 「一度すべて剥がしてから、必要なものだけを grant する」形にする。
+revoke all on
+  public.profiles,
+  public.characters,
+  public.meal_logs,
+  public.battle_results,
+  public.bowel_logs,
+  public.user_characters
+from anon, authenticated;
 
--- 匿名サインイン前（anon ロール）は、これらのテーブルに一切触れる必要がない。
-revoke all on public.meal_logs from anon;
-revoke all on public.battle_results from anon;
-revoke all on public.bowel_logs from anon;
-revoke all on public.user_characters from anon;
+-- マスターは全員が読めるだけ。
+grant select on public.characters to anon, authenticated;
 
--- DELETE はどのテーブルでも使わない。
-revoke delete on public.meal_logs from authenticated;
-revoke delete on public.battle_results from authenticated;
+-- プロフィールは本人が読むだけ（作成はトリガーが行う）。
+grant select on public.profiles to authenticated;
+
+-- 食事とバトルはクライアントが作成・更新する。DELETEは付けない。
+grant select, insert, update on public.meal_logs to authenticated;
+grant select, insert, update on public.battle_results to authenticated;
 
 -- 排便ログと所有キャラクターは読み取り専用。書き込みはサーバー処理のみ。
-revoke insert, update, delete on public.bowel_logs from authenticated;
-revoke insert, update, delete on public.user_characters from authenticated;
-
--- profiles も同様に、作成はトリガーのみ・読み取りは本人のみで、
--- クライアントからの書き込み権限は不要（ポリシーもSELECTしか無い）。
-revoke all on public.profiles from anon;
-revoke insert, update, delete on public.profiles from authenticated;
+grant select on public.bowel_logs to authenticated;
+grant select on public.user_characters to authenticated;
