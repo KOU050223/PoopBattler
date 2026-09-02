@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { MealLogForm } from "@/features/meal/components/meal-log-form";
 
 export const metadata: Metadata = {
   title: "食事の記録",
@@ -9,15 +9,12 @@ export const metadata: Metadata = {
 
 export default function MealsPage() {
   return (
-    <>
+    <div className="mx-auto flex w-full max-w-md flex-col gap-6">
       <PageHeader
         title="食事の記録"
-        description="食べたものを撮影して残すと、次のバトルに出る敵が決まります。"
+        description="写真とタグを残しておくと、バトル中にうんちくんへあげられます。"
       />
-      <EmptyState
-        title="まだ食事の記録がありません"
-        description="最初の食事を登録すると、ここに一覧が並びます。"
-      />
-    </>
+      <MealLogForm />
+    </div>
   );
 }
