@@ -5,11 +5,17 @@ pre-commit:
   parallel: true
   commands:
     db-types-staged:
-      # マイグレーションを変更したなら、生成された型も一緒にコミットされているはず。
+      # 型定義に影響するマイグレーションなら、生成された型も一緒にコミットされているはず。
+      # RLSポリシー・GRANT・インデックスだけの変更では型は変わらないため対象外にする。
       glob: "supabase/migrations/*.sql"
       run: |
+        if ! git diff --cached --unified=0 -- supabase/migrations |
+          grep -Eq '^[+-][[:space:]]*(create[[:space:]]+(or[[:space:]]+replace[[:space:]]+)?(table|view|function|type)|alter[[:space:]]+(table|type|function)|drop[[:space:]]+(table|view|function|type))'; then
+          exit 0
+        fi
+
         if ! git diff --cached --name-only | grep -q '^src/types/database.types\.ts$'; then
-          echo "エラー: マイグレーションを変更したが src/types/database.types.ts が更新されていない。"
+          echo "エラー: 型定義に影響するマイグレーションを変更したが src/types/database.types.ts が更新されていない。"
           echo "  npm run db:types を実行し、生成結果をステージしてからコミットすること。"
           exit 1
         fi
