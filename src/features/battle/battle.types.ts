@@ -1,3 +1,5 @@
+import type { Database } from "@/types/database.types";
+
 import type { CharacterAttribute } from "./battle.constants";
 
 // クライアントへ返す敵の表示用情報。
@@ -6,7 +8,7 @@ export type BattleEnemy = {
   characterId: string;
   name: string;
   attribute: CharacterAttribute;
-  rarity: string;
+  rarity: Database["public"]["Enums"]["character_rarity"];
   imageKey: string | null;
 };
 
