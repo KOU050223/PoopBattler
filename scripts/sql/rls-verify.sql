@@ -71,10 +71,14 @@ values
   (pg_temp.fixture('meal_a'), pg_temp.fixture('user_a'), 'meals/a.jpg', 'curry'),
   (pg_temp.fixture('meal_b'), pg_temp.fixture('user_b'), 'meals/b.jpg', 'meat');
 
-insert into public.battle_results (id, user_id, meal_log_id, enemy_character_id, enemy_attribute)
+-- status を completed にしておく。active はユーザーごと1件までの部分ユニーク
+-- インデックスがあるため、fixture で active を占有すると後段の
+-- 「battle_results INSERT 本人名義」が制約違反で落ちる。
+-- 制約そのものは専用のケースで検査する。
+insert into public.battle_results (id, user_id, meal_log_id, enemy_character_id, enemy_attribute, status)
 values
-  (pg_temp.fixture('battle_a'), pg_temp.fixture('user_a'), pg_temp.fixture('meal_a'), 'curry-poop', 'curry'),
-  (pg_temp.fixture('battle_b'), pg_temp.fixture('user_b'), pg_temp.fixture('meal_b'), 'meat-poop', 'meat');
+  (pg_temp.fixture('battle_a'), pg_temp.fixture('user_a'), pg_temp.fixture('meal_a'), 'curry-poop', 'curry', 'completed'),
+  (pg_temp.fixture('battle_b'), pg_temp.fixture('user_b'), pg_temp.fixture('meal_b'), 'meat-poop', 'meat', 'completed');
 
 insert into public.bowel_logs (user_id, battle_result_id, hardness, amount, color, ease)
 values
@@ -125,6 +129,25 @@ begin
   return affected > 0;
 exception
   when insufficient_privilege or check_violation then
+    return false;
+end;
+$$;
+
+-- allowed() と同じだが、一意制約違反も「拒否」として畳む。
+-- 部分ユニークインデックスによる拒否は unique_violation で飛んでくるため、
+-- allowed() のままだと例外が外へ抜けてスクリプト全体が中断する。
+create or replace function pg_temp.allowed_uniq(p_sql text)
+returns boolean
+language plpgsql
+as $$
+declare
+  affected bigint;
+begin
+  execute p_sql;
+  get diagnostics affected = row_count;
+  return affected > 0;
+exception
+  when insufficient_privilege or check_violation or unique_violation then
     return false;
 end;
 $$;
@@ -213,6 +236,20 @@ begin
     pg_temp.allowed(format(
       'insert into public.battle_results (user_id, enemy_character_id, enemy_attribute) values (%L, ''curry-poop'', ''curry'')', a)),
     true);
+  -- 1件目の active は通る。2件目の active は部分ユニークインデックスが拒否する。
+  -- 「通るべき」と「落ちるべき」を並べて、制約が効いていることと
+  -- 効きすぎていないことを同じ実行で見る。
+  perform pg_temp.expect(
+    'battle_results INSERT active 2件目は拒否',
+    pg_temp.allowed_uniq(format(
+      'insert into public.battle_results (user_id, enemy_character_id, enemy_attribute) values (%L, ''curry-poop'', ''curry'')', a)),
+    false);
+  perform pg_temp.expect(
+    'battle_results INSERT 完了済みは何件でも可',
+    pg_temp.allowed_uniq(format(
+      'insert into public.battle_results (user_id, enemy_character_id, enemy_attribute, status) values (%L, ''curry-poop'', ''curry'', ''completed'')', a)),
+    true);
+
   perform pg_temp.expect(
     'battle_results INSERT 他人名義（偽装）',
     pg_temp.allowed(format(
@@ -221,15 +258,18 @@ begin
 
   -- 他人の食事ログを参照するバトルは作れない。user_id が自分でも、
   -- meal_log_id が他人のものなら拒否される（他人の食事IDの存在確認を防ぐ）。
+  -- ここで見たいのは所有者の突き合わせなので、status は completed にして
+  -- active の一意制約と干渉させない（干渉させると、RLSが効いたのか
+  -- 制約に当たったのか区別できなくなる）。
   perform pg_temp.expect(
     'battle_results INSERT 本人の食事を参照',
     pg_temp.allowed(format(
-      'insert into public.battle_results (user_id, meal_log_id, enemy_character_id, enemy_attribute) values (%L, %L, ''curry-poop'', ''curry'')', a, meal_a)),
+      'insert into public.battle_results (user_id, meal_log_id, enemy_character_id, enemy_attribute, status) values (%L, %L, ''curry-poop'', ''curry'', ''completed'')', a, meal_a)),
     true);
   perform pg_temp.expect(
     'battle_results INSERT 他人の食事を参照',
     pg_temp.allowed(format(
-      'insert into public.battle_results (user_id, meal_log_id, enemy_character_id, enemy_attribute) values (%L, %L, ''curry-poop'', ''curry'')', a, meal_b)),
+      'insert into public.battle_results (user_id, meal_log_id, enemy_character_id, enemy_attribute, status) values (%L, %L, ''curry-poop'', ''curry'', ''completed'')', a, meal_b)),
     false);
   perform pg_temp.expect(
     'battle_results UPDATE で他人の食事へ付け替え',
