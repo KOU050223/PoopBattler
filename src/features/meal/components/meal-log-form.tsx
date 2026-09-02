@@ -2,19 +2,21 @@
 
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { MealPhotoPicker } from "./meal-photo-picker";
 import { MealSaveConfirmationModal } from "./meal-save-confirmation-modal";
 import { MealTagSelector } from "./meal-tag-selector";
-import { type MealLogDraft, type MealTag } from "@/features/meal/meal.types";
+import { deleteMealPhoto, isMealPhotoStorageError, saveMealPhoto } from "@/features/meal/meal-photo-storage";
+import { type MealLogDraft, type MealLogSaveResult, type MealTag } from "@/features/meal/meal.types";
 
 type FieldErrors = Partial<Record<"photo" | "tag" | "eatenAt" | "save", string>>;
 
 type MealLogFormProps = {
   /**
-   * 保存先は呼び出し側が提供する。フォームはSupabaseやStorageを直接参照しない。
+   * 保存先は呼び出し側が提供する。フォームはSupabaseを直接参照しない。
    */
-  onSave?: (draft: MealLogDraft) => Promise<void> | void;
+  onSave: (draft: MealLogDraft) => Promise<MealLogSaveResult>;
 };
 
 function currentLocalDateTime() {
@@ -24,6 +26,7 @@ function currentLocalDateTime() {
 }
 
 export function MealLogForm({ onSave }: MealLogFormProps) {
+  const router = useRouter();
   const tagGroupId = useId();
   const previewUrlRef = useRef<string | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
@@ -59,27 +62,46 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
     if (validate()) setIsConfirming(true);
   };
 
+  const resetForm = () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = null;
+    setPhoto(null);
+    setPreviewUrl(null);
+    setEatenAt(currentLocalDateTime());
+    setTag("");
+    setNote("");
+  };
+
   const save = async () => {
     if (!photo || !tag) return;
-    if (!onSave) {
-      setErrors({ save: "保存処理はまだ接続されていません。" });
-      setIsConfirming(false);
-      return;
-    }
-
     setIsSaving(true);
     setErrors({});
+    let photoId: string | undefined;
     try {
-      await onSave({
-        photo,
+      photoId = await saveMealPhoto(photo);
+      const result = await onSave({
+        photoId,
         eatenAt: new Date(eatenAt).toISOString(),
         tag,
         note: note.trim() || undefined,
       });
+      if (!result.success) {
+        await deleteMealPhoto(photoId).catch(() => undefined);
+        setErrors({ save: result.message });
+        setIsConfirming(false);
+        return;
+      }
       setIsConfirming(false);
       setIsComplete(true);
-    } catch {
-      setErrors({ save: "保存に失敗しました。通信環境を確認して再試行してください。" });
+      resetForm();
+      router.refresh();
+    } catch (error) {
+      if (photoId) await deleteMealPhoto(photoId).catch(() => undefined);
+      setErrors({
+        save: isMealPhotoStorageError(error)
+          ? error.message
+          : "食事ログの保存に失敗しました。通信環境を確認して再試行してください。",
+      });
       setIsConfirming(false);
     } finally {
       setIsSaving(false);

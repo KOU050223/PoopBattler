@@ -24,7 +24,10 @@ jobs:
 
       - run: npm test
 
-  db-types:
+  # DBを起動する検査はここにまとめる。マイグレーションを変更したPRで、
+  # 型の再生成漏れとRLSの退行を同じジョブで捕まえる。
+  # pre-commit では Docker を要する検査を行わないため、ここが唯一の砦になる。
+  database:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -49,3 +52,10 @@ jobs:
       # マイグレーションを変更したまま型を再生成し忘れていないかを検証する。
       - name: Check generated types are up to date
         run: npm run db:types:check
+
+      # RLSポリシーの退行を検出する。ポリシー自体を変更していなくても、
+      # 制約やインデックスの追加で検査が落ちることがある（実例: #51 で
+      # 部分ユニークインデックスが fixture と衝突し、検査が中断していた）。
+      # test/lint/typecheck は緑のまま通るため、ここで見るしかない。
+      - name: Verify RLS policies
+        run: npm run db:test:rls

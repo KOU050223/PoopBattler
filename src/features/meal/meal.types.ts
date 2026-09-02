@@ -15,11 +15,16 @@ export type MealTag = (typeof MEAL_TAGS)[number]["value"];
 export type MealAttribute = (typeof MEAL_TAGS)[number]["attribute"];
 
 export type MealLogDraft = {
-  photo: File;
+  /** IndexedDBに保存した画像のID。画像本体はSupabaseへ送信しない。 */
+  photoId: string;
   eatenAt: string;
   tag: MealTag;
   note?: string;
 };
+
+export type MealLogSaveResult =
+  | { success: true }
+  | { success: false; message: string };
 
 export function getMealAttribute(tag: MealTag): MealAttribute {
   return MEAL_TAGS.find((mealTag) => mealTag.value === tag)!.attribute;
