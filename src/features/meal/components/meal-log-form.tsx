@@ -3,11 +3,9 @@
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 
-import {
-  MEAL_TAGS,
-  type MealLogDraft,
-  type MealTag,
-} from "@/features/meal/meal.types";
+import { MealSaveConfirmationModal } from "./meal-save-confirmation-modal";
+import { MealTagSelector } from "./meal-tag-selector";
+import { type MealLogDraft, type MealTag } from "@/features/meal/meal.types";
 
 const supportedPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -149,18 +147,15 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
         {errors.eatenAt && <p id="meal-eaten-at-error" className="text-sm text-red-600">{errors.eatenAt}</p>}
       </div>
 
-      <fieldset className="flex flex-col gap-3" aria-describedby={errors.tag ? `${tagGroupId}-error` : undefined}>
-        <legend className="font-medium">食事タグ <span aria-hidden="true">*</span></legend>
-        <div className="grid grid-cols-2 gap-2">
-          {MEAL_TAGS.map((mealTag) => (
-            <label key={mealTag.value} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-zinc-300 px-3 has-[:checked]:border-zinc-900 has-[:checked]:bg-zinc-100 dark:border-zinc-700 dark:has-[:checked]:border-zinc-100 dark:has-[:checked]:bg-zinc-900">
-              <input type="radio" name="meal-tag" value={mealTag.value} checked={tag === mealTag.value} onChange={() => { setTag(mealTag.value); setErrors((current) => ({ ...current, tag: undefined })); }} />
-              {mealTag.label}
-            </label>
-          ))}
-        </div>
-        {errors.tag && <p id={`${tagGroupId}-error`} className="text-sm text-red-600">{errors.tag}</p>}
-      </fieldset>
+      <MealTagSelector
+        value={tag}
+        error={errors.tag}
+        errorId={`${tagGroupId}-error`}
+        onChange={(selectedTag) => {
+          setTag(selectedTag);
+          setErrors((current) => ({ ...current, tag: undefined }));
+        }}
+      />
 
       <div className="flex flex-col gap-2">
         <label htmlFor="meal-note" className="font-medium">メモ <span className="text-sm font-normal text-zinc-500">（任意）</span></label>
@@ -173,17 +168,14 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
         保存内容を確認する
       </button>
 
-      {isConfirming && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="meal-confirmation-title" className="w-full max-w-sm rounded-lg border border-zinc-300 bg-white p-5 shadow-xl dark:border-zinc-700 dark:bg-black">
-            <h2 id="meal-confirmation-title" className="font-semibold">この内容で保存しますか？</h2>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{MEAL_TAGS.find((mealTag) => mealTag.value === tag)?.label}として記録します。</p>
-            <div className="mt-5 flex gap-3">
-              <button type="button" onClick={() => setIsConfirming(false)} disabled={isSaving} className="min-h-11 rounded-md border border-zinc-300 px-4 dark:border-zinc-700">戻る</button>
-              <button type="button" onClick={() => void save()} disabled={isSaving} className="min-h-11 rounded-md bg-zinc-900 px-4 font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-black">{isSaving ? "保存中…" : "保存する"}</button>
-            </div>
-          </div>
-        </div>
+      {tag && (
+        <MealSaveConfirmationModal
+          isOpen={isConfirming}
+          tag={tag}
+          isSaving={isSaving}
+          onCancel={() => setIsConfirming(false)}
+          onConfirm={() => void save()}
+        />
       )}
     </form>
   );
