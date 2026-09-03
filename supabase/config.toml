@@ -157,10 +157,17 @@ site_url = "http://127.0.0.1:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 # `redirectTo` に渡す URL は *完全一致* でここに並べる。ここに無い URL を渡すと
 # Supabase は黙って site_url へ戻すため、「成功したのに元の画面に戻らない」形で失敗する。
+# `?next=` のようなクエリを付けて戻るため、末尾に `**` を置いて
+# クエリ込みで一致させる。`/auth/callback` だけを並べると、クエリ付きは
+# 完全一致せず、Supabase はエラーを返さず site_url へ黙って戻す
+# （`/?code=...` がトップに落ちる形で失敗し、原因が分かりにくい）。
+#
+# localhost と 127.0.0.1 は別ホストとして扱われる。ブラウザで開いた側の
+# オリジンがそのまま使われるため、両方を並べる。
 additional_redirect_urls = [
   "https://127.0.0.1:3000",
-  "http://127.0.0.1:3000/auth/callback",
-  "http://localhost:3000/auth/callback",
+  "http://127.0.0.1:3000/auth/callback**",
+  "http://localhost:3000/auth/callback**",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600

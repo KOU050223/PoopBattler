@@ -190,6 +190,18 @@ Dashboard > Authentication > **Sign In / Providers** で次の2つを行う。
 https://poop-battler.vercel.app/auth/callback
 ```
 
+`redirectTo` には戻り先を `?next=` で載せるため、Dashboard 側も
+**クエリ付きで一致する形**にする必要がある。Dashboard の Redirect URLs は
+末尾のワイルドカードを解釈するので、次のように登録する。
+
+```text
+https://poop-battler.vercel.app/auth/callback**
+```
+
+クエリ無しだけを登録すると `?next=` 付きが一致せず、Supabase はエラーを
+返さないまま Site URL へ戻す。**`/?code=...` がトップに落ちて連携が
+完了しない**という形で失敗するため、原因が分かりにくい。
+
 ここに無いURLを `redirectTo` に渡すと、Supabaseはエラーを返さず
 **Site URL へ黙って戻す**。「連携は成功したのに元の画面に戻らない」という
 形で失敗するため、追加漏れに気づきにくい。
