@@ -30,6 +30,25 @@ describe("GoogleAccountLink", () => {
     expect(markup).toContain("既にアカウントをお持ちの方はこちら");
   });
 
+  it("Google以外で昇格済みのユーザーには消失の警告も破壊的な導線も出さない", () => {
+    // このユーザーの記録はブラウザのデータを消しても失われない。
+    // 警告を出すのは誤りで、「既にアカウントをお持ちの方はこちら」は
+    // 今のアカウントを捨てる導線なので、見せること自体が危険。
+    const markup = renderToStaticMarkup(
+      <GoogleAccountLink
+        status={{
+          signedIn: true,
+          isAnonymous: false,
+          hasGoogleIdentity: false,
+          email: "player@example.com",
+        }}
+      />,
+    );
+
+    expect(markup).not.toContain("記録が消える可能性があります");
+    expect(markup).not.toContain("既にアカウントをお持ちの方はこちら");
+  });
+
   it("連携済みユーザーには昇格の導線も警告も出さない", () => {
     const markup = renderToStaticMarkup(
       <GoogleAccountLink

@@ -50,6 +50,11 @@ export function GoogleAccountLink({ status, next = "/" }: Props) {
 
   if (!status.signedIn) return null;
 
+  // 匿名でないユーザー（メール等で昇格済み）に消失の警告を出してはいけない。
+  // その人の記録はブラウザのデータを消しても失われず、「既にアカウントを
+  // お持ちの方はこちら」は今のアカウントを捨てる破壊的な導線になる。
+  if (!status.isAnonymous && !status.hasGoogleIdentity) return null;
+
   if (status.hasGoogleIdentity) {
     return (
       <section className="flex flex-col gap-1 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">

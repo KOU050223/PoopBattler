@@ -202,6 +202,27 @@ https://poop-battler.vercel.app/auth/callback**
 返さないまま Site URL へ戻す。**`/?code=...` がトップに落ちて連携が
 完了しない**という形で失敗するため、原因が分かりにくい。
 
+### プレビュー配信・トンネルから試す場合
+
+戻り先は `window.location.origin` から組み立てる。つまり**開いている
+ホスト名がそのまま使われる**ため、Vercelのプレビュー配信や実機確認用の
+HTTPSトンネルを使うなら、そのホストも Redirect URLs に要る。
+登録が無いと、これも Site URL へ黙って戻って連携が完了しない。
+
+```text
+https://*-kou050223s-projects.vercel.app/auth/callback**
+https://<トンネルのホスト>/auth/callback**
+```
+
+VercelのプレビューURLはデプロイごとに変わるため、ワイルドカードで
+まとめて許可する。トンネルは起動のたびにホスト名が変わる実装が多いので、
+その都度登録し直すか、固定ホスト名を発行できるものを使う。
+
+なお Google Cloud Console 側の Authorized redirect URIs は
+**Supabase のコールバック**（`https://<project-ref>.supabase.co/auth/v1/callback`）
+だけでよい。Googleが戻る先は常にSupabaseで、アプリのホストではないため、
+プレビューやトンネルを増やしてもGoogle側の登録は変わらない。
+
 ここに無いURLを `redirectTo` に渡すと、Supabaseはエラーを返さず
 **Site URL へ黙って戻す**。「連携は成功したのに元の画面に戻らない」という
 形で失敗するため、追加漏れに気づきにくい。
@@ -237,11 +258,23 @@ Googleが戻る先は常に「アプリが繋いでいるSupabase」であって
    http://127.0.0.1:54321/auth/v1/callback
    ```
 
-2. `.env.local` を設定する（`.env.local.example` 参照）。
+2. **置き場所が2つある。混同すると起動はするが認証情報だけが空になる。**
+
+   | ファイル | 読むのは | 入れるもの |
+   | --- | --- | --- |
+   | `.env.local`（リポジトリ直下） | Next.js | `NEXT_PUBLIC_SUPABASE_*` |
+   | `supabase/.env` | Supabase CLI | `SUPABASE_AUTH_EXTERNAL_GOOGLE_*` |
+
+   `config.toml` の `env(...)` を解決するのは **CLI** なので、OAuthの
+   認証情報を `.env.local` に書いても渡らない。`supabase/.env` に置く
+   （`supabase/.env.example` をコピーする。`.gitignore` 済み）。
 
    ```bash
+   # .env.local
    NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<supabase status の Publishable key>
+
+   # supabase/.env
    SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=...
    SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=...
    ```
@@ -279,9 +312,11 @@ Googleが戻る先は常に「アプリが繋いでいるSupabase」であって
 
 `.env.local` は本番のURL・キーのまま、Supabase Dashboard の
 **URL Configuration > Redirect URLs** に次を追加するだけでよい。
+`buildCallbackUrl()` が `?next=` を付けるため、ここでも末尾の `**` が要る。
 
 ```text
-http://localhost:3000/auth/callback
+http://localhost:3000/auth/callback**
+http://127.0.0.1:3000/auth/callback**
 ```
 
 Client ID / Secret は Dashboard 側に入っているので `.env.local` には要らない。

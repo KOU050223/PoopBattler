@@ -30,7 +30,14 @@ export default async function Home({
         </div>
 
         <AuthCallbackNotice
-          linked={firstValue(params.auth_linked) === "1"}
+          // URLのパラメータだけを信じない。`?auth_linked=1` は履歴や共有で
+          // 後から再訪でき、匿名のままの利用者に「連携できた＝記録は復旧
+          // できる」と誤って伝えてしまう。サーバーで読んだ実際の状態と
+          // 一致したときだけ成功を出す。
+          linked={
+            firstValue(params.auth_linked) === "1"
+            && accountStatus.hasGoogleIdentity
+          }
           errorCode={firstValue(params.auth_error)}
         />
 

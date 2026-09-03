@@ -1,4 +1,4 @@
-import { AUTH_ERROR_MESSAGES, DEFAULT_AUTH_ERROR_MESSAGE } from "../auth-error-messages";
+import { getAuthErrorMessage } from "../auth-error-messages";
 
 type Props = {
   linked: boolean;
@@ -13,7 +13,7 @@ export function AuthCallbackNotice({ linked, errorCode }: Props) {
         aria-live="polite"
         className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
       >
-        {AUTH_ERROR_MESSAGES[errorCode] ?? DEFAULT_AUTH_ERROR_MESSAGE}
+        {getAuthErrorMessage(errorCode)}
       </p>
     );
   }

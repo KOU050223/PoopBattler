@@ -30,6 +30,19 @@ describe("AuthCallbackNotice", () => {
     ).toContain("Googleとの連携に失敗しました");
   });
 
+  // errorCode はクエリ文字列由来なので、プロトタイプ継承のキーが渡りうる。
+  // 通常のオブジェクトで引くと `__proto__` は Object を返し、React が
+  // レンダーできずホーム画面全体がエラーになる。
+  it("プロトタイプ継承のキーでも既定の文言へ落ちる", () => {
+    for (const hostile of ["__proto__", "toString", "constructor", "valueOf"]) {
+      const markup = renderToStaticMarkup(
+        <AuthCallbackNotice linked={false} errorCode={hostile} />,
+      );
+
+      expect(markup).toContain("Googleとの連携に失敗しました");
+    }
+  });
+
   it("エラーは成功の表示より優先する", () => {
     const markup = renderToStaticMarkup(
       <AuthCallbackNotice linked errorCode="access_denied" />,

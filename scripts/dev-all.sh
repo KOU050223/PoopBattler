@@ -4,10 +4,10 @@
 # 手で `supabase start` と `npm run dev` を叩くのと違うのは次の2点で、
 # どちらも「失敗する」ではなく「黙って間違う」経路を塞ぐためにある。
 #
-# 1. `supabase start` の前に .env.local を読み込む。
-#    config.toml の `env(SUPABASE_AUTH_EXTERNAL_GOOGLE_*)` は Supabase CLI が
-#    起動時に自分の環境変数から解決する。読み込みを忘れるとプロバイダは
-#    「有効だが認証情報が空」で起動し、Googleの画面まで進んでから落ちる。
+# 1. 起動前に設定の欠落を確かめる。config.toml の
+#    `env(SUPABASE_AUTH_EXTERNAL_GOOGLE_*)` は Supabase CLI が `supabase/.env`
+#    から解決する。空のままだとプロバイダは「有効だが認証情報が空」で起動し、
+#    Googleの画面まで進んでから invalid_client で落ちる。
 #
 # 2. 起動済みでも必ず停止してから起動し直す。
 #    認証コンテナは config.toml を起動時にしか読まない。起動済みを再利用すると、
@@ -24,10 +24,14 @@ if [ ! -f .env.local ]; then
   exit 1
 fi
 
-# set -a で、この後の代入を自動的に export する（CLIの子プロセスへ渡すため）。
+# set -a で、この後の代入を自動的に export する。
 set -a
 # shellcheck disable=SC1091
 . ./.env.local
+# Supabase CLI は supabase/.env を自分で読む。ここで読むのは、下の検査で
+# 値の有無を見るためだけ（読めなくても CLI 側の解決には影響しない）。
+# shellcheck disable=SC1091
+[ -f supabase/.env ] && . ./supabase/.env
 set +a
 
 # ローカルスタックに繋いでいないなら、起動しても使われない。黙って本番を
@@ -58,6 +62,22 @@ if grep -qs '^enabled = true' <(sed -n '/\[auth.external.google\]/,/^\[auth\.ext
   # 長さ検証で弾かれる。短い値を使うと、設定が正しくても警告が出てしまう。
   challenge="probe0000000000000000000000000000000000000000"
   probe=$(curl -s "http://127.0.0.1:54321/auth/v1/authorize?provider=google&redirect_to=http%3A%2F%2Flocalhost%3A3000%2Fauth%2Fcallback&code_challenge=${challenge}&code_challenge_method=s256&skip_http_redirect=true" || true)
+  # Secret は authorize の段階では使われない（Googleのコールバックを
+  # Supabaseが交換するときに初めて要る）ため、authorize の応答をいくら
+  # 見ても欠落を検出できない。変数そのものを先に確かめる。
+  for var in SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET; do
+    value="${!var:-}"
+    case "$value" in
+      "")
+        echo "警告: $var が空。Googleの往復は完了しない。" >&2
+        echo "  supabase/.env に設定すること（supabase/.env.example 参照）。" >&2
+        ;;
+      "env("*)
+        echo "警告: $var が未解決のまま（$value）。" >&2
+        ;;
+    esac
+  done
+
   # 「accounts.google.com へのURLが返るか」では不十分。環境変数が空のとき
   # Supabase は config.toml の `env(...)` を展開できず、その文字列を
   # client_id にそのまま載せたURLを返す。Googleの画面まで進んでから
@@ -68,7 +88,8 @@ if grep -qs '^enabled = true' <(sed -n '/\[auth.external.google\]/,/^\[auth\.ext
       echo "  .env.local の SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID / _SECRET を確認すること。" >&2
       ;;
     *accounts.google.com*client_id=*)
-      echo "Googleプロバイダ: 有効"
+      # Secret の正しさまでは確かめていない（実際の交換でしか分からない）。
+      echo "Googleプロバイダ: client_id 解決OK"
       ;;
     *)
       echo "警告: Googleプロバイダが使えない状態:" >&2
