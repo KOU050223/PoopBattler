@@ -26,13 +26,13 @@ export const navTileClass =
 
 export function navTabClass(isCurrent: boolean) {
   const base =
-    "flex min-h-12 w-full flex-col items-center justify-center gap-1 rounded-xl px-1 text-[15px] font-bold tracking-[0.053em]";
+    "flex min-h-12 w-full flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs font-bold tracking-[0.02em] transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flush-pink";
 
   if (isCurrent) {
-    return `${base} bg-flush-pink text-paper-white`;
+    return `${base} bg-flush-pink text-paper-white shadow-[0_3px_8px_rgb(201_77_127_/_0.2)]`;
   }
 
-  return `${base} text-pencil-gray`;
+  return `${base} text-pencil-gray hover:bg-blush-wash hover:text-charcoal`;
 }
 
 export const mutedTextClass = "text-[17px] font-medium leading-[1.18] text-pencil-gray";

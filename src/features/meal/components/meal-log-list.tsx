@@ -2,12 +2,13 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ImagePlus, Trash2 } from "lucide-react";
 
 import { MealLogImage } from "./meal-log-image";
 import { deleteMealPhoto, saveMealPhoto, validateMealPhoto } from "@/features/meal/meal-photo-storage";
 import type { MealLog } from "@/features/meal/actions";
 import { MEAL_TAGS } from "@/features/meal/meal.types";
-import { captionTextClass, cardClass, dangerButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
+import { captionTextClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type MealLogListProps = {
   initialLogs: MealLog[];
@@ -105,26 +106,40 @@ export function MealLogList({ initialLogs, onDelete, onReplacePhoto }: MealLogLi
   };
 
   return (
-    <section aria-labelledby="saved-meal-logs" className="flex flex-col gap-4">
-      <h2 id="saved-meal-logs" className="text-[19px] leading-[1.4] font-bold text-charcoal">保存済みの食事ログ</h2>
+    <section aria-labelledby="saved-meal-logs" className="meal-recent-section">
+      <div className="meal-recent-heading">
+        <div>
+          <h2 id="saved-meal-logs">最近のごはん</h2>
+          <p>記録した食事を見返せます。</p>
+        </div>
+        {initialLogs.length > 0 && <span>{initialLogs.length}件</span>}
+      </div>
       {message && <p role="alert" className="text-sm text-red-600">{message}</p>}
       {cleanupPhotoId && <button type="button" onClick={() => void retryPhotoCleanup()} className={secondaryButtonClass}>端末内画像の削除を再試行する</button>}
       <input ref={replaceInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => void replacePhoto(event)} />
       {initialLogs.length === 0 ? (
-        <p className={`rounded-2xl border-2 border-dashed border-faded-gray bg-paper-white p-4 ${captionTextClass}`}>保存済みの食事ログはありません。</p>
+        <div className="meal-empty-state">
+          <p className="font-bold text-charcoal">まだ食事の記録はありません。</p>
+          <p className={captionTextClass}>最初の一枚を登録すると、ここに並びます。</p>
+        </div>
       ) : (
-          <ul className="flex flex-col gap-5">
+          <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
           {initialLogs.map((mealLog) => (
-          <li key={mealLog.id} className={`flex flex-col gap-3 ${cardClass}`}>
-            <MealLogImage photoId={mealLog.photoId} />
-            <div>
-              <p className="font-bold text-charcoal">{getTagLabel(mealLog.tag)}</p>
-              <p className={captionTextClass}>{formatEatenAt(mealLog.eatenAt)}</p>
-              {mealLog.note && <p className="mt-2 text-sm">{mealLog.note}</p>}
-            </div>
-            <div className="flex gap-3">
-              <button type="button" disabled={pendingId === mealLog.id} onClick={() => { setSelectedLog(mealLog); replaceInputRef.current?.click(); }} className={secondaryButtonClass}>写真を差し替える</button>
-              <button type="button" disabled={pendingId === mealLog.id} onClick={() => void deleteLog(mealLog)} className={dangerButtonClass}>削除する</button>
+          <li key={mealLog.id} className="meal-log-card">
+            <div className="meal-log-card-image"><MealLogImage photoId={mealLog.photoId} /></div>
+            <div className="meal-log-card-content">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-bold text-charcoal">{getTagLabel(mealLog.tag)}</p>
+                  <p className={captionTextClass}>{formatEatenAt(mealLog.eatenAt)}</p>
+                </div>
+                <span className="meal-log-tag">{getTagLabel(mealLog.tag)}</span>
+              </div>
+              {mealLog.note && <p className="mt-2 text-sm leading-relaxed text-charcoal">{mealLog.note}</p>}
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                <button type="button" disabled={pendingId === mealLog.id} onClick={() => { setSelectedLog(mealLog); replaceInputRef.current?.click(); }} className="meal-inline-action"><ImagePlus aria-hidden="true" className="size-4" />写真を変更</button>
+                <button type="button" disabled={pendingId === mealLog.id} onClick={() => void deleteLog(mealLog)} className="meal-inline-delete"><Trash2 aria-hidden="true" className="size-4" />削除</button>
+              </div>
             </div>
           </li>
           ))}
