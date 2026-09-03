@@ -175,7 +175,7 @@ describe("shouldAutoAttack", () => {
 });
 
 describe("必殺の準備ウィンドウ", () => {
-  it("等倍でも倍速でも10秒振り切る前に時間切れしない", () => {
+  it("等倍でも倍速でも3秒振り切る前に時間切れしない", () => {
     for (const speed of BATTLE_SPEEDS) {
       expect(specialChargeTicks(speed) * tickIntervalMs(speed)).toBeGreaterThan(
         STRAIN_REQUIRED_MS,

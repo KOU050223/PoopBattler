@@ -65,7 +65,7 @@ export const TIMEOUT_MS = 90_000;
 export const GUARD_DURATION_MS = 10_000;
 export const GUARD_COOLDOWN_MS = 15_000;
 export const SWITCH_STUN_MS = 1_000;
-// 踏ん張り積算（約10秒）より長くし、振り切る前に時間切れしない（Issue #94）。
+// 踏ん張り積算（約3秒）より長くし、振り切る前に時間切れしない（Issue #94 / #116）。
 export const PLAYER_SPECIAL_CHARGE_MS = 15_000;
 export const ENEMY_SPECIAL_TELEGRAPH_MS = 2_000;
 
@@ -87,10 +87,9 @@ export const SPECIAL_DAMAGE_MULTIPLIER = 10;
 export const SPECIAL_GAUGE_MAX = 100;
 export const SPECIAL_GAUGE_PER_TICK = 2;
 
-// ベンチ回復: 場に出ていない味方のHP・必殺ゲージを毎ティック少しずつ回復する。
+// ベンチ回復: 場に出ていない味方のHPを毎ティック少しずつ回復する。
 // 戦闘不能（HP 0）のキャラは回復しない。
 export const BENCH_HP_RECOVERY_RATE = 0.01; // maxHp の 1% / tick
-export const BENCH_GAUGE_RECOVERY_PER_TICK = 1; // 場の半分のペースでゲージ回復
 
 // 通常攻撃は双方とも 5 tick ごとの窓で半々。1発 20。
 // 必殺は従来の基礎 4 に倍率を掛ける。タイムアップは 180 tick（等倍で 90秒）。
