@@ -112,7 +112,16 @@ STRIPE_SECRET_KEY=sk_live_xxx ./scripts/create-stripe-price.sh
   届き、実際の成否は `async_payment_*` で後から知らされる。この2つを購読しないと、
   正しく支払った利用者に権利が付かない。
 
-### 4. 環境変数を登録
+### 4. Customer Portal を有効化
+
+解約・支払い方法の変更は Stripe の Customer Portal へ委ねている。
+本番モードでは既定の設定が有効になっていないため、Dashboard の
+Settings > Billing > Customer portal で有効化する。
+
+これを忘れると、`createBillingPortalSessionAction` がセッションを作れず、
+**課金中の利用者が解約できない**状態になる。
+
+### 5. 環境変数を登録
 
 ```bash
 npx vercel login
