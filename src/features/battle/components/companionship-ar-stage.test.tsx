@@ -137,6 +137,7 @@ describe("CompanionshipArFrame", () => {
     expect(markup).toContain('data-toilet-box="hit"');
     expect(markup).toContain('data-toilet-score="0.74"');
     expect(markup).toContain("便器を検出 74%");
+    expect(markup).not.toContain("スワイプして投げ入れてください");
     expect(markup).not.toContain("もう一度抽選");
     expect(markup).toContain('data-throw-x="41.2"');
     expect(markup).toContain('data-throw-y="68.5"');
@@ -180,7 +181,61 @@ describe("CompanionshipArFrame", () => {
     expect(noneMarkup).not.toContain("data-toilet-box");
     expect(lowMarkup).toContain('data-toilet-box="low"');
     expect(lowMarkup).toContain("便器かも… 31%");
+    expect(lowMarkup).toContain("タップで投げ入れ先");
     expect(lowMarkup).not.toContain("便器を検出");
+    expect(lowMarkup).toContain('data-gacha-swipe="blocked"');
+  });
+
+  it("便器 hit の staging はスワイプ開始できる。未検出はタップ前だと開始できない", () => {
+    const hitMarkup = renderToStaticMarkup(
+      <CompanionshipArFrame
+        result={acquired}
+        mealPhotoUrl="blob:meal-photo"
+        phase="staging"
+        status="ready"
+        reduceMotion
+        onSkip={() => undefined}
+        detectionStatus="ready"
+        toiletSight={{
+          kind: "hit",
+          box: { x: 10, y: 20, width: 80, height: 100, score: 0.74 },
+          target: { x: 41.2, y: 68.5 },
+        }}
+      />,
+    );
+    const noneMarkup = renderToStaticMarkup(
+      <CompanionshipArFrame
+        result={acquired}
+        mealPhotoUrl="blob:meal-photo"
+        phase="staging"
+        status="ready"
+        reduceMotion
+        onSkip={() => undefined}
+        detectionStatus="ready"
+        toiletSight={{ kind: "none" }}
+      />,
+    );
+    const aimedMarkup = renderToStaticMarkup(
+      <CompanionshipArFrame
+        result={acquired}
+        mealPhotoUrl="blob:meal-photo"
+        phase="staging"
+        status="denied"
+        reduceMotion
+        onSkip={() => undefined}
+        detectionStatus="failed"
+        toiletSight={{ kind: "none" }}
+        aimPoint={{ x: 12, y: 18 }}
+      />,
+    );
+    expect(hitMarkup).toContain('data-gacha-swipe="ready"');
+    expect(hitMarkup).toContain("スワイプして食事を投げ入れてください");
+    expect(hitMarkup).toContain("スワイプで開始");
+    expect(noneMarkup).toContain('data-gacha-swipe="blocked"');
+    expect(noneMarkup).toContain("便器にカメラを向けてください");
+    expect(noneMarkup).not.toContain("スワイプして食事を投げ入れてください");
+    expect(aimedMarkup).toContain('data-gacha-swipe="ready"');
+    expect(aimedMarkup).toContain("スワイプして食事を投げ入れてください");
   });
 
   it("結果フェーズでは確定済みのカードを出し、抽選をやり直す文言は出さない", () => {

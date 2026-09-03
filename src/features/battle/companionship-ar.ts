@@ -1,6 +1,16 @@
+import type { ToiletModelStatus, ToiletSight } from "@/features/battle/toilet-detection";
 import type { UserMediaCameraStatus } from "@/lib/user-media-camera";
 
 export type CompanionshipArPhase = "staging" | "throw" | "reveal" | "summary";
+
+export const GACHA_SWIPE_MIN_DISTANCE_PX = 56;
+const GACHA_SWIPE_MAX_ANGLE_RAD = (65 * Math.PI) / 180;
+const GACHA_SWIPE_NEAR_TARGET_PX = 24;
+
+export type PixelPoint = {
+  x: number;
+  y: number;
+};
 
 export function usesCompanionshipAr(result: { usedMealLog: boolean }) {
   return result.usedMealLog;
@@ -31,6 +41,46 @@ export function isCameraFallback(status: UserMediaCameraStatus) {
 
 export function canAdvanceFromStaging(status: UserMediaCameraStatus) {
   return status === "ready" || isCameraFallback(status);
+}
+
+/** 便器 hit、または検出できないときにタップで投げ入れ先を決めたあとだけ、スワイプで開始できる。 */
+export function canStartGachaBySwipe(input: {
+  phase: CompanionshipArPhase;
+  cameraStatus: UserMediaCameraStatus;
+  modelStatus: ToiletModelStatus;
+  sight: ToiletSight;
+  hasAimPoint: boolean;
+}) {
+  if (input.phase !== "staging") return false;
+  if (!canAdvanceFromStaging(input.cameraStatus)) return false;
+  if (input.sight.kind === "hit") return true;
+  if (input.modelStatus === "loading" || input.modelStatus === "idle") return false;
+  return input.hasAimPoint;
+}
+
+export function clientPointFromPercent(
+  point: { x: number; y: number },
+  rect: { left: number; top: number; width: number; height: number },
+): PixelPoint {
+  return {
+    x: rect.left + (point.x / 100) * rect.width,
+    y: rect.top + (point.y / 100) * rect.height,
+  };
+}
+
+export function isThrowSwipe(start: PixelPoint, end: PixelPoint, target: PixelPoint) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const swipeLen = Math.hypot(dx, dy);
+  if (swipeLen < GACHA_SWIPE_MIN_DISTANCE_PX) return false;
+
+  const toTargetX = target.x - start.x;
+  const toTargetY = target.y - start.y;
+  const toTargetLen = Math.hypot(toTargetX, toTargetY);
+  if (toTargetLen < GACHA_SWIPE_NEAR_TARGET_PX) return dy > 0;
+
+  const cos = (dx * toTargetX + dy * toTargetY) / (swipeLen * toTargetLen);
+  return cos >= Math.cos(GACHA_SWIPE_MAX_ANGLE_RAD);
 }
 
 export function nextCompanionshipArPhase(
