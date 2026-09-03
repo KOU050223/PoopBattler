@@ -15,18 +15,20 @@ import {
 import { PoopmFigure } from "@/features/poopm/components/poopm-figure";
 import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
 
+export const CHARGE_SWIRL_PNG = "/assets/battle/charge-swirl.png";
+
 function ChargeSwirl({ speed }: { speed: BattleSpeed }) {
   const reduceMotion = useReducedMotion();
 
   return (
     <motion.div
       aria-hidden="true"
-      className="pointer-events-none absolute -inset-4 z-0"
+      className="pointer-events-none absolute -inset-8 z-0"
       initial={false}
       animate={
         reduceMotion
-          ? { opacity: 0.72, scale: 1 }
-          : { opacity: [0.5, 0.9, 0.5], rotate: 360, scale: [0.98, 1.04, 0.98] }
+          ? { opacity: 0.85, rotate: 0 }
+          : { opacity: [0.7, 1, 0.7], rotate: 360 }
       }
       transition={
         reduceMotion
@@ -42,18 +44,15 @@ function ChargeSwirl({ speed }: { speed: BattleSpeed }) {
                 repeat: Infinity,
                 ease: "linear",
               },
-              scale: {
-                duration: scaleByBattleSpeed(1.15, speed),
-                repeat: Infinity,
-                ease: "easeInOut",
-              },
             }
       }
     >
-      <div className="absolute inset-1 rounded-full border-4 border-transparent border-t-night-ink border-r-flush-pink opacity-75" />
-      <div className="absolute inset-4 rounded-full border-4 border-transparent border-b-spark-blue border-l-cotton-pink opacity-70" />
-      <div className="absolute left-1/2 top-0 h-3 w-3 -translate-x-1/2 rounded-full bg-flush-pink" />
-      <div className="absolute bottom-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-spark-blue" />
+      <img
+        src={CHARGE_SWIRL_PNG}
+        alt=""
+        draggable={false}
+        className="h-full w-full object-contain mix-blend-screen"
+      />
     </motion.div>
   );
 }

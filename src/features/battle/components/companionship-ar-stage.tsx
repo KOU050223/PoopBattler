@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type Ref } from "react";
+import { useEffect, useRef, useState, type PointerEvent, type Ref } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 import type { CompleteBattleResult } from "@/features/battle/actions";
@@ -9,6 +9,7 @@ import {
   canAdvanceFromStaging,
   companionshipRevealCopy,
   gachaCameraStatusMessage,
+  isCameraFallback,
   isLiveCameraOverlay,
   nextCompanionshipArPhase,
   shouldCrawlOut,
@@ -16,6 +17,17 @@ import {
   type CompanionshipArPhase,
 } from "@/features/battle/companionship-ar";
 import { useGachaCamera } from "@/features/battle/hooks/use-gacha-camera";
+import { useToiletDetection } from "@/features/battle/hooks/use-toilet-detection";
+import {
+  DEFAULT_THROW_TARGET,
+  percentPointFromClient,
+  resolveThrowTarget,
+  stagingAdvanceDelayMs,
+  toiletDebugCopy,
+  type PercentPoint,
+  type ToiletModelStatus,
+  type ToiletSight,
+} from "@/features/battle/toilet-detection";
 import { getMealPhoto } from "@/features/meal/meal-photo-storage";
 import { PoopmFigure } from "@/features/poopm/components/poopm-figure";
 import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
@@ -32,6 +44,11 @@ export type CompanionshipArFrameProps = {
   reduceMotion: boolean;
   onSkip: () => void;
   videoRef?: Ref<HTMLVideoElement>;
+  toiletSight?: ToiletSight;
+  detectionStatus?: ToiletModelStatus;
+  throwTarget?: PercentPoint;
+  aimPoint?: PercentPoint | null;
+  onAim?: (point: PercentPoint) => void;
 };
 
 function phaseLabel(phase: CompanionshipArPhase, acquired: boolean) {
@@ -42,6 +59,27 @@ function phaseLabel(phase: CompanionshipArPhase, acquired: boolean) {
   return "便器にカメラを向けてください";
 }
 
+function ToiletDebugOverlay({ sight }: { sight: ToiletSight }) {
+  if (sight.kind === "none") return null;
+  const dashed = sight.kind === "low";
+  return (
+    <div
+      data-toilet-box={sight.kind}
+      data-toilet-score={sight.box.score.toFixed(2)}
+      aria-hidden="true"
+      className={`pointer-events-none absolute z-10 rounded-md border-2 ${
+        dashed ? "border-dashed border-amber-200" : "border-paper-white"
+      }`}
+      style={{
+        left: sight.box.x,
+        top: sight.box.y,
+        width: sight.box.width,
+        height: sight.box.height,
+      }}
+    />
+  );
+}
+
 export function CompanionshipArFrame({
   result,
   mealPhotoUrl,
@@ -50,16 +88,32 @@ export function CompanionshipArFrame({
   reduceMotion,
   onSkip,
   videoRef,
+  toiletSight = { kind: "none" },
+  detectionStatus = "idle",
+  throwTarget = DEFAULT_THROW_TARGET,
+  aimPoint = null,
+  onAim,
 }: CompanionshipArFrameProps) {
   const character = result.acquiredCharacter;
   const acquired = shouldCrawlOut(character);
   const showCamera = phase !== "summary";
   const live = showCamera && isLiveCameraOverlay(status);
   const statusMessage = gachaCameraStatusMessage(status);
+  const detectionMessage = showCamera ? toiletDebugCopy(detectionStatus, toiletSight) : null;
   const revealCopy = companionshipRevealCopy({
     acquired,
     usedMealLog: result.usedMealLog,
   });
+
+  function handleAim(event: PointerEvent<HTMLDivElement>) {
+    if (phase !== "staging" || !onAim) return;
+    const point = percentPointFromClient(
+      event.clientX,
+      event.clientY,
+      event.currentTarget.getBoundingClientRect(),
+    );
+    if (point) onAim(point);
+  }
 
   if (phase === "summary") {
     return <BattleCompletionResult result={result} />;
@@ -74,7 +128,10 @@ export function CompanionshipArFrame({
         </p>
       </div>
 
-      <div className="relative min-h-[22rem] overflow-hidden rounded-2xl border-2 border-faded-gray bg-night-ink shadow-raised-gray aspect-[3/4]">
+      <div
+        className="relative min-h-[22rem] overflow-hidden rounded-2xl border-2 border-faded-gray bg-night-ink shadow-raised-gray aspect-[3/4]"
+        onPointerDown={handleAim}
+      >
         {live ? (
           <video
             ref={videoRef}
@@ -82,7 +139,7 @@ export function CompanionshipArFrame({
             muted
             autoPlay
             aria-label="便器に向けたカメラ"
-            className="absolute inset-0 h-full w-full object-cover"
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
           />
         ) : (
           <div
@@ -93,13 +150,32 @@ export function CompanionshipArFrame({
 
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-night-ink/80 to-transparent" />
 
+        <ToiletDebugOverlay sight={toiletSight} />
+
+        {aimPoint && toiletSight.kind !== "hit" ? (
+          <div
+            aria-hidden="true"
+            data-aim-point="true"
+            className="pointer-events-none absolute z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-paper-white"
+            style={{ left: `${aimPoint.x}%`, top: `${aimPoint.y}%` }}
+          />
+        ) : null}
+
         {mealPhotoUrl && (phase === "throw" || phase === "reveal") ? (
           <motion.img
             src={mealPhotoUrl}
             alt="便器へ投げ入れる食事の写真"
-            className="absolute left-1/2 top-[12%] z-20 h-28 w-28 rounded-2xl object-cover shadow-raised-gray"
-            initial={reduceMotion ? false : { x: "-50%", y: 0, scale: 1, rotate: -8, opacity: 1 }}
-            animate={{ x: "-50%", y: "170%", scale: 0.28, rotate: 16, opacity: 0.55 }}
+            data-throw-x={throwTarget.x.toFixed(1)}
+            data-throw-y={throwTarget.y.toFixed(1)}
+            className="absolute z-20 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-2xl object-cover shadow-raised-gray"
+            initial={reduceMotion ? false : { left: "50%", top: "14%", scale: 1, rotate: -8, opacity: 1 }}
+            animate={{
+              left: `${throwTarget.x}%`,
+              top: `${throwTarget.y}%`,
+              scale: 0.28,
+              rotate: 16,
+              opacity: 0.55,
+            }}
             transition={reduceMotion ? { duration: 0 } : { duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
           />
         ) : null}
@@ -134,6 +210,10 @@ export function CompanionshipArFrame({
 
       {statusMessage ? (
         <p role="status" className={captionTextClass}>{statusMessage}</p>
+      ) : null}
+
+      {detectionMessage ? (
+        <p role="status" data-toilet-debug="true" className={captionTextClass}>{detectionMessage}</p>
       ) : null}
 
       <button type="button" className={secondaryButtonClass} onClick={onSkip}>
@@ -181,7 +261,18 @@ export function CompanionshipArStage({
   const videoRef = useRef<HTMLVideoElement>(null);
   const mealPhotoUrl = useMealPhotoUrl(mealPhotoId);
   const [phase, setPhase] = useState<CompanionshipArPhase>("staging");
+  const [aimPoint, setAimPoint] = useState<PercentPoint | null>(null);
+  const [heldTarget, setHeldTarget] = useState<PercentPoint>(DEFAULT_THROW_TARGET);
   const hasPhoto = shouldPlayThrow(mealPhotoId);
+  const detectEnabled = phase === "staging" && isLiveCameraOverlay(status);
+  const { status: detectionStatus, sight } = useToiletDetection(videoRef, detectEnabled);
+  const liveTarget = resolveThrowTarget({ sight, tap: aimPoint });
+  const liveTargetRef = useRef(liveTarget);
+  const throwTarget = phase === "staging" ? liveTarget : heldTarget;
+
+  useEffect(() => {
+    liveTargetRef.current = liveTarget;
+  }, [liveTarget]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -203,19 +294,27 @@ export function CompanionshipArStage({
     if (phase === "summary") return;
     if (phase === "staging" && !canAdvanceFromStaging(status)) return;
 
-    const delay = reduceMotion
-      ? 0
-      : phase === "staging"
-        ? 700
+    const delay = phase === "staging"
+      ? stagingAdvanceDelayMs({
+          cameraReady: status === "ready",
+          cameraFallback: isCameraFallback(status),
+          modelStatus: detectEnabled ? detectionStatus : "failed",
+          reduceMotion: Boolean(reduceMotion),
+        })
+      : reduceMotion
+        ? 0
         : phase === "throw"
           ? 900
           : 1500;
 
+    if (delay == null) return;
+
     const timer = window.setTimeout(() => {
+      setHeldTarget(liveTargetRef.current);
       setPhase((current) => nextCompanionshipArPhase(current, hasPhoto));
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [hasPhoto, phase, reduceMotion, status]);
+  }, [detectEnabled, detectionStatus, hasPhoto, phase, reduceMotion, status]);
 
   return (
     <CompanionshipArFrame
@@ -224,8 +323,16 @@ export function CompanionshipArStage({
       phase={phase}
       status={status}
       reduceMotion={Boolean(reduceMotion)}
-      onSkip={() => setPhase("summary")}
+      onSkip={() => {
+        setHeldTarget(liveTargetRef.current);
+        setPhase("summary");
+      }}
       videoRef={videoRef}
+      toiletSight={sight}
+      detectionStatus={detectEnabled || phase !== "staging" ? detectionStatus : "failed"}
+      throwTarget={throwTarget}
+      aimPoint={aimPoint}
+      onAim={setAimPoint}
     />
   );
 }
