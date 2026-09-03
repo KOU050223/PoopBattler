@@ -1,4 +1,6 @@
 import {
+  BENCH_GAUGE_RECOVERY_PER_TICK,
+  BENCH_HP_RECOVERY_RATE,
   GUARD_COOLDOWN_MS,
   PARTY_SIZE,
   SPECIAL_GAUGE_MAX,
@@ -37,21 +39,19 @@ function nextLivingIndex(
   return null;
 }
 
-function resolveByRemainingHp(state: BattleSnapshot): BattleSnapshot {
+function resolveTimeout(state: BattleSnapshot): BattleSnapshot {
   if (!state.party || !state.enemy) {
     return { ...state, status: "defeated" };
   }
 
-  // 個体ごとにHPが違うので、生のHP合計を敵HPと比べると個体値がそのまま
-  // 勝敗の下駄になる。残量の割合で比べる（Issue #73 でしきい値が動いた点）。
-  const partyHp = state.party.reduce((sum, member) => sum + member.hp, 0);
-  const partyMaxHp = state.party.reduce((sum, member) => sum + member.maxHp, 0);
-  const partyRatio = partyMaxHp > 0 ? partyHp / partyMaxHp : 0;
-  const enemyRatio = state.enemy.maxHp > 0 ? state.enemy.hp / state.enemy.maxHp : 0;
+  // タイムアップは残HP比較で敗北にしない。1体でも残っていれば完了へ進み、
+  // 敗北は3体全滅だけ（Issue #102）。残HP割合で敵と比べると、戦闘不能の1体が
+  // パーティ側を大きく下げ、残りが削られただけで敗北になる。
+  const partyAlive = state.party.some((member) => member.hp > 0);
 
   return {
     ...state,
-    status: partyRatio >= enemyRatio ? "completing" : "defeated",
+    status: partyAlive ? "completing" : "defeated",
     playerStance: "fight",
     enemyStance: "fight",
     playerSpecialChargeTicks: 0,
@@ -90,11 +90,17 @@ function applyKnockout(state: BattleSnapshot): BattleSnapshot {
     };
   }
 
+  const benchGauges = [...state.benchGauges] as [number, number, number];
+  benchGauges[state.activeIndex] = 0;
+  const incomingGauge = benchGauges[nextIndex];
+  benchGauges[nextIndex] = 0;
+
   return {
     ...state,
     activeIndex: nextIndex,
     switchStunTicks: msToTicks(SWITCH_STUN_MS),
-    playerGauge: 0,
+    playerGauge: incomingGauge,
+    benchGauges,
     playerStance: "fight",
     playerSpecialChargeTicks: 0,
     playerGuardRemainingTicks: 0,
@@ -219,7 +225,7 @@ export function applyBattleTick(state: BattleSnapshot): BattleSnapshot {
   }
 
   if ((state.elapsedTicks ?? 0) >= TIMEOUT_TICKS) {
-    return resolveByRemainingHp(cloneBattleSnapshot(state));
+    return resolveTimeout(cloneBattleSnapshot(state));
   }
 
   let next = cloneBattleSnapshot(state);
@@ -320,6 +326,24 @@ export function applyBattleTick(state: BattleSnapshot): BattleSnapshot {
       next.playerStance = "fight";
       next.playerSpecialChargeTicks = 0;
     }
+  }
+
+  // ベンチ回復: 場に出ていない味方のHPとゲージを毎ティック少しずつ回復する。
+  // 戦闘不能（HP 0）のキャラは回復しない。
+  if (!next.party) return next;
+  for (let i = 0; i < PARTY_SIZE; i += 1) {
+    if (i === next.activeIndex) continue;
+    const member = next.party[i];
+    if (member.hp <= 0) continue;
+
+    member.hp = Math.min(
+      member.maxHp,
+      member.hp + Math.max(1, Math.floor(member.maxHp * BENCH_HP_RECOVERY_RATE)),
+    );
+    next.benchGauges[i] = Math.min(
+      SPECIAL_GAUGE_MAX,
+      next.benchGauges[i] + BENCH_GAUGE_RECOVERY_PER_TICK,
+    );
   }
 
   return next;

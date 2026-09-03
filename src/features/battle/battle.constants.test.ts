@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import { STRAIN_REQUIRED_MS } from "@/lib/motion";
 import {
   AUTO_ATTACK_DAMAGE,
   AUTO_ATTACK_PERIOD_TICKS,
+  BATTLE_SPEEDS,
   GUARD_INCOMING_MULTIPLIER,
   SPECIAL_BASE_DAMAGE,
   SPECIAL_DAMAGE_MULTIPLIER,
@@ -13,6 +15,8 @@ import {
   computeAttackDamage,
   matchupTone,
   shouldAutoAttack,
+  specialChargeTicks,
+  tickIntervalMs,
   typeMultiplier,
 } from "./battle.constants";
 
@@ -64,7 +68,7 @@ describe("matchupTone", () => {
 });
 
 describe("computeAttackDamage", () => {
-  it("たたかえ同士の等倍は基礎ダメージになる", () => {
+  it("自動攻撃同士の等倍は基礎ダメージになる", () => {
     expect(
       computeAttackDamage({
         attackerAttribute: "curry",
@@ -167,5 +171,15 @@ describe("shouldAutoAttack", () => {
 
     expect(split.some((roll) => roll.player && !roll.enemy)).toBe(true);
     expect(split.some((roll) => !roll.player && roll.enemy)).toBe(true);
+  });
+});
+
+describe("必殺の準備ウィンドウ", () => {
+  it("等倍でも倍速でも10秒振り切る前に時間切れしない", () => {
+    for (const speed of BATTLE_SPEEDS) {
+      expect(specialChargeTicks(speed) * tickIntervalMs(speed)).toBeGreaterThan(
+        STRAIN_REQUIRED_MS,
+      );
+    }
   });
 });

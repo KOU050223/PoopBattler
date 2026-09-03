@@ -3,7 +3,7 @@ import type { Database } from "@/types/database.types";
 export type CharacterAttribute =
   Database["public"]["Enums"]["character_attribute"];
 
-// たたかえ / まもれ / 必殺準備中。コンボ入力は持たない。
+// 自動攻撃 / まもれ / 必殺準備中。コンボ入力は持たない。
 export type BattleStance = "fight" | "guard" | "special";
 
 // 敵として出現しうる属性。食事ログは参照せず、ここから一様に抽選する（Issue #21）。
@@ -65,7 +65,8 @@ export const TIMEOUT_MS = 90_000;
 export const GUARD_DURATION_MS = 10_000;
 export const GUARD_COOLDOWN_MS = 15_000;
 export const SWITCH_STUN_MS = 1_000;
-export const PLAYER_SPECIAL_CHARGE_MS = 3_000;
+// 踏ん張り積算（約10秒）より長くし、振り切る前に時間切れしない（Issue #94）。
+export const PLAYER_SPECIAL_CHARGE_MS = 15_000;
 export const ENEMY_SPECIAL_TELEGRAPH_MS = 2_000;
 
 export const TYPE_ADVANTAGE = 1.5;
@@ -86,8 +87,14 @@ export const SPECIAL_DAMAGE_MULTIPLIER = 10;
 export const SPECIAL_GAUGE_MAX = 100;
 export const SPECIAL_GAUGE_PER_TICK = 2;
 
+// ベンチ回復: 場に出ていない味方のHP・必殺ゲージを毎ティック少しずつ回復する。
+// 戦闘不能（HP 0）のキャラは回復しない。
+export const BENCH_HP_RECOVERY_RATE = 0.01; // maxHp の 1% / tick
+export const BENCH_GAUGE_RECOVERY_PER_TICK = 1; // 場の半分のペースでゲージ回復
+
 // 通常攻撃は双方とも 5 tick ごとの窓で半々。1発 20。
-// 必殺は従来の基礎 4 に倍率を掛ける。タイムアップは 180 tick（等倍で 90秒）で残HP判定。
+// 必殺は従来の基礎 4 に倍率を掛ける。タイムアップは 180 tick（等倍で 90秒）。
+// 1体でも残っていれば完了し、敗北は3体全滅だけ（Issue #102）。
 export const INITIAL_ENEMY_HP = 480;
 export const INITIAL_MEMBER_HP = 240;
 
@@ -116,6 +123,10 @@ export function msToTicks(ms: number): number {
 }
 
 export const TIMEOUT_TICKS = msToTicks(TIMEOUT_MS);
+
+export function specialChargeTicks(speed: BattleSpeed): number {
+  return msToTicks(PLAYER_SPECIAL_CHARGE_MS * speed);
+}
 
 export function isBattleSpeed(value: unknown): value is BattleSpeed {
   return value === 1 || value === 2;

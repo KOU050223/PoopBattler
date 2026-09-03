@@ -1,6 +1,5 @@
 "use client";
 
-import { useSpecialMotion } from "@/features/battle/hooks/use-special-motion";
 import {
   SPECIAL_GAUGE_MAX,
   type BattleStance,
@@ -27,9 +26,11 @@ export function BattleControls({
   playerGauge,
   playerGuardCooldownTicks,
   switchStunTicks,
-  onFight,
+  benchGauges,
   onGuard,
+  onSpecial,
   onSwitch,
+  specialReason,
   onDebugStrain,
   onDebugComplete,
 }: {
@@ -39,28 +40,21 @@ export function BattleControls({
   playerGauge: number;
   playerGuardCooldownTicks: number;
   switchStunTicks: number;
-  onFight: () => void;
+  benchGauges: [number, number, number];
   onGuard: () => void;
+  onSpecial: () => void;
   onSwitch: (index: number) => void;
+  specialReason?: string | null;
   onDebugStrain?: () => void;
   onDebugComplete?: () => void;
 }) {
-  const { reason, activateSpecial } = useSpecialMotion();
   const stunned = switchStunTicks > 0;
   const specialReady = playerGauge >= SPECIAL_GAUGE_MAX && !stunned;
   const guardBlocked = playerGuardCooldownTicks > 0 || playerStance === "guard" || stunned;
 
   return (
     <div className="flex flex-col gap-3 pb-2">
-      <div className="grid grid-cols-3 gap-3">
-        <button
-          type="button"
-          className={controlClass("stance", playerStance === "fight", stunned)}
-          disabled={stunned}
-          onClick={onFight}
-        >
-          たたかえ
-        </button>
+      <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
           className={controlClass("stance", playerStance === "guard", guardBlocked)}
@@ -73,14 +67,14 @@ export function BattleControls({
           type="button"
           className={controlClass("special", playerStance === "special", !specialReady)}
           disabled={!specialReady}
-          onClick={activateSpecial}
+          onClick={onSpecial}
         >
           必殺
         </button>
       </div>
-      {reason ? (
+      {specialReason ? (
         <p role="status" className={`text-center ${captionTextClass}`}>
-          {reason}
+          {specialReason}
         </p>
       ) : null}
       {process.env.NODE_ENV === "development" ? (
@@ -112,15 +106,37 @@ export function BattleControls({
             return null;
           }
           const down = member.hp <= 0;
+          const hpRatio = member.maxHp > 0 ? Math.max(0, member.hp / member.maxHp) : 0;
+          const gaugeRatio = benchGauges[index] / SPECIAL_GAUGE_MAX;
           return (
             <button
               key={`${member.characterId}-${index}`}
               type="button"
               disabled={down || stunned}
               onClick={() => onSwitch(index)}
-              className={controlClass("stance", false, down || stunned)}
+              className={`${controlClass("stance", false, down || stunned)} flex flex-col gap-1.5 px-3 py-2`}
             >
-              交代 {member.name ?? `控え${index + 1}`}
+              <span className="text-sm">{member.name ?? `控え${index + 1}`}</span>
+              <div className="flex w-full flex-col gap-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-5 shrink-0 text-[10px] text-pencil-gray">HP</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-blush-wash">
+                    <div
+                      className={`h-full rounded-full ${down ? "bg-faded-gray" : "bg-flush-pink"}`}
+                      style={{ width: `${hpRatio * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-5 shrink-0 text-[10px] text-pencil-gray">必</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-blush-wash">
+                    <div
+                      className="h-full rounded-full bg-night-ink"
+                      style={{ width: `${gaugeRatio * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
             </button>
           );
         })}

@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
+import { motion, useReducedMotion } from "framer-motion";
 import { readBattleSpeed, subscribeBattleSpeed, writeBattleSpeed } from "@/features/battle/battle-speed";
 import {
-  completeBattleAction,
   startBattleAction,
   type CompleteBattleResult,
 } from "@/features/battle/actions";
+import { BattleCompletionFlow } from "@/features/battle/components/battle-completion-flow";
 import {
   ATTRIBUTE_LABELS,
   DEFAULT_BATTLE_SPEED,
@@ -18,16 +18,17 @@ import {
   nextBattleSpeed,
   scaleByBattleSpeed,
   tickIntervalMs,
+  type BattleSpeed,
 } from "@/features/battle/battle.constants";
 import { BattleControls } from "@/features/battle/components/battle-controls";
 import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
 import { BattleFigure } from "@/features/battle/components/battle-figure";
 import { useBattleWakeLock } from "@/features/battle/hooks/use-battle-wake-lock";
-import { BowelLogForm } from "@/features/bowel-log/components/bowel-log-form";
-import type { BowelLog } from "@/features/bowel-log/bowel-log.types";
+import { useSpecialMotion } from "@/features/battle/hooks/use-special-motion";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import { captionTextClass, mutedTextClass, primaryButtonClass, stancePillClass } from "@/lib/ui-classes";
+import { signInAnonymouslyFromBrowser } from "@/lib/supabase/anonymous-session";
 import { useBattleStore } from "@/stores/battle-store";
 
 const MATCHUP_LABEL = {
@@ -51,30 +52,92 @@ function HpBar({
   max,
   label,
   side,
+  hitFlashKey,
+  speed,
 }: {
   current: number;
   max: number;
   label: string;
   side: "ally" | "enemy";
+  hitFlashKey: number;
+  speed: BattleSpeed;
 }) {
+  const reduceMotion = useReducedMotion();
   const ratio = Math.max(0, Math.min(1, current / max));
   const fillClass = side === "enemy" ? "bg-night-ink" : "bg-flush-pink";
+  const flashColor = "var(--color-danger-edge)";
+  const textColor = "var(--color-pencil-gray)";
+  const textFlash = reduceMotion
+    ? [textColor, flashColor, textColor]
+    : [textColor, flashColor, flashColor, textColor];
+  const barFlashOpacity = reduceMotion ? [0, 1, 0] : [0, 1, 1, 0];
+  const flashTransition = {
+    duration: scaleByBattleSpeed(reduceMotion ? 0.45 : 0.95, speed),
+    ease: "easeInOut" as const,
+    times: reduceMotion ? [0, 0.55, 1] : [0, 0.16, 0.72, 1],
+  };
   return (
     <div className="flex w-full flex-col gap-1">
-      <div className={`flex justify-between ${captionTextClass}`}>
+      <motion.div
+        key={`hp-text-${hitFlashKey}`}
+        className={`flex justify-between ${captionTextClass}`}
+        initial={{ color: textColor }}
+        animate={hitFlashKey > 0 ? { color: textFlash } : undefined}
+        transition={hitFlashKey > 0 ? flashTransition : undefined}
+        style={{ color: textColor }}
+      >
         <span>{label}</span>
         <span>
           {current} / {max}
         </span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-blush-wash">
+      </motion.div>
+      <div className="relative h-2 overflow-hidden rounded-full bg-blush-wash">
         <motion.div
           className={`h-full ${fillClass}`}
           initial={false}
           animate={{ width: `${ratio * 100}%` }}
           transition={{ duration: 0.2 }}
         />
+        {hitFlashKey > 0 ? (
+          <motion.div
+            key={`hp-bar-flash-${hitFlashKey}`}
+            aria-hidden="true"
+            className="absolute left-0 top-0 h-full bg-danger-edge"
+            initial={{ opacity: 0, width: `${ratio * 100}%` }}
+            animate={{ opacity: barFlashOpacity }}
+            transition={flashTransition}
+          />
+        ) : null}
       </div>
+    </div>
+  );
+}
+
+function StrainGauge({ progress }: { progress: number }) {
+  const ratio = Math.max(0, Math.min(1, progress));
+  const percent = Math.round(ratio * 100);
+  return (
+    <div className="flex flex-col gap-1">
+      <div className={`flex justify-between ${captionTextClass}`}>
+        <span>踏ん張り</span>
+        <span>{percent}%</span>
+      </div>
+      <div
+        className="h-3 overflow-hidden rounded-full bg-blush-wash"
+        role="progressbar"
+        aria-label="踏ん張り"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+      >
+        <div
+          className="h-full bg-night-ink"
+          style={{ width: `${ratio * 100}%` }}
+        />
+      </div>
+      <p role="status" className="text-center text-sm text-charcoal">
+        振り続けて発射！
+      </p>
     </div>
   );
 }
@@ -90,7 +153,6 @@ export function BattleScreen() {
   const [acceptedRestore, setAcceptedRestore] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [completionError, setCompletionError] = useState<string | null>(null);
   const [completionResult, setCompletionResult] = useState<Extract<
     CompleteBattleResult,
     { success: true }
@@ -101,12 +163,15 @@ export function BattleScreen() {
   const [enemyMotion, setEnemyMotion] = useState<"idle" | "hit" | "attack">(
     "idle",
   );
+  const [playerHitFlashKey, setPlayerHitFlashKey] = useState(0);
+  const [enemyHitFlashKey, setEnemyHitFlashKey] = useState(0);
   const speed = useSyncExternalStore(
     subscribeBattleSpeed,
     () => readBattleSpeed(window.localStorage),
     () => DEFAULT_BATTLE_SPEED,
   );
   const previousHp = useRef<{ player: number; enemy: number } | null>(null);
+  const { reason, strainProgress, activateSpecial } = useSpecialMotion();
 
   const showRestore =
     hydrated && snapshot.status === "active" && !acceptedRestore;
@@ -140,9 +205,11 @@ export function BattleScreen() {
       return;
     }
     if (enemyHp < previous.enemy) {
+      setEnemyHitFlashKey((key) => key + 1);
       setEnemyMotion("hit");
       setPlayerMotion("attack");
     } else if (playerHp < previous.player) {
+      setPlayerHitFlashKey((key) => key + 1);
       setPlayerMotion("hit");
       setEnemyMotion("attack");
     } else {
@@ -158,6 +225,13 @@ export function BattleScreen() {
   async function startBattle() {
     setStarting(true);
     setError(null);
+    const session = await signInAnonymouslyFromBrowser();
+    if (session.status === "error") {
+      setStarting(false);
+      setError("プレイの準備ができていません。時間をおいて再試行してください。");
+      return;
+    }
+
     const result = await startBattleAction();
     setStarting(false);
     if (result.status === "error") {
@@ -190,22 +264,9 @@ export function BattleScreen() {
     setAcceptedRestore(true);
   }
 
-  async function completeBattle(bowelLog: BowelLog) {
-    if (!snapshot.battleId) {
-      setCompletionError("バトル情報を確認できませんでした。もう一度お試しください。");
-      return;
-    }
-
-    setCompletionError(null);
-    const result = await completeBattleAction({
-      battleId: snapshot.battleId,
-      bowelLog,
-    });
-    if (!result.success) {
-      setCompletionError(result.message);
-      return;
-    }
-
+  function handleBattleCompleted(
+    result: Extract<CompleteBattleResult, { success: true }>,
+  ) {
     // DB確定に成功したときだけ、復元用のバトル・排便下書きを破棄する。
     setCompletionResult(result);
     useBattleStore.getState().reset();
@@ -239,17 +300,23 @@ export function BattleScreen() {
   }
 
   if (snapshot.status === "completing" && snapshot.enemy) {
+    if (!snapshot.battleId) {
+      return (
+        <ErrorState
+          description="バトル情報を確認できませんでした。もう一度お試しください。"
+        />
+      );
+    }
+
     return (
-      <section className="flex flex-col gap-5">
-        <div className="flex flex-col gap-1 text-center">
-          <p className="text-xl font-bold">勝利！</p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            排便の状態を記録して、バトル結果を確定します。
-          </p>
-        </div>
-        <BowelLogForm onSubmit={completeBattle} />
-        {completionError ? <p role="alert" className="text-sm text-red-600">{completionError}</p> : null}
-      </section>
+      <BattleCompletionFlow
+        battleId={snapshot.battleId}
+        onCompleted={handleBattleCompleted}
+        onAbandon={() => {
+          useBattleStore.getState().reset();
+          setAcceptedRestore(false);
+        }}
+      />
     );
   }
 
@@ -302,8 +369,11 @@ export function BattleScreen() {
               max={snapshot.enemy.maxHp}
               label={snapshot.enemy.name ?? "てき"}
               side="enemy"
+              hitFlashKey={enemyHitFlashKey}
+              speed={speed}
             />
             <BattleFigure
+              characterId={snapshot.enemy.characterId}
               attribute={snapshot.enemy.attribute}
               facing="front"
               motion={enemyMotion}
@@ -314,6 +384,7 @@ export function BattleScreen() {
           </div>
           <div className="flex flex-col items-start gap-2 pr-16">
             <BattleFigure
+              characterId={member.characterId}
               attribute={member.attribute}
               facing="back"
               motion={playerMotion}
@@ -326,6 +397,8 @@ export function BattleScreen() {
               max={member.maxHp}
               label={member.name ?? "味方"}
               side="ally"
+              hitFlashKey={playerHitFlashKey}
+              speed={speed}
             />
           </div>
         </div>
@@ -346,9 +419,7 @@ export function BattleScreen() {
           </div>
         </div>
         {snapshot.playerStance === "special" ? (
-          <p role="status" className="text-center text-sm">
-            踏ん張って発射！
-          </p>
+          <StrainGauge progress={strainProgress} />
         ) : null}
         <BattleControls
           party={snapshot.party}
@@ -357,9 +428,11 @@ export function BattleScreen() {
           playerGauge={snapshot.playerGauge}
           playerGuardCooldownTicks={snapshot.playerGuardCooldownTicks}
           switchStunTicks={snapshot.switchStunTicks}
-          onFight={() => useBattleStore.getState().setStance("fight")}
+          benchGauges={snapshot.benchGauges}
           onGuard={() => useBattleStore.getState().setStance("guard")}
+          onSpecial={activateSpecial}
           onSwitch={(index) => useBattleStore.getState().switchMember(index)}
+          specialReason={reason}
           onDebugStrain={() => useBattleStore.getState().fireSpecial()}
           onDebugComplete={() => useBattleStore.getState().markCompleting()}
         />

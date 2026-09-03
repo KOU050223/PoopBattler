@@ -32,9 +32,17 @@ export type StrainListenerHost = {
   ) => void;
 };
 
-export const STRAIN_ACCELERATION_THRESHOLD = 15;
-export const STRAIN_DEBOUNCE_MS = 400;
+export const STRAIN_ACCELERATION_THRESHOLD = 12;
+export const STRAIN_REQUIRED_MS = 10_000;
+export const STRAIN_IDLE_DECAY_RATE = 2;
+export const STRAIN_MAX_SAMPLE_DT_MS = 80;
 const LINEAR_ACCEL_MIN = 1;
+
+export type StrainProgress = {
+  accumulatedMs: number;
+  requiredMs: number;
+  ratio: number;
+};
 
 export function readBrowserMotionEnv(): MotionEnvironment {
   if (typeof window === "undefined") {
@@ -124,58 +132,96 @@ export function pickAcceleration(event: DeviceMotionEventLike): MotionAxis | nul
   return event.accelerationIncludingGravity;
 }
 
-export function shouldFireStrain(input: {
-  magnitude: number | null;
-  now: number;
-  lastFireAt: number | null;
-  threshold?: number;
-  debounceMs?: number;
-}): boolean {
-  const threshold = input.threshold ?? STRAIN_ACCELERATION_THRESHOLD;
-  const debounceMs = input.debounceMs ?? STRAIN_DEBOUNCE_MS;
+export function isStraining(
+  magnitude: number | null,
+  threshold: number = STRAIN_ACCELERATION_THRESHOLD,
+): boolean {
+  return magnitude != null && magnitude >= threshold;
+}
 
-  if (input.magnitude == null || input.magnitude < threshold) {
-    return false;
+export function advanceStrainAccumulation(input: {
+  accumulatedMs: number;
+  dtMs: number;
+  straining: boolean;
+  requiredMs?: number;
+  decayRate?: number;
+  maxSampleDtMs?: number;
+}): { accumulatedMs: number; fired: boolean } {
+  const requiredMs = input.requiredMs ?? STRAIN_REQUIRED_MS;
+  const decayRate = input.decayRate ?? STRAIN_IDLE_DECAY_RATE;
+  const maxSampleDtMs = input.maxSampleDtMs ?? STRAIN_MAX_SAMPLE_DT_MS;
+  const rawDt = Math.max(0, input.dtMs);
+  const idleDt = Math.max(0, rawDt - maxSampleDtMs);
+  const sampleDt = Math.min(rawDt, maxSampleDtMs);
+
+  let accumulatedMs = input.accumulatedMs;
+  if (idleDt > 0) {
+    accumulatedMs = Math.max(0, accumulatedMs - idleDt * decayRate);
+  }
+  accumulatedMs = input.straining
+    ? accumulatedMs + sampleDt
+    : Math.max(0, accumulatedMs - sampleDt * decayRate);
+
+  if (accumulatedMs >= requiredMs) {
+    return { accumulatedMs: requiredMs, fired: true };
   }
 
-  if (input.lastFireAt != null && input.now - input.lastFireAt < debounceMs) {
-    return false;
-  }
+  return { accumulatedMs, fired: false };
+}
 
-  return true;
+function strainProgressOf(accumulatedMs: number, requiredMs: number): StrainProgress {
+  return {
+    accumulatedMs,
+    requiredMs,
+    ratio: requiredMs <= 0 ? 0 : Math.min(1, accumulatedMs / requiredMs),
+  };
 }
 
 export function createStrainListener(options: {
   host: StrainListenerHost;
   onStrain: () => void;
+  onProgress?: (progress: StrainProgress) => void;
   now?: () => number;
   threshold?: number;
-  debounceMs?: number;
+  requiredMs?: number;
+  decayRate?: number;
 }): { start: () => void; stop: () => void; isListening: () => boolean } {
   const now = options.now ?? Date.now;
-  let lastFireAt: number | null = null;
+  const requiredMs = options.requiredMs ?? STRAIN_REQUIRED_MS;
+  let accumulatedMs = 0;
+  let lastSampleAt: number | null = null;
   let listening = false;
+
+  function report() {
+    options.onProgress?.(strainProgressOf(accumulatedMs, requiredMs));
+  }
 
   function handle(event: DeviceMotionEventLike) {
     if (!listening) {
       return;
     }
 
-    const magnitude = accelerationMagnitude(pickAcceleration(event));
     const at = now();
-    if (
-      !shouldFireStrain({
-        magnitude,
-        now: at,
-        lastFireAt,
-        threshold: options.threshold,
-        debounceMs: options.debounceMs,
-      })
-    ) {
+    const dtMs = lastSampleAt == null ? 0 : at - lastSampleAt;
+    lastSampleAt = at;
+
+    const next = advanceStrainAccumulation({
+      accumulatedMs,
+      dtMs,
+      straining: isStraining(
+        accelerationMagnitude(pickAcceleration(event)),
+        options.threshold,
+      ),
+      requiredMs,
+      decayRate: options.decayRate,
+    });
+    accumulatedMs = next.accumulatedMs;
+    report();
+
+    if (!next.fired) {
       return;
     }
 
-    lastFireAt = at;
     listening = false;
     options.host.removeEventListener("devicemotion", handle);
     options.onStrain();
@@ -186,8 +232,10 @@ export function createStrainListener(options: {
       if (listening) {
         return;
       }
-      lastFireAt = null;
+      accumulatedMs = 0;
+      lastSampleAt = now();
       listening = true;
+      report();
       options.host.addEventListener("devicemotion", handle);
     },
     stop() {
@@ -195,7 +243,10 @@ export function createStrainListener(options: {
         return;
       }
       listening = false;
+      accumulatedMs = 0;
+      lastSampleAt = null;
       options.host.removeEventListener("devicemotion", handle);
+      report();
     },
     isListening() {
       return listening;

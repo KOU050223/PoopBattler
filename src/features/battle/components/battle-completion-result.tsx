@@ -4,6 +4,8 @@ import Link from "next/link";
 
 import { ATTRIBUTE_LABELS } from "@/features/battle/battle.constants";
 import type { CompleteBattleResult } from "@/features/battle/actions";
+import { PoopmFigure } from "@/features/poopm/components/poopm-figure";
+import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
 import { mutedTextClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type CompletionSuccess = Extract<CompleteBattleResult, { success: true }>;
@@ -30,24 +32,33 @@ export function BattleCompletionResult({ result }: { result: CompletionSuccess }
       </div>
 
       {character ? (
-        <div className="flex w-full flex-col gap-2 rounded-xl bg-blush-wash p-4 text-left">
-          <p className="font-bold text-charcoal">{character.name}</p>
-          <dl className="grid grid-cols-2 gap-2 text-sm">
-            <div>
-              <dt className="text-pencil-gray">属性</dt>
-              <dd>{ATTRIBUTE_LABELS[character.attribute]}</dd>
-            </div>
-            <div>
-              <dt className="text-pencil-gray">レアリティ</dt>
-              <dd>{character.rarity}</dd>
-            </div>
-          </dl>
+        <div className="flex w-full items-center gap-4 rounded-xl bg-blush-wash p-4 text-left">
+          <PoopmFigure
+            appearance={appearanceForCharacter(character.id)}
+            facing="front"
+            motion="idle"
+            label={character.name}
+            className="h-24 w-24 shrink-0"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-charcoal">{character.name}</p>
+            <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <dt className="text-pencil-gray">属性</dt>
+                <dd>{ATTRIBUTE_LABELS[character.attribute]}</dd>
+              </div>
+              <div>
+                <dt className="text-pencil-gray">レアリティ</dt>
+                <dd>{character.rarity}</dd>
+              </div>
+            </dl>
+          </div>
         </div>
       ) : (
         <p className={`text-sm ${mutedTextClass}`}>
           {result.usedMealLog
             ? "今回は仲間になりませんでした。仲間化抽選は確定済みのため、再抽選はできません。"
-            : "この回は仲間になりません。食事写真を使わないバトルでは、仲間化抽選は行いません。"}
+            : "この回は仲間になりません。食事ログがないと、仲間化抽選は行いません。"}
         </p>
       )}
 

@@ -9,6 +9,8 @@ import { captionTextClass, primaryButtonClass, secondaryButtonClass } from "@/li
 
 type MealPhotoPickerProps = {
   error?: string;
+  autoOpen?: boolean;
+  selectLabel?: string;
   hasPhoto?: boolean;
   onPhotoCleared?: () => void;
   onPhotoSelected: (photo: File) => void;
@@ -29,11 +31,25 @@ function getCameraMessage(status: MealCameraStatus) {
 }
 
 /** 端末カメラ撮影とファイル選択を同じ検証ルールでフォームへ渡す。 */
-export function MealPhotoPicker({ error, hasPhoto = false, onPhotoCleared, onPhotoSelected, onValidationError }: MealPhotoPickerProps) {
+export function MealPhotoPicker({
+  error,
+  autoOpen = false,
+  selectLabel = "ファイルを選択する",
+  hasPhoto = false,
+  onPhotoCleared,
+  onPhotoSelected,
+  onValidationError,
+}: MealPhotoPickerProps) {
   const inputId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { stream, status, start, stop } = useMealCamera();
   const cameraMessage = getCameraMessage(status);
+
+  useEffect(() => {
+    if (!autoOpen) return;
+    inputRef.current?.click();
+  }, [autoOpen]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -94,16 +110,18 @@ export function MealPhotoPicker({ error, hasPhoto = false, onPhotoCleared, onPho
           </button>
         )}
         <label htmlFor={inputId} className="meal-photo-button meal-photo-button-primary">
-          <ImagePlus aria-hidden="true" className="size-4" />{hasPhoto ? "写真を変更" : "写真を選ぶ"}
+          <ImagePlus aria-hidden="true" className="size-4" />{selectLabel === "ファイルを選択する" ? (hasPhoto ? "写真を変更" : "写真を選ぶ") : selectLabel}
         </label>
         {hasPhoto && onPhotoCleared && <button type="button" onClick={onPhotoCleared} className="meal-text-action"><Trash2 aria-hidden="true" className="size-4" />削除</button>}
         <input
+          ref={inputRef}
           id={inputId}
           type="file"
           accept={MEAL_PHOTO_ACCEPT}
           className="sr-only"
           onChange={(event) => {
             const photo = event.currentTarget.files?.[0];
+            event.currentTarget.value = "";
             if (photo) selectPhoto(photo);
           }}
         />

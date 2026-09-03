@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { planSpecialMotion } from "@/features/battle/special-motion";
+import { readBattleSpeed } from "@/features/battle/battle-speed";
 import {
   createStrainListener,
   inspectMotionPermission,
@@ -16,6 +17,7 @@ import { useBattleStore } from "@/stores/battle-store";
 export function useSpecialMotion() {
   const [permission, setPermission] = useState<MotionPermission>("unsupported");
   const [reason, setReason] = useState<string | null>(null);
+  const [strainProgress, setStrainProgress] = useState(0);
   const listenerRef = useRef<ReturnType<typeof createStrainListener> | null>(null);
   const playerStance = useBattleStore((state) => state.playerStance);
 
@@ -24,6 +26,10 @@ export function useSpecialMotion() {
       host: window,
       onStrain: () => {
         useBattleStore.getState().fireSpecial();
+      },
+      onProgress: (progress) => {
+        const next = Math.round(progress.ratio * 100) / 100;
+        setStrainProgress((prev) => (prev === next ? prev : next));
       },
     });
     listenerRef.current = listener;
@@ -47,7 +53,7 @@ export function useSpecialMotion() {
     const apply = (next: MotionPermission) => {
       setPermission(next);
       setReason(motionSkipReason(next, env));
-      useBattleStore.getState().beginSpecial();
+      useBattleStore.getState().beginSpecial(readBattleSpeed(window.localStorage));
       const plan = planSpecialMotion({
         permission: next,
         enteredSpecial: useBattleStore.getState().playerStance === "special",
@@ -71,5 +77,5 @@ export function useSpecialMotion() {
     apply(inspected);
   }, []);
 
-  return { permission, reason, activateSpecial };
+  return { permission, reason, strainProgress, activateSpecial };
 }

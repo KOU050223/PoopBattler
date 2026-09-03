@@ -2,10 +2,11 @@ import {
   GUARD_COOLDOWN_MS,
   GUARD_DURATION_MS,
   PARTY_SIZE,
-  PLAYER_SPECIAL_CHARGE_MS,
   SPECIAL_GAUGE_MAX,
   SWITCH_STUN_MS,
   msToTicks,
+  specialChargeTicks,
+  type BattleSpeed,
   type BattleStance,
 } from "./battle.constants";
 import { dealDamage } from "./battle-runtime";
@@ -60,9 +61,13 @@ export function applySwitchMember(
   }
 
   const next = cloneBattleSnapshot(state);
+  // 退場する側のゲージはリセット（仕様: 交代でゲージ空）
+  next.benchGauges[state.activeIndex] = 0;
   next.activeIndex = partyIndex;
   next.switchStunTicks = msToTicks(SWITCH_STUN_MS);
-  next.playerGauge = 0;
+  // ベンチで溜まったゲージを引き継ぐ
+  next.playerGauge = next.benchGauges[partyIndex];
+  next.benchGauges[partyIndex] = 0;
   next.playerSpecialChargeTicks = 0;
   next.playerGuardRemainingTicks = 0;
   if (next.playerStance === "guard") {
@@ -72,7 +77,10 @@ export function applySwitchMember(
   return next;
 }
 
-export function applyBeginSpecial(state: BattleSnapshot): BattleSnapshot {
+export function applyBeginSpecial(
+  state: BattleSnapshot,
+  speed: BattleSpeed = 1,
+): BattleSnapshot {
   if (
     !isFighting(state) ||
     state.switchStunTicks > 0 ||
@@ -88,7 +96,7 @@ export function applyBeginSpecial(state: BattleSnapshot): BattleSnapshot {
     next.playerGuardRemainingTicks = 0;
   }
   next.playerStance = "special";
-  next.playerSpecialChargeTicks = msToTicks(PLAYER_SPECIAL_CHARGE_MS);
+  next.playerSpecialChargeTicks = specialChargeTicks(speed);
   return next;
 }
 

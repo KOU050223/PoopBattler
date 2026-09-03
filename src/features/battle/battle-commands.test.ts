@@ -8,12 +8,12 @@ import {
   GUARD_DURATION_MS,
   INITIAL_ENEMY_HP,
   INITIAL_MEMBER_HP,
-  PLAYER_SPECIAL_CHARGE_MS,
   SPECIAL_GAUGE_MAX,
   SWITCH_STUN_MS,
   computeAttackDamage,
   msToTicks,
   shouldAutoAttack,
+  specialChargeTicks,
 } from "./battle.constants";
 import {
   applyBeginSpecial,
@@ -140,15 +140,13 @@ describe("必殺", () => {
     expect(rejected.playerSpecialChargeTicks).toBe(0);
   });
 
-  it("準備中に発射すると定数倍率のダメージになり、未発射ならたたかえへ戻る", () => {
+  it("準備中に発射すると定数倍率のダメージになり、未発射なら自動攻撃へ戻る", () => {
     const charged = applyBeginSpecial({
       ...applyBattleStart(startInput),
       playerGauge: SPECIAL_GAUGE_MAX,
     });
     expect(charged.playerStance).toBe("special");
-    expect(charged.playerSpecialChargeTicks).toBe(
-      msToTicks(PLAYER_SPECIAL_CHARGE_MS),
-    );
+    expect(charged.playerSpecialChargeTicks).toBe(specialChargeTicks(1));
 
     const fired = applyFireSpecial(charged);
     const expected = computeAttackDamage({
@@ -162,7 +160,7 @@ describe("必殺", () => {
     expect(fired.playerGauge).toBe(0);
     expect(fired.playerStance).toBe("fight");
 
-    const expired = tickTimes(charged, msToTicks(PLAYER_SPECIAL_CHARGE_MS));
+    const expired = tickTimes(charged, specialChargeTicks(1));
     expect(expired.playerStance).toBe("fight");
     expect(expired.enemy?.hp).toBe(INITIAL_ENEMY_HP);
     expect(expired.playerSpecialChargeTicks).toBe(0);
@@ -172,6 +170,15 @@ describe("必殺", () => {
     const started = applyBattleStart(startInput);
     const rejected = applyFireSpecial(started);
     expect(rejected.enemy?.hp).toBe(INITIAL_ENEMY_HP);
+  });
+
+  it("倍速では準備ティックを伸ばして実時間を保つ", () => {
+    const charged = applyBeginSpecial(
+      { ...applyBattleStart(startInput), playerGauge: SPECIAL_GAUGE_MAX },
+      2,
+    );
+    expect(charged.playerSpecialChargeTicks).toBe(specialChargeTicks(2));
+    expect(specialChargeTicks(2)).toBeGreaterThan(specialChargeTicks(1));
   });
 });
 

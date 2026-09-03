@@ -85,7 +85,9 @@ export function MealSaveConfirmationModal({
             className="w-full max-w-sm rounded-2xl border-2 border-faded-gray bg-paper-white p-6 shadow-raised-gray"
           >
             <h2 id="meal-confirmation-title" className="font-bold text-charcoal">この内容で保存しますか？</h2>
-            <p className={`mt-2 ${mutedTextClass}`}>{tagLabel}として記録します。</p>
+            <p className={`mt-2 ${mutedTextClass}`}>
+              {tagLabel}として記録します。
+            </p>
             <div className="mt-5 flex gap-3">
               <button type="button" onClick={onCancel} disabled={isSaving} className={secondaryButtonClass}>戻る</button>
               <button type="button" onClick={onConfirm} disabled={isSaving} className={primaryButtonClass}>{isSaving ? "保存中…" : "保存する"}</button>
