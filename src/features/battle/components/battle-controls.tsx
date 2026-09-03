@@ -104,8 +104,16 @@ export function BattleControls({
             return null;
           }
           const down = member.hp <= 0;
-          const hpRatio = member.maxHp > 0 ? Math.max(0, member.hp / member.maxHp) : 0;
-          const gaugeRatio = benchGauges[index] / SPECIAL_GAUGE_MAX;
+          const hpRatio = member.maxHp > 0
+            ? Math.max(0, Math.min(1, member.hp / member.maxHp))
+            : 0;
+          const gaugeRatio = Math.max(
+            0,
+            Math.min(1, benchGauges[index] / SPECIAL_GAUGE_MAX),
+          );
+          const hpFillColor = down
+            ? "var(--color-faded-gray)"
+            : "var(--color-flush-pink)";
           return (
             <button
               key={`${member.characterId}-${index}`}
@@ -120,8 +128,11 @@ export function BattleControls({
                   <span className="w-5 shrink-0 text-[10px] text-pencil-gray">HP</span>
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-blush-wash">
                     <div
-                      className={`h-full rounded-full ${down ? "bg-faded-gray" : "bg-flush-pink"}`}
-                      style={{ width: `${hpRatio * 100}%` }}
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${hpRatio * 100}%`,
+                        backgroundColor: hpFillColor,
+                      }}
                     />
                   </div>
                 </div>
@@ -129,8 +140,11 @@ export function BattleControls({
                   <span className="w-5 shrink-0 text-[10px] text-pencil-gray">必</span>
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-blush-wash">
                     <div
-                      className="h-full rounded-full bg-night-ink"
-                      style={{ width: `${gaugeRatio * 100}%` }}
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${gaugeRatio * 100}%`,
+                        backgroundColor: "var(--color-night-ink)",
+                      }}
                     />
                   </div>
                 </div>
