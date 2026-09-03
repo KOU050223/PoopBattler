@@ -10,7 +10,7 @@ import { MealSaveConfirmationModal } from "./meal-save-confirmation-modal";
 import { MealTagSelector } from "./meal-tag-selector";
 import { deleteMealPhoto, isMealPhotoStorageError, saveMealPhoto } from "@/features/meal/meal-photo-storage";
 import { type MealLogDraft, type MealLogSaveResult, type MealTag } from "@/features/meal/meal.types";
-import { captionTextClass, fieldClass } from "@/lib/ui-classes";
+import { captionTextClass, fieldClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type FieldErrors = Partial<Record<"photo" | "tag" | "eatenAt" | "save", string>>;
 
@@ -19,6 +19,11 @@ type MealLogFormProps = {
    * 保存先は呼び出し側が提供する。フォームはSupabaseを直接参照しない。
    */
   onSave: (draft: MealLogDraft) => Promise<MealLogSaveResult>;
+  /** 戦闘後など、食事を残さずに先へ進むとき。未指定ならスキップボタンは出さない。 */
+  onSkip?: () => void | Promise<void>;
+  skipLabel?: string;
+  autoOpenPicker?: boolean;
+  refreshOnSuccess?: boolean;
 };
 
 function currentLocalDateTime() {
@@ -31,7 +36,13 @@ function compactDateTime(value: string) {
   return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
 
-export function MealLogForm({ onSave }: MealLogFormProps) {
+export function MealLogForm({
+  onSave,
+  onSkip,
+  skipLabel = "記録せずに完了する",
+  autoOpenPicker = false,
+  refreshOnSuccess = true,
+}: MealLogFormProps) {
   const router = useRouter();
   const tagGroupId = useId();
   const previewUrlRef = useRef<string | null>(null);
@@ -43,7 +54,9 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isConfirming, setIsConfirming] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const busy = isSaving || isSkipping;
 
   useEffect(() => {
     return () => {
@@ -100,7 +113,7 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
       setIsConfirming(false);
       setIsComplete(true);
       resetForm();
-      router.refresh();
+      if (refreshOnSuccess) router.refresh();
     } catch (error) {
       if (photoId) await deleteMealPhoto(photoId).catch(() => undefined);
       setErrors({
@@ -129,6 +142,7 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
           </div>
         )}
         <MealPhotoPicker
+          autoOpen={autoOpenPicker}
           error={errors.photo}
           hasPhoto={Boolean(photo)}
           onPhotoCleared={() => {
@@ -176,9 +190,23 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
       {errors.save && <p role="alert" className="text-sm text-red-600">{errors.save}</p>}
       {isComplete && <p role="status" className="meal-success-feedback"><CheckCircle2 aria-hidden="true" className="size-4" />記録しました。次のモンスターが楽しみです。</p>}
       <div className="meal-cta-wrap">
-        <button type="submit" className="meal-save-button"><Sparkles aria-hidden="true" className="size-[18px]" />この食事を記録する</button>
+        <button type="submit" disabled={busy} className="meal-save-button"><Sparkles aria-hidden="true" className="size-[18px]" />この食事を記録する</button>
         <p>この食事が、次のモンスターにつながります。</p>
       </div>
+      {onSkip ? (
+        <button
+          type="button"
+          disabled={busy}
+          className={secondaryButtonClass}
+          onClick={() => {
+            setIsSkipping(true);
+            setErrors({});
+            void Promise.resolve(onSkip()).finally(() => setIsSkipping(false));
+          }}
+        >
+          {isSkipping ? "送信しています…" : skipLabel}
+        </button>
+      ) : null}
 
       {tag && (
         <MealSaveConfirmationModal

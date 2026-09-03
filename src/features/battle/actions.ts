@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 
 import { PARTY_SIZE } from "./battle.constants";
 import type { StartBattleResult } from "./battle.types";
+import { messageForCompleteBattleError } from "./complete-battle-error";
 import {
   startBattle,
   type PartySnapshotMember,
@@ -202,7 +203,12 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     || (result.character_id !== null && typeof result.character_id !== "string")
     || (result.companionship_result !== Boolean(result.character_id))
   ) {
-    return { success: false, message: "バトルの完了に失敗しました。もう一度お試しください。" };
+    console.error("[complete_battle rpc]", error?.message ?? error, {
+      battleId: input.battleId,
+      code: error?.code,
+      rowCount: Array.isArray(data) ? data.length : data == null ? 0 : "non-array",
+    });
+    return { success: false, message: messageForCompleteBattleError(error) };
   }
 
   const { data: battle, error: battleError } = await supabase
@@ -215,6 +221,11 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
   if (battleError || !battle?.completed_at) {
     return { success: false, message: "バトル結果の取得に失敗しました。もう一度お試しください。" };
   }
+
+  const { count: mealLogCount } = await supabase
+    .from("meal_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
 
   let acquiredCharacter: Extract<CompleteBattleResult, { success: true }> ["acquiredCharacter"] = null;
   if (result.character_id) {
@@ -239,7 +250,7 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     companionshipResult: result.companionship_result,
     acquiredCharacter,
     completedAt: battle.completed_at,
-    // 冪等な再実行でも、リクエスト値ではなく確定済みバトルの値で表示を決める。
-    usedMealLog: battle.meal_log_id !== null,
+    // 抽選したかは紐付けではなく、本人の食事ログ件数で決まる。
+    usedMealLog: (mealLogCount ?? 0) > 0,
   };
 }
