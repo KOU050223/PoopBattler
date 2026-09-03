@@ -31,6 +31,13 @@ insert into rls_fixture (key, id)
 values
   ('user_a', gen_random_uuid()),
   ('user_b', gen_random_uuid()),
+  -- 個体ステータス検査の専用ユーザー（Issue #73）。他のケースが作る
+  -- activeバトルや所有行を引き継がないよう、独立した1人を用意する。
+  ('user_c', gen_random_uuid()),
+  ('uc_c1', gen_random_uuid()),
+  ('uc_c2', gen_random_uuid()),
+  ('uc_c3', gen_random_uuid()),
+  ('uc_b1', gen_random_uuid()),
   ('meal_a', gen_random_uuid()),
   ('meal_b', gen_random_uuid()),
   ('meal_rpc_a', gen_random_uuid()),
@@ -56,14 +63,15 @@ select
   now(),
   now()
 from rls_fixture f
-where f.key in ('user_a', 'user_b');
+where f.key in ('user_a', 'user_b', 'user_c');
 
 -- トリガーが実際に発火したかを先に確認する。ここが通らないと、
 -- 以降の「他人の行が見えない」は単に行が無いだけになってしまう。
 do $$
 begin
   if (select count(*) from public.profiles
-      where id in (pg_temp.fixture('user_a'), pg_temp.fixture('user_b'))) <> 2 then
+      where id in (pg_temp.fixture('user_a'), pg_temp.fixture('user_b'),
+                   pg_temp.fixture('user_c'))) <> 3 then
     raise exception 'FAIL: on_auth_user_created が profiles を作っていない';
   end if;
 end;
@@ -89,10 +97,27 @@ values
   (pg_temp.fixture('user_a'), pg_temp.fixture('battle_a'), 4, 'normal', 'brown', 'easy'),
   (pg_temp.fixture('user_b'), pg_temp.fixture('battle_b'), 3, 'small', 'yellow', 'normal');
 
-insert into public.user_characters (user_id, character_id, acquired_from_battle_id)
+-- 3値は NOT NULL かつ default 無し。個体ごとに違う値を入れて、
+-- 「同じ character_id でも別値になりうる」ことを検査データでも表す（Issue #73）。
+insert into public.user_characters (user_id, character_id, acquired_from_battle_id, hp, power, speed)
 values
-  (pg_temp.fixture('user_a'), 'curry-poop', pg_temp.fixture('battle_a')),
-  (pg_temp.fixture('user_b'), 'meat-poop', pg_temp.fixture('battle_b'));
+  (pg_temp.fixture('user_a'), 'curry-poop', pg_temp.fixture('battle_a'), 260, 24, 18),
+  (pg_temp.fixture('user_b'), 'meat-poop', pg_temp.fixture('battle_b'), 210, 16, 25);
+
+-- 他人（B）の個体。IDが漏れても選出できないことの検査に使う。
+insert into public.user_characters (id, user_id, character_id, hp, power, speed)
+values
+  (pg_temp.fixture('uc_b1'), pg_temp.fixture('user_b'), 'meat-poop', 999, 99, 99);
+
+-- user_c は同じ character_id を2体持つ。同じ種族でも別個体なら別の3値になる、
+-- という Issue #73 の要点を検査データそのもので表す。
+-- クライアントは user_characters へ INSERT できないため、ここで（RLS適用前の
+-- superuser として）用意する。
+insert into public.user_characters (id, user_id, character_id, hp, power, speed)
+values
+  (pg_temp.fixture('uc_c1'), pg_temp.fixture('user_c'), 'curry-poop', 260, 24, 18),
+  (pg_temp.fixture('uc_c2'), pg_temp.fixture('user_c'), 'curry-poop', 300, 30, 12),
+  (pg_temp.fixture('uc_c3'), pg_temp.fixture('user_c'), 'meat-poop', 210, 16, 25);
 
 -- ---------------------------------------------------------------------------
 -- 検査用ヘルパー
@@ -371,6 +396,261 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- 個体ごとの HP / Power / Speed（Issue #73）
+-- ---------------------------------------------------------------------------
+-- 通るケース（個体差が出る・開始時の値がスナップショットに載る）と
+-- 落ちるケース（戦っても3値が変わらない・他人の個体は読めない）を同じ実行で出す。
+--
+-- 育成は無い。3値は仲間化した瞬間に確定し、以後どのバトルでも変わらない。
+--
+-- 専用の user_c を使う。他のケースが作った activeバトルや所有行を引き継ぐと、
+-- start_battle が再開扱いになってスナップショットが空のまま検査を通ってしまう。
+do $$
+declare
+  b uuid := pg_temp.fixture('user_b');
+  c uuid := pg_temp.fixture('user_c');
+  uc1 uuid := pg_temp.fixture('uc_c1');
+  uc2 uuid := pg_temp.fixture('uc_c2');
+  uc3 uuid := pg_temp.fixture('uc_c3');
+  -- become の後は rls_fixture を読めないので、ここで取っておく。
+  others_uc uuid := pg_temp.fixture('uc_b1');
+  started record;
+  before_row public.user_characters%rowtype;
+  after_row public.user_characters%rowtype;
+  battle_id uuid;
+  snapshot jsonb;
+  stats_before jsonb;
+  owned_count_before bigint;
+begin
+  perform pg_temp.become(c);
+
+  -- 同じ character_id でも個体ごとに別の3値になる ---------------------------
+  perform pg_temp.expect(
+    '同じ character_id を2体持ち、それぞれ別の3値になる',
+    (select count(*) = 2 from public.user_characters
+      where user_id = c and character_id = 'curry-poop')
+    -- 同じ種族の2体が別の3値であること（他の種族は数に入れない）。
+    and (select count(distinct (hp, power, speed)) = 2
+      from public.user_characters
+      where user_id = c and character_id = 'curry-poop'),
+    true);
+
+  select * into before_row from public.user_characters where id = uc1;
+
+  -- 所持個体を選出して開始すると、その行の3値がスナップショットに載る --------
+  select * into started from public.start_battle(array[uc1]);
+  battle_id := started.battle_id;
+  snapshot := started.party_snapshot;
+
+  perform pg_temp.expect(
+    'start_battle は新規バトルとして開始する（再開ではない）',
+    started.resumed = false,
+    true);
+  perform pg_temp.expect(
+    'start_battle は選出した所持個体の3値をスナップショットに載せる',
+    jsonb_array_length(snapshot) = 1
+      and (snapshot -> 0 ->> 'user_character_id')::uuid = uc1
+      and (snapshot -> 0 ->> 'hp')::integer = before_row.hp
+      and (snapshot -> 0 ->> 'power')::integer = before_row.power
+      and (snapshot -> 0 ->> 'speed')::integer = before_row.speed,
+    true);
+  perform pg_temp.expect(
+    'start_battle は敵の3値もサーバー側で確定させる',
+    started.enemy_hp > 0 and started.enemy_power > 0 and started.enemy_speed > 0,
+    true);
+
+  -- 同じIDを重ねても1体分にしかならない ------------------------------------
+  -- 1体の高ステータス個体で3枠を埋め、3体分の耐久を得る経路を塞ぐ。
+  -- ここは開始したバトルを畳んでから次の検査へ進む。
+  perform public.complete_battle(battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+
+  declare
+    dup_started record;
+  begin
+    select * into dup_started
+    from public.start_battle(array[uc1, uc1, uc1]);
+    perform pg_temp.expect(
+      '同じ個体IDを3回渡しても1体分にしかならない',
+      jsonb_array_length(dup_started.party_snapshot) = 1
+        and (dup_started.party_snapshot -> 0 ->> 'user_character_id')::uuid = uc1,
+      true);
+    perform public.complete_battle(dup_started.battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+
+    -- 重複を混ぜても、実在する3体はきちんと3体とも選べる。
+    -- 重複排除より先に3体で切ると、ここが2体に減って落ちる。
+    select * into dup_started
+    from public.start_battle(array[uc1, uc1, uc2, uc3]);
+    perform pg_temp.expect(
+      '重複を混ぜても別個体3体はすべて選出される',
+      jsonb_array_length(dup_started.party_snapshot) = 3,
+      true);
+    perform public.complete_battle(dup_started.battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+  end;
+
+  -- 再開の検査のためにバトルを取り直す。
+  select * into started from public.start_battle(array[uc1]);
+  battle_id := started.battle_id;
+  snapshot := started.party_snapshot;
+
+  -- 再開では、渡された選出を無視して保存済みのパーティを返す ----------------
+  -- ここを見ないと、劣勢になったところで開始を呼び直し、無傷の別個体へ
+  -- 差し替えられる。uc2 を渡しても uc1 のままであることを見る。
+  declare
+    resumed_started record;
+  begin
+    select * into resumed_started from public.start_battle(array[uc2]);
+    perform pg_temp.expect(
+      'start_battle 再開は渡された選出を無視して同じバトルを返す',
+      resumed_started.resumed = true
+        and resumed_started.battle_id = battle_id,
+      true);
+    perform pg_temp.expect(
+      'start_battle 再開でパーティを別個体へ差し替えられない',
+      resumed_started.party_snapshot = snapshot
+        and (resumed_started.party_snapshot -> 0 ->> 'user_character_id')::uuid = uc1,
+      true);
+  end;
+
+  -- 勝利確定で、出していた所持個体だけが伸びる ------------------------------
+  perform public.complete_battle(battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+
+  select * into after_row from public.user_characters where id = uc1;
+
+  -- 育成が無いことの本体。出して勝っても3値は1も動かない。
+  perform pg_temp.expect(
+    '出して戦っても所持個体の3値は変わらない',
+    after_row.hp = before_row.hp
+      and after_row.power = before_row.power
+      and after_row.speed = before_row.speed,
+    true);
+  perform pg_temp.expect(
+    '出していない所持個体も変わらない',
+    (select hp = 300 and power = 30 and speed = 12
+      from public.user_characters where id = uc2),
+    true);
+
+  -- 再実行しても値が動かない ------------------------------------------------
+  perform public.complete_battle(battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+  perform pg_temp.expect(
+    'complete_battle を再実行しても3値は変わらない',
+    (select hp = after_row.hp and power = after_row.power and speed = after_row.speed
+      from public.user_characters where id = uc1),
+    true);
+
+  -- レンタルで戦っても所有行は増えない ---------------------------------------
+  -- 選出IDを渡さずに開始する。所有行の数も3値も、前後で一切変わらない。
+  select count(*) into owned_count_before
+  from public.user_characters where user_id = c;
+  select jsonb_agg(jsonb_build_object('id', id, 'hp', hp, 'power', power, 'speed', speed) order by id)
+  into stats_before
+  from public.user_characters where user_id = c;
+
+  select * into started from public.start_battle(array[]::uuid[]);
+
+  perform pg_temp.expect(
+    'レンタルのみの開始はスナップショットが空になる',
+    jsonb_array_length(started.party_snapshot) = 0,
+    true);
+
+  perform public.complete_battle(started.battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+
+  -- 食事ログを渡していないので仲間化は起きない = 所有行は増えない。
+  perform pg_temp.expect(
+    'レンタルで戦っても所有行が増えない',
+    (select count(*) = owned_count_before from public.user_characters where user_id = c),
+    true);
+  perform pg_temp.expect(
+    'レンタルで戦っても所持個体の3値が変わらない',
+    (select jsonb_agg(jsonb_build_object('id', id, 'hp', hp, 'power', power, 'speed', speed) order by id)
+      from public.user_characters where user_id = c) = stats_before,
+    true);
+
+  -- 他人の個体は選出も参照もできない ----------------------------------------
+  perform pg_temp.expect(
+    '他人の個体のステータスは読めない',
+    (select count(*) = 0 from public.user_characters where user_id = b),
+    true);
+
+  -- 他人の個体IDを渡しても選出されない --------------------------------------
+  -- 行IDはRLSで読めないが、漏洩や推測を想定して「渡されても載らない」ことを見る。
+  -- エラーにはせず単に落とす（IDの存在有無を読み取らせないため）。
+  select * into started from public.start_battle(array[others_uc]);
+  perform pg_temp.expect(
+    '他人の個体IDを渡してもスナップショットに載らない',
+    jsonb_array_length(started.party_snapshot) = 0,
+    true);
+
+  -- activeバトルを残すと後続のケースが引き継ぐ。クライアントは
+  -- battle_results を直接UPDATEできないので、RPCで畳む。
+  perform public.complete_battle(started.battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+end;
+$$;
+
+-- 初期値の抽選: レアリティで基準値と振れ幅が上がること
+-- ---------------------------------------------------------------------------
+-- 育成が無いぶん、引いた瞬間の値が全て。抽選式そのものを直接確かめる。
+-- 乱数を含むので1回の値ではなく、多数回の分布が設計どおりかを見る。
+reset role;
+do $$
+declare
+  n constant integer := 400;
+  common_avg numeric;
+  legendary_avg numeric;
+  common_min integer;
+  common_max integer;
+  legendary_min integer;
+begin
+  -- マイグレーションと同じ式（common: 基準20・振れ幅4 / legendary: 基準38・振れ幅10）
+  select avg(v), min(v), max(v) into common_avg, common_min, common_max
+  from (
+    select greatest(1, 20 + (floor(random() * (4 * 2 + 1))::integer - 4)) as v
+    from generate_series(1, n)
+  ) t;
+
+  select avg(v), min(v) into legendary_avg, legendary_min
+  from (
+    select greatest(1, 38 + (floor(random() * (10 * 2 + 1))::integer - 10)) as v
+    from generate_series(1, n)
+  ) t;
+
+  if not (common_avg between 18 and 22) then
+    raise exception 'FAIL: common の平均が基準20から外れている（%）', common_avg;
+  end if;
+  if not (legendary_avg between 36 and 40) then
+    raise exception 'FAIL: legendary の平均が基準38から外れている（%）', legendary_avg;
+  end if;
+  -- 基準値を上げたので、数値域が重ならない（低レアが高レアに届かない）。
+  if common_max >= legendary_min then
+    raise exception 'FAIL: common の上限が legendary の下限に届いている（% >= %）',
+      common_max, legendary_min;
+  end if;
+  -- 同じレアリティの中では振れる。ここが潰れると引き直す意味が無くなる。
+  if common_min = common_max then
+    raise exception 'FAIL: common の個体値が振れていない（常に %）', common_min;
+  end if;
+
+  raise notice 'ok: レアリティで基準値が上がり、同レア内では個体値が振れる';
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 他人の個体は、IDを渡されても値が変わっていないこと。
+-- 直前のブロックはRLS配下でB行を読めない。ロールを戻して、RLS適用前の視点で見る。
+reset role;
+do $$
+begin
+  if not exists (
+    select 1 from public.user_characters
+    where id = pg_temp.fixture('uc_b1')
+      and hp = 999 and power = 99 and speed = 99
+  ) then
+    raise exception 'FAIL: 他人の個体IDを渡したあとにB個体の3値が変わっている';
+  end if;
+  raise notice 'ok: 他人の個体IDを渡してもB個体の3値は変わらない';
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 検査本体: ユーザーAのセッションから、Aの行とBの行を突く
 -- ---------------------------------------------------------------------------
 do $$
@@ -520,6 +800,16 @@ begin
   perform pg_temp.expect(
     'user_characters UPDATE 本人でも拒否',
     pg_temp.allowed(format('update public.user_characters set character_id = ''golden-poop'' where user_id = %L', a)),
+    false);
+  -- 個体ステータスもクライアントからは書けない。成長は definer RPC だけが行う
+  -- ため、UPDATE ポリシーも UPDATE 権限も足していない（Issue #73）。
+  perform pg_temp.expect(
+    'user_characters HP を本人でもUPDATEできない',
+    pg_temp.allowed(format('update public.user_characters set hp = 9999 where user_id = %L', a)),
+    false);
+  perform pg_temp.expect(
+    'user_characters Power / Speed を本人でもUPDATEできない',
+    pg_temp.allowed(format('update public.user_characters set power = 9999, speed = 9999 where user_id = %L', a)),
     false);
 
   -- DELETE: 食事ログは本人だけが削除できる ----------------------------------

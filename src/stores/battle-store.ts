@@ -33,6 +33,10 @@ import type {
 
 export const BATTLE_STORE_NAME = "poop-battler.battle";
 
+// 個体ごとの HP / Power / Speed を持たせたときに 1 へ上げた（Issue #73）。
+// スナップショットの形が変わったら必ず上げる。
+export const BATTLE_STORE_VERSION = 1;
+
 const noopStorage: StateStorage = {
   getItem: () => null,
   setItem: () => {},
@@ -82,6 +86,11 @@ export const useBattleStore = create<BattleStore>()(
       name: BATTLE_STORE_NAME,
       storage: createJSONStorage(getBattleStateStorage),
       partialize: (state) => partializeBattleStore(state),
+      // 個体ステータス導入前の保存済みスナップショットには power / speed / maxHp が
+      // 無い。そのまま復元すると undefined を掛けて NaN のHPになり、
+      // 例外にもならず黙って壊れる。バージョンを上げて捨てる（Issue #73）。
+      version: BATTLE_STORE_VERSION,
+      migrate: () => IDLE_BATTLE_SNAPSHOT,
     },
   ),
 );

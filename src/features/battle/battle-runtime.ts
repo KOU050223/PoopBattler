@@ -1,12 +1,11 @@
 import {
   GUARD_COOLDOWN_MS,
-  INITIAL_ENEMY_HP,
-  INITIAL_MEMBER_HP,
   PARTY_SIZE,
   SPECIAL_GAUGE_MAX,
   SPECIAL_GAUGE_PER_TICK,
   SWITCH_STUN_MS,
   TIMEOUT_TICKS,
+  autoAttackPeriodTicks,
   computeAttackDamage,
   msToTicks,
   shouldAutoAttack,
@@ -18,6 +17,7 @@ import {
   isFighting,
 } from "./battle-snapshot";
 import type {
+  BattleCombatant,
   BattleParty,
   BattleSnapshot,
   BattleStartInput,
@@ -42,11 +42,16 @@ function resolveByRemainingHp(state: BattleSnapshot): BattleSnapshot {
     return { ...state, status: "defeated" };
   }
 
+  // 個体ごとにHPが違うので、生のHP合計を敵HPと比べると個体値がそのまま
+  // 勝敗の下駄になる。残量の割合で比べる（Issue #73 でしきい値が動いた点）。
   const partyHp = state.party.reduce((sum, member) => sum + member.hp, 0);
+  const partyMaxHp = state.party.reduce((sum, member) => sum + member.maxHp, 0);
+  const partyRatio = partyMaxHp > 0 ? partyHp / partyMaxHp : 0;
+  const enemyRatio = state.enemy.maxHp > 0 ? state.enemy.hp / state.enemy.maxHp : 0;
 
   return {
     ...state,
-    status: partyHp >= state.enemy.hp ? "completing" : "defeated",
+    status: partyRatio >= enemyRatio ? "completing" : "defeated",
     playerStance: "fight",
     enemyStance: "fight",
     playerSpecialChargeTicks: 0,
@@ -112,6 +117,9 @@ export function dealDamage(
 
   const member = next.party[next.activeIndex];
 
+  // 必殺は Power に乗せない。SPECIAL_BASE_DAMAGE (4) × 倍率 (10) のまま据え置き、
+  // Power が効くのは通常攻撃だけにする（Issue #73 / docs/battle.md）。
+  // Power を必殺にも掛けると倍率10がそのまま乗り、伸びが跳ね上がるため。
   if (source === "player") {
     next.enemy.hp = Math.max(
       0,
@@ -122,6 +130,7 @@ export function dealDamage(
           attackerStance: isSpecial ? "fight" : next.playerStance,
           defenderStance: next.enemyStance,
           isSpecial,
+          ...(isSpecial ? {} : { baseDamage: member.power }),
         }),
     );
   } else {
@@ -134,6 +143,7 @@ export function dealDamage(
           attackerStance: isSpecial ? "fight" : next.enemyStance,
           defenderStance: next.playerStance,
           isSpecial,
+          ...(isSpecial ? {} : { baseDamage: next.enemy.power }),
         }),
     );
   }
@@ -166,6 +176,19 @@ function decrementGuard(
   };
 }
 
+// 開幕のHPは個体のHP。最大値も同じ値を持ち回す（HPバーの分母になる）。
+function toCombatant(member: BattleStartInput["party"][number]): BattleCombatant {
+  return {
+    characterId: member.characterId,
+    attribute: member.attribute,
+    name: member.name,
+    hp: member.hp,
+    maxHp: member.hp,
+    power: member.power,
+    speed: member.speed,
+  };
+}
+
 export function applyBattleStart(input: BattleStartInput): BattleSnapshot {
   return {
     ...IDLE_BATTLE_SNAPSHOT,
@@ -175,12 +198,15 @@ export function applyBattleStart(input: BattleStartInput): BattleSnapshot {
       characterId: input.enemy.characterId,
       attribute: input.enemy.attribute,
       name: input.enemy.name,
-      hp: INITIAL_ENEMY_HP,
+      hp: input.enemy.hp,
+      maxHp: input.enemy.hp,
+      power: input.enemy.power,
+      speed: input.enemy.speed,
     },
     party: [
-      { ...input.party[0], hp: INITIAL_MEMBER_HP },
-      { ...input.party[1], hp: INITIAL_MEMBER_HP },
-      { ...input.party[2], hp: INITIAL_MEMBER_HP },
+      toCombatant(input.party[0]),
+      toCombatant(input.party[1]),
+      toCombatant(input.party[2]),
     ],
     activeIndex: 0,
     startedAt: input.now ?? Date.now(),
@@ -199,11 +225,20 @@ export function applyBattleTick(state: BattleSnapshot): BattleSnapshot {
   let next = cloneBattleSnapshot(state);
   next.elapsedTicks = (next.elapsedTicks ?? 0) + 1;
   const battleId = next.battleId ?? "";
+  // next は以降で再代入されるため、isFighting の絞り込みが効かない。
+  // 待ちティックの元になる Speed は、この tick の開始時点の値で固定する。
+  const playerSpeed = state.party[state.activeIndex].speed;
+  const enemySpeed = state.enemy.speed;
 
   if (
     next.switchStunTicks === 0 &&
     next.playerStance === "fight" &&
-    shouldAutoAttack(battleId, next.elapsedTicks, "player")
+    shouldAutoAttack(
+      battleId,
+      next.elapsedTicks,
+      "player",
+      autoAttackPeriodTicks(playerSpeed),
+    )
   ) {
     next = dealDamage(next, "player", false);
     if (next.status !== "active") {
@@ -214,7 +249,12 @@ export function applyBattleTick(state: BattleSnapshot): BattleSnapshot {
   const activeIndexBeforeEnemy = next.activeIndex;
   if (
     next.enemyStance === "fight" &&
-    shouldAutoAttack(battleId, next.elapsedTicks, "enemy")
+    shouldAutoAttack(
+      battleId,
+      next.elapsedTicks,
+      "enemy",
+      autoAttackPeriodTicks(enemySpeed),
+    )
   ) {
     next = dealDamage(next, "enemy", false);
     if (next.status !== "active") {
