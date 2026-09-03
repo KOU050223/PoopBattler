@@ -7,6 +7,7 @@ import { MealLogImage } from "./meal-log-image";
 import { deleteMealPhoto, saveMealPhoto, validateMealPhoto } from "@/features/meal/meal-photo-storage";
 import type { MealLog } from "@/features/meal/actions";
 import { MEAL_TAGS } from "@/features/meal/meal.types";
+import { captionTextClass, dangerButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type MealLogListProps = {
   initialLogs: MealLog[];
@@ -105,25 +106,25 @@ export function MealLogList({ initialLogs, onDelete, onReplacePhoto }: MealLogLi
 
   return (
     <section aria-labelledby="saved-meal-logs" className="flex flex-col gap-4">
-      <h2 id="saved-meal-logs" className="text-lg font-semibold">保存済みの食事ログ</h2>
+      <h2 id="saved-meal-logs" className="text-[19px] leading-[1.4] font-bold text-charcoal">保存済みの食事ログ</h2>
       {message && <p role="alert" className="text-sm text-red-600">{message}</p>}
-      {cleanupPhotoId && <button type="button" onClick={() => void retryPhotoCleanup()} className="min-h-11 self-start rounded-md border border-zinc-300 px-3 text-sm dark:border-zinc-700">端末内画像の削除を再試行する</button>}
+      {cleanupPhotoId && <button type="button" onClick={() => void retryPhotoCleanup()} className={secondaryButtonClass}>端末内画像の削除を再試行する</button>}
       <input ref={replaceInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => void replacePhoto(event)} />
       {initialLogs.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-zinc-300 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">保存済みの食事ログはありません。</p>
+        <p className={`rounded-xl border-2 border-dashed border-faded-gray p-4 ${captionTextClass}`}>保存済みの食事ログはありません。</p>
       ) : (
         <ul className="flex flex-col gap-4">
           {initialLogs.map((mealLog) => (
-          <li key={mealLog.id} className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+          <li key={mealLog.id} className="flex flex-col gap-3 rounded-xl border-2 border-faded-gray bg-paper-white p-4">
             <MealLogImage photoId={mealLog.photoId} />
             <div>
-              <p className="font-medium">{getTagLabel(mealLog.tag)}</p>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">{formatEatenAt(mealLog.eatenAt)}</p>
+              <p className="font-bold text-charcoal">{getTagLabel(mealLog.tag)}</p>
+              <p className={captionTextClass}>{formatEatenAt(mealLog.eatenAt)}</p>
               {mealLog.note && <p className="mt-2 text-sm">{mealLog.note}</p>}
             </div>
             <div className="flex gap-3">
-              <button type="button" disabled={pendingId === mealLog.id} onClick={() => { setSelectedLog(mealLog); replaceInputRef.current?.click(); }} className="min-h-11 rounded-md border border-zinc-300 px-3 text-sm disabled:opacity-50 dark:border-zinc-700">写真を差し替える</button>
-              <button type="button" disabled={pendingId === mealLog.id} onClick={() => void deleteLog(mealLog)} className="min-h-11 rounded-md border border-red-300 px-3 text-sm text-red-700 disabled:opacity-50">削除する</button>
+              <button type="button" disabled={pendingId === mealLog.id} onClick={() => { setSelectedLog(mealLog); replaceInputRef.current?.click(); }} className={secondaryButtonClass}>写真を差し替える</button>
+              <button type="button" disabled={pendingId === mealLog.id} onClick={() => void deleteLog(mealLog)} className={dangerButtonClass}>削除する</button>
             </div>
           </li>
           ))}

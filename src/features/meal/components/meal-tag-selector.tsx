@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 
 import { MEAL_TAGS, type MealTag } from "@/features/meal/meal.types";
+import { stancePillClass } from "@/lib/ui-classes";
 
 type MealTagSelectorProps = {
   value: MealTag | "";
@@ -15,7 +16,7 @@ type MealTagSelectorProps = {
 export function MealTagSelector({ value, onChange, error, errorId }: MealTagSelectorProps) {
   return (
     <fieldset className="flex flex-col gap-3" aria-describedby={error ? errorId : undefined}>
-      <legend className="font-medium">食事タグ <span aria-hidden="true">*</span></legend>
+      <legend className="font-bold text-charcoal">食事タグ <span aria-hidden="true">*</span></legend>
       <div className="grid grid-cols-2 gap-2">
         {MEAL_TAGS.map((mealTag) => {
           const isSelected = value === mealTag.value;
@@ -25,7 +26,7 @@ export function MealTagSelector({ value, onChange, error, errorId }: MealTagSele
               key={mealTag.value}
               animate={{ scale: isSelected ? 1.02 : 1, y: isSelected ? -1 : 0 }}
               transition={{ type: "spring", stiffness: 500, damping: 25 }}
-              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-zinc-300 px-3 has-[:checked]:border-zinc-900 has-[:checked]:bg-zinc-100 dark:border-zinc-700 dark:has-[:checked]:border-zinc-100 dark:has-[:checked]:bg-zinc-900"
+              className={`flex cursor-pointer items-center justify-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-flush-pink ${stancePillClass(isSelected, false)}`}
             >
               <input
                 type="radio"
@@ -33,6 +34,7 @@ export function MealTagSelector({ value, onChange, error, errorId }: MealTagSele
                 value={mealTag.value}
                 checked={isSelected}
                 onChange={() => onChange(mealTag.value)}
+                className="peer sr-only"
               />
               {mealTag.label}
             </motion.label>

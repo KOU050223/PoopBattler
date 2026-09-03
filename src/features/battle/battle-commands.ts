@@ -119,6 +119,25 @@ export function applyMarkDefeated(state: BattleSnapshot): BattleSnapshot {
   return { ...state, status: "defeated" };
 }
 
+export function applyMarkCompleting(state: BattleSnapshot): BattleSnapshot {
+  if (!isFighting(state)) {
+    return state;
+  }
+
+  const next = cloneBattleSnapshot(state);
+  if (!next.enemy) {
+    return state;
+  }
+
+  next.enemy.hp = 0;
+  next.status = "completing";
+  next.playerStance = "fight";
+  next.enemyStance = "fight";
+  next.playerSpecialChargeTicks = 0;
+  next.enemySpecialTelegraphTicks = 0;
+  return next;
+}
+
 export function applySetBowelDraft(
   state: BattleSnapshot,
   draft: BowelDraft | null,

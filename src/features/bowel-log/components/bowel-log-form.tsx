@@ -12,6 +12,7 @@ import {
   type BowelLogDraft,
 } from "../bowel-log.types";
 import { useBattleStore } from "@/stores/battle-store";
+import { primaryButtonClass, stancePillClass } from "@/lib/ui-classes";
 
 type BowelLogFormProps = {
   /** 検証済みの4項目を、バトル/05から完了/02へ渡す。 */
@@ -56,10 +57,11 @@ function ChoiceField<T extends string | number>({
       aria-invalid={Boolean(error)}
       disabled={disabled}
     >
-      <legend className="font-medium">{label} <span aria-hidden="true">*</span></legend>
+      <legend className="font-bold text-charcoal">{label} <span aria-hidden="true">*</span></legend>
       <div className="grid grid-cols-3 gap-2">
         {options.map((option) => {
           const inputId = `${name}-${option.value}`;
+          const selected = value === option.value;
           return (
             <div key={option.value}>
               <input
@@ -67,13 +69,13 @@ function ChoiceField<T extends string | number>({
                 name={name}
                 type="radio"
                 value={option.value}
-                checked={value === option.value}
+                checked={selected}
                 onChange={() => onChange(option.value)}
                 className="peer sr-only"
               />
               <label
                 htmlFor={inputId}
-                className="flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-zinc-300 px-2 text-center text-sm peer-checked:border-zinc-900 peer-checked:bg-zinc-900 peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-zinc-900 peer-disabled:cursor-not-allowed peer-disabled:opacity-50 dark:border-zinc-700 dark:peer-checked:border-zinc-100 dark:peer-checked:bg-zinc-100 dark:peer-checked:text-black"
+                className={`flex items-center justify-center text-center peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-flush-pink peer-disabled:cursor-not-allowed peer-disabled:opacity-50 ${stancePillClass(selected, disabled)}`}
               >
                 {option.label}
               </label>
@@ -165,7 +167,7 @@ export function BowelLogForm({ onSubmit }: BowelLogFormProps) {
       />
 
       {errors.submit && <p role="alert" className="text-sm text-red-600">{errors.submit}</p>}
-      <button type="submit" disabled={isSubmitting} className="min-h-12 rounded-md bg-zinc-900 px-4 font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-black">
+      <button type="submit" disabled={isSubmitting} className={primaryButtonClass}>
         {isSubmitting ? "記録を準備しています…" : "次へ"}
       </button>
     </form>
