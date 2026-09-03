@@ -396,6 +396,7 @@ export function BattleScreen() {
           playerGauge={snapshot.playerGauge}
           playerGuardCooldownTicks={snapshot.playerGuardCooldownTicks}
           switchStunTicks={snapshot.switchStunTicks}
+          benchGauges={snapshot.benchGauges}
           onGuard={() => useBattleStore.getState().setStance("guard")}
           onSwitch={(index) => useBattleStore.getState().switchMember(index)}
           onDebugStrain={() => useBattleStore.getState().fireSpecial()}
