@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isBowelLog, type BowelLog } from "@/features/bowel-log/bowel-log.types";
+import type { Database } from "@/types/database.types";
 import { revalidatePath } from "next/cache";
 
 import type { StartBattleResult } from "./battle.types";
@@ -94,7 +95,12 @@ export type CompleteBattleResult =
       success: true;
       battleId: string;
       companionshipResult: boolean;
-      acquiredCharacterId: string | null;
+      acquiredCharacter: Pick<
+        Database["public"]["Tables"]["characters"]["Row"],
+        "id" | "name" | "attribute" | "rarity"
+      > | null;
+      completedAt: string;
+      usedMealLog: boolean;
     }
   | { success: false; message: string };
 
@@ -148,8 +154,33 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     || result.status !== "completed"
     || typeof result.companionship_result !== "boolean"
     || (result.character_id !== null && typeof result.character_id !== "string")
+    || (result.companionship_result !== Boolean(result.character_id))
   ) {
     return { success: false, message: "バトルの完了に失敗しました。もう一度お試しください。" };
+  }
+
+  const { data: battle, error: battleError } = await supabase
+    .from("battle_results")
+    .select("completed_at, meal_log_id")
+    .eq("id", input.battleId)
+    .eq("user_id", user.id)
+    .eq("status", "completed")
+    .maybeSingle();
+  if (battleError || !battle?.completed_at) {
+    return { success: false, message: "バトル結果の取得に失敗しました。もう一度お試しください。" };
+  }
+
+  let acquiredCharacter: Extract<CompleteBattleResult, { success: true }> ["acquiredCharacter"] = null;
+  if (result.character_id) {
+    const { data: character, error: characterError } = await supabase
+      .from("characters")
+      .select("id, name, attribute, rarity")
+      .eq("id", result.character_id)
+      .maybeSingle();
+    if (characterError || !character) {
+      return { success: false, message: "取得キャラクターの確認に失敗しました。もう一度お試しください。" };
+    }
+    acquiredCharacter = character;
   }
 
   revalidatePath("/battle");
@@ -160,6 +191,9 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     success: true,
     battleId: result.battle_id,
     companionshipResult: result.companionship_result,
-    acquiredCharacterId: result.character_id,
+    acquiredCharacter,
+    completedAt: battle.completed_at,
+    // 冪等な再実行でも、リクエスト値ではなく確定済みバトルの値で表示を決める。
+    usedMealLog: battle.meal_log_id !== null,
   };
 }
