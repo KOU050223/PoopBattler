@@ -53,7 +53,7 @@ Issue #99 の要件に沿って、バトル中に被ダメージ側の名前/HP�
 
 #### 変更の意図
 
-HP低下を検知したタイミングで被弾側の `hitFlashKey` をインクリメントする。`HpBar` がこのキーを受け取り、名前/HP表記とHPバー色を赤く点滅させる。
+HP低下を検知したタイミングで被弾側の `hitFlashKey` をインクリメントする。`HpBar` がこのキーを受け取り、名前/HP表記とHPバー色を赤く点滅させ、赤色が少し長く残るようにしている。
 
 #### 指摘事項
 
@@ -70,7 +70,7 @@ HP低下を検知したタイミングで被弾側の `hitFlashKey` をインク
 ## テスト確認
 
 - `npm run lint`: 通過
-- `npm test`: 37 files / 184 tests passed
+- `npm test`: 37 files / 191 tests passed
 - `npm run typecheck`: 通過
 - Next MCP `get_compilation_issues`: issuesなし
 - Next MCP `/battle` compile: issuesなし

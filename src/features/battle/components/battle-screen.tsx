@@ -63,18 +63,21 @@ function HpBar({
   const reduceMotion = useReducedMotion();
   const ratio = Math.max(0, Math.min(1, current / max));
   const fillClass = side === "enemy" ? "bg-night-ink" : "bg-flush-pink";
-  const fillColor = side === "enemy" ? "var(--color-night-ink)" : "var(--color-flush-pink)";
+  const fillColor = side === "enemy"
+    ? "var(--color-night-ink)"
+    : "var(--color-flush-pink)";
   const flashColor = "var(--color-danger-edge)";
   const textColor = "var(--color-pencil-gray)";
   const textFlash = reduceMotion
     ? [textColor, flashColor, textColor]
-    : [textColor, flashColor, textColor, flashColor, textColor];
+    : [textColor, flashColor, flashColor, textColor];
   const fillFlash = reduceMotion
     ? [fillColor, flashColor, fillColor]
-    : [fillColor, flashColor, fillColor, flashColor, fillColor];
+    : [fillColor, flashColor, flashColor, fillColor];
   const flashTransition = {
-    duration: scaleByBattleSpeed(reduceMotion ? 0.22 : 0.48, speed),
-    ease: "easeOut",
+    duration: scaleByBattleSpeed(reduceMotion ? 0.45 : 0.95, speed),
+    ease: "easeInOut" as const,
+    times: reduceMotion ? [0, 0.55, 1] : [0, 0.16, 0.72, 1],
   };
   return (
     <div className="flex w-full flex-col gap-1">

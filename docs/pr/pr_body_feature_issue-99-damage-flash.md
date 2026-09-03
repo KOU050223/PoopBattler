@@ -6,14 +6,14 @@ Closes #99
 
 ## 変更内容
 
-- `HpBar` に被ダメージ時の文字色・バー色の赤フラッシュを追加
+- `HpBar` に被ダメージ時の文字色・バー色の赤フラッシュを追加し、赤色が少し長く残るように調整
 - `prefers-reduced-motion` 相当の設定では点滅を控えめにするよう `useReducedMotion()` を反映
 - HP低下イベントごとに再生キーを更新し、連続被弾でもフラッシュが再生されるように変更
 
 ## 動作確認（AI検証済み）
 
 - [x] `npm run lint`
-- [x] `npm test`（37 files / 184 tests passed）
+- [x] `npm test`（37 files / 191 tests passed）
 - [x] `npm run typecheck`
 - [x] Next MCP `get_compilation_issues` で issues なし
 - [x] Next MCP `compile_route` で `/battle` の issues なし
