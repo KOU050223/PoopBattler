@@ -3,7 +3,7 @@ import type { Database } from "@/types/database.types";
 export type CharacterAttribute =
   Database["public"]["Enums"]["character_attribute"];
 
-// たたかえ / まもれ / 必殺準備中。コンボ入力は持たない。
+// 自動攻撃 / まもれ / 必殺準備中。コンボ入力は持たない。
 export type BattleStance = "fight" | "guard" | "special";
 
 // 敵として出現しうる属性。食事ログは参照せず、ここから一様に抽選する（Issue #21）。
@@ -85,6 +85,11 @@ export const SPECIAL_BASE_DAMAGE = 4;
 export const SPECIAL_DAMAGE_MULTIPLIER = 10;
 export const SPECIAL_GAUGE_MAX = 100;
 export const SPECIAL_GAUGE_PER_TICK = 2;
+
+// ベンチ回復: 場に出ていない味方のHP・必殺ゲージを毎ティック少しずつ回復する。
+// 戦闘不能（HP 0）のキャラは回復しない。
+export const BENCH_HP_RECOVERY_RATE = 0.01; // maxHp の 1% / tick
+export const BENCH_GAUGE_RECOVERY_PER_TICK = 1; // 場の半分のペースでゲージ回復
 
 // 通常攻撃は双方とも 5 tick ごとの窓で半々。1発 20。
 // 必殺は従来の基礎 4 に倍率を掛ける。タイムアップは 180 tick（等倍で 90秒）で残HP判定。

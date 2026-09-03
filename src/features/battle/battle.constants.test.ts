@@ -64,7 +64,7 @@ describe("matchupTone", () => {
 });
 
 describe("computeAttackDamage", () => {
-  it("たたかえ同士の等倍は基礎ダメージになる", () => {
+  it("自動攻撃同士の等倍は基礎ダメージになる", () => {
     expect(
       computeAttackDamage({
         attackerAttribute: "curry",

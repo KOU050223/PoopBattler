@@ -60,9 +60,13 @@ export function applySwitchMember(
   }
 
   const next = cloneBattleSnapshot(state);
+  // 退場する側のゲージはリセット（仕様: 交代でゲージ空）
+  next.benchGauges[state.activeIndex] = 0;
   next.activeIndex = partyIndex;
   next.switchStunTicks = msToTicks(SWITCH_STUN_MS);
-  next.playerGauge = 0;
+  // ベンチで溜まったゲージを引き継ぐ
+  next.playerGauge = next.benchGauges[partyIndex];
+  next.benchGauges[partyIndex] = 0;
   next.playerSpecialChargeTicks = 0;
   next.playerGuardRemainingTicks = 0;
   if (next.playerStance === "guard") {

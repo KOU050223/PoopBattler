@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { readBattleSpeed, subscribeBattleSpeed, writeBattleSpeed } from "@/features/battle/battle-speed";
 import {
   startBattleAction,
@@ -17,6 +17,7 @@ import {
   nextBattleSpeed,
   scaleByBattleSpeed,
   tickIntervalMs,
+  type BattleSpeed,
 } from "@/features/battle/battle.constants";
 import { BattleControls } from "@/features/battle/components/battle-controls";
 import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
@@ -49,29 +50,62 @@ function HpBar({
   max,
   label,
   side,
+  hitFlashKey,
+  speed,
 }: {
   current: number;
   max: number;
   label: string;
   side: "ally" | "enemy";
+  hitFlashKey: number;
+  speed: BattleSpeed;
 }) {
+  const reduceMotion = useReducedMotion();
   const ratio = Math.max(0, Math.min(1, current / max));
   const fillClass = side === "enemy" ? "bg-night-ink" : "bg-flush-pink";
+  const flashColor = "var(--color-danger-edge)";
+  const textColor = "var(--color-pencil-gray)";
+  const textFlash = reduceMotion
+    ? [textColor, flashColor, textColor]
+    : [textColor, flashColor, flashColor, textColor];
+  const barFlashOpacity = reduceMotion ? [0, 1, 0] : [0, 1, 1, 0];
+  const flashTransition = {
+    duration: scaleByBattleSpeed(reduceMotion ? 0.45 : 0.95, speed),
+    ease: "easeInOut" as const,
+    times: reduceMotion ? [0, 0.55, 1] : [0, 0.16, 0.72, 1],
+  };
   return (
     <div className="flex w-full flex-col gap-1">
-      <div className={`flex justify-between ${captionTextClass}`}>
+      <motion.div
+        key={`hp-text-${hitFlashKey}`}
+        className={`flex justify-between ${captionTextClass}`}
+        initial={{ color: textColor }}
+        animate={hitFlashKey > 0 ? { color: textFlash } : undefined}
+        transition={hitFlashKey > 0 ? flashTransition : undefined}
+        style={{ color: textColor }}
+      >
         <span>{label}</span>
         <span>
           {current} / {max}
         </span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-blush-wash">
+      </motion.div>
+      <div className="relative h-2 overflow-hidden rounded-full bg-blush-wash">
         <motion.div
           className={`h-full ${fillClass}`}
           initial={false}
           animate={{ width: `${ratio * 100}%` }}
           transition={{ duration: 0.2 }}
         />
+        {hitFlashKey > 0 ? (
+          <motion.div
+            key={`hp-bar-flash-${hitFlashKey}`}
+            aria-hidden="true"
+            className="absolute left-0 top-0 h-full bg-danger-edge"
+            initial={{ opacity: 0, width: `${ratio * 100}%` }}
+            animate={{ opacity: barFlashOpacity }}
+            transition={flashTransition}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -97,6 +131,8 @@ export function BattleScreen() {
   const [enemyMotion, setEnemyMotion] = useState<"idle" | "hit" | "attack">(
     "idle",
   );
+  const [playerHitFlashKey, setPlayerHitFlashKey] = useState(0);
+  const [enemyHitFlashKey, setEnemyHitFlashKey] = useState(0);
   const speed = useSyncExternalStore(
     subscribeBattleSpeed,
     () => readBattleSpeed(window.localStorage),
@@ -136,9 +172,11 @@ export function BattleScreen() {
       return;
     }
     if (enemyHp < previous.enemy) {
+      setEnemyHitFlashKey((key) => key + 1);
       setEnemyMotion("hit");
       setPlayerMotion("attack");
     } else if (playerHp < previous.player) {
+      setPlayerHitFlashKey((key) => key + 1);
       setPlayerMotion("hit");
       setEnemyMotion("attack");
     } else {
@@ -298,6 +336,8 @@ export function BattleScreen() {
               max={snapshot.enemy.maxHp}
               label={snapshot.enemy.name ?? "てき"}
               side="enemy"
+              hitFlashKey={enemyHitFlashKey}
+              speed={speed}
             />
             <BattleFigure
               characterId={snapshot.enemy.characterId}
@@ -324,6 +364,8 @@ export function BattleScreen() {
               max={member.maxHp}
               label={member.name ?? "味方"}
               side="ally"
+              hitFlashKey={playerHitFlashKey}
+              speed={speed}
             />
           </div>
         </div>
@@ -355,7 +397,7 @@ export function BattleScreen() {
           playerGauge={snapshot.playerGauge}
           playerGuardCooldownTicks={snapshot.playerGuardCooldownTicks}
           switchStunTicks={snapshot.switchStunTicks}
-          onFight={() => useBattleStore.getState().setStance("fight")}
+          benchGauges={snapshot.benchGauges}
           onGuard={() => useBattleStore.getState().setStance("guard")}
           onSwitch={(index) => useBattleStore.getState().switchMember(index)}
           onDebugStrain={() => useBattleStore.getState().fireSpecial()}
