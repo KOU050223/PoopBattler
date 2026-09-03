@@ -60,17 +60,39 @@ describe("linkGoogleIdentity", () => {
     });
   });
 
-  it("その他の失敗はSupabaseの理由をそのまま返す", async () => {
+  it("Googleプロバイダ自体が無効な場合も設定を確認するよう促す", async () => {
     const auth = createAuth({
       linkIdentity: vi.fn().mockResolvedValue({
         data: null,
-        error: { message: "ネットワークに接続できません" },
+        error: {
+          message: "Unsupported provider: provider is not enabled",
+          code: "validation_failed",
+        },
       }),
     });
 
     const result = await linkGoogleIdentity(auth, "http://localhost:3000/auth/callback");
 
-    expect(result).toEqual({ status: "error", message: "ネットワークに接続できません" });
+    expect(result).toEqual({
+      status: "error",
+      message: "Googleログインがサーバー側で有効になっていません。設定を確認してください。",
+    });
+  });
+
+  it("想定外の失敗でもSupabaseの英語メッセージを利用者へ見せない", async () => {
+    const auth = createAuth({
+      linkIdentity: vi.fn().mockResolvedValue({
+        data: null,
+        error: { message: "Something went terribly wrong", code: "unexpected_failure" },
+      }),
+    });
+
+    const result = await linkGoogleIdentity(auth, "http://localhost:3000/auth/callback");
+
+    expect(result).toEqual({
+      status: "error",
+      message: "Googleとの連携に失敗しました。時間をおいてもう一度お試しください。",
+    });
   });
 });
 

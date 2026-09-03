@@ -42,13 +42,23 @@ const CONFLICT_MESSAGE =
   + "そのアカウントでログインし直すか、別のGoogleアカウントを選んでください。";
 
 /**
- * 連携を無効化したままのプロジェクトで linkIdentity() を呼ぶと返るコード。
- * 設定漏れをネットワークエラーと取り違えないよう、専用の文言にする。
+ * サーバー側の設定漏れで返るコード。ネットワークエラーと取り違えないよう、
+ * また Supabase の英語メッセージをそのまま利用者へ見せないよう、専用の文言にする。
+ *
+ * - manual_linking_disabled: Allow manual linking が無効
+ * - validation_failed: Google プロバイダ自体が無効
+ *   （"Unsupported provider: provider is not enabled" が返る）
  */
-const MANUAL_LINKING_DISABLED = "manual_linking_disabled";
+const CONFIGURATION_ERROR_MESSAGES: Record<string, string> = {
+  manual_linking_disabled:
+    "アカウント連携がサーバー側で有効になっていません。設定を確認してください。",
+  validation_failed:
+    "Googleログインがサーバー側で有効になっていません。設定を確認してください。",
+};
 
-const MANUAL_LINKING_DISABLED_MESSAGE =
-  "アカウント連携がサーバー側で有効になっていません。設定を確認してください。";
+/** 想定外の失敗で英語のまま見せないための既定文言。 */
+const UNKNOWN_ERROR_MESSAGE =
+  "Googleとの連携に失敗しました。時間をおいてもう一度お試しください。";
 
 function toResult(error: AuthError | null): GoogleIdentityResult {
   if (!error) {
@@ -62,11 +72,15 @@ function toResult(error: AuthError | null): GoogleIdentityResult {
     return { status: "conflict", message: CONFLICT_MESSAGE };
   }
 
-  if (error.code === MANUAL_LINKING_DISABLED) {
-    return { status: "error", message: MANUAL_LINKING_DISABLED_MESSAGE };
+  const configurationMessage = error.code
+    ? CONFIGURATION_ERROR_MESSAGES[error.code]
+    : undefined;
+
+  if (configurationMessage) {
+    return { status: "error", message: configurationMessage };
   }
 
-  return { status: "error", message: error.message };
+  return { status: "error", message: UNKNOWN_ERROR_MESSAGE };
 }
 
 /** 匿名ユーザーに Google の identity を追加する（`auth.users.id` は変わらない）。 */
