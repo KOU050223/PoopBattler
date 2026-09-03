@@ -45,6 +45,11 @@ declare
   v_companionship_result boolean := false;
   v_character_id text := null;
   v_meal_log_count integer := 0;
+  v_rarity public.character_rarity;
+  v_spread integer;
+  v_base_hp integer;
+  v_base_power integer;
+  v_base_speed integer;
 begin
   if v_user_id is null then
     raise exception 'authentication is required' using errcode = '28000';
@@ -140,14 +145,43 @@ begin
   where id = v_battle.id;
 
   if v_companionship_result then
+    select c.rarity
+    into v_rarity
+    from public.characters as c
+    where c.id = v_battle.enemy_character_id;
+
+    v_base_power := case v_rarity
+      when 'common' then 20
+      when 'rare' then 26
+      when 'epic' then 32
+      when 'legendary' then 38
+      else 20
+    end;
+    v_base_speed := v_base_power;
+    v_base_hp := v_base_power * 12;
+
+    v_spread := case v_rarity
+      when 'common' then 4
+      when 'rare' then 6
+      when 'epic' then 8
+      when 'legendary' then 10
+      else 4
+    end;
+
     insert into public.user_characters as uc (
       user_id,
       character_id,
-      acquired_from_battle_id
+      acquired_from_battle_id,
+      hp,
+      power,
+      speed
     ) values (
       v_user_id,
       v_battle.enemy_character_id,
-      v_battle.id
+      v_battle.id,
+      greatest(1, v_base_hp + (floor(random() * (v_spread * 24 + 1))::integer - v_spread * 12)),
+      greatest(1, v_base_power + (floor(random() * (v_spread * 2 + 1))::integer - v_spread)),
+      greatest(1, v_base_speed + (floor(random() * (v_spread * 2 + 1))::integer - v_spread))
     )
     returning uc.character_id into v_character_id;
   end if;

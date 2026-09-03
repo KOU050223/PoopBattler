@@ -65,7 +65,7 @@ select
   now(),
   now()
 from rls_fixture f
-where f.key in ('user_a', 'user_b', 'user_empty');
+where f.key in ('user_a', 'user_b', 'user_empty', 'user_c');
 
 -- トリガーが実際に発火したかを先に確認する。ここが通らないと、
 -- 以降の「他人の行が見えない」は単に行が無いだけになってしまう。
@@ -75,8 +75,9 @@ begin
       where id in (
         pg_temp.fixture('user_a'),
         pg_temp.fixture('user_b'),
-        pg_temp.fixture('user_empty')
-      )) <> 3 then
+        pg_temp.fixture('user_empty'),
+        pg_temp.fixture('user_c')
+      )) <> 4 then
     raise exception 'FAIL: on_auth_user_created が profiles を作っていない';
   end if;
 end;
