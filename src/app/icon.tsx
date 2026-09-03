@@ -34,7 +34,7 @@ export default function Icon() {
             width: 392,
           }}
         >
-          PB
+          BR
         </div>
       </div>
     ),

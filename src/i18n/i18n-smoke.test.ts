@@ -67,4 +67,13 @@ describe("メッセージカタログ", () => {
 
     expect(english("Report.title")).toBe("Weekly poop report");
   });
+
+  it("PWAの案内とmanifestは日英それぞれのブランド名で表示する", () => {
+    const english = createTranslator({ locale: "en", messages: englishMessages, onError: () => {} });
+
+    expect(t("Pwa.installTitle")).toBe("次のバトルを、すぐ始めよう");
+    expect(t("Pwa.manifestShortName")).toBe("ブリュレイド");
+    expect(english("Pwa.installAction")).toBe("Add to Home Screen");
+    expect(english("Pwa.manifestShortName")).toBe("Brule Raid");
+  });
 });

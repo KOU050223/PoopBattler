@@ -17,14 +17,14 @@ const nunito = Nunito({
 
 export const metadata: Metadata = {
   title: {
-    default: "Poop Battler",
-    template: "%s | Poop Battler",
+    default: "Brace Up! Brule Raid!!",
+    template: "%s | Brace Up! Brule Raid!!",
   },
-  description: "食事と排便の記録を、うんちモンスターとのバトルとして続けられるアプリ。",
+  description: "Keep meal and bowel logs through battles.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Poop Battler",
+    title: "Brace Up! Brule Raid!!",
   },
 };
 

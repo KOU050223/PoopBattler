@@ -1,6 +1,7 @@
 "use client";
 
 import { Download } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState, useSyncExternalStore } from "react";
 
 import {
@@ -23,6 +24,7 @@ function hasShownPromotion() {
 
 /** 初回バトルの記録完了後だけに置く、控えめなホーム画面追加案内。 */
 export function PwaInstallPromotion() {
+  const t = useTranslations("Pwa");
   const { deferredPrompt, isInstalled, isIosSafari, requestInstall } = usePwaInstall();
   const [dismissed, setDismissed] = useState(false);
   const hasAlreadyShown = useSyncExternalStore(
@@ -51,17 +53,19 @@ export function PwaInstallPromotion() {
 
   if (!kind || dismissed) return null;
 
-  return <InstallPromotionCard kind={kind} onDismiss={dismiss} onInstall={() => void install()} />;
+  return <InstallPromotionCard kind={kind} onDismiss={dismiss} onInstall={() => void install()} t={t} />;
 }
 
 export function InstallPromotionCard({
   kind,
   onDismiss,
   onInstall,
+  t,
 }: {
   kind: InstallPromotionKind;
   onDismiss: () => void;
   onInstall: () => void;
+  t: ReturnType<typeof useTranslations<"Pwa">>;
 }) {
   const isNative = kind === "native";
 
@@ -73,10 +77,10 @@ export function InstallPromotionCard({
         </span>
         <div className="min-w-0">
           <h2 id="pwa-install-title" className="text-[19px] font-bold leading-[1.4] text-charcoal">
-            次のバトルを、すぐ始めよう
+            {t("installTitle")}
           </h2>
           <p className={`mt-1 ${mutedTextClass}`}>
-            ホーム画面に追加すると、アプリのようにすぐ開けます。
+            {t("installDescription")}
           </p>
         </div>
       </div>
@@ -84,21 +88,21 @@ export function InstallPromotionCard({
       {isNative ? (
         <div className="mt-4 flex flex-wrap gap-3">
           <button type="button" className={primaryButtonClass} onClick={onInstall}>
-            ホーム画面に追加
+            {t("installAction")}
           </button>
           <button type="button" className={secondaryButtonClass} onClick={onDismiss}>
-            あとで
+            {t("later")}
           </button>
         </div>
       ) : (
         <>
           <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm font-medium leading-6 text-pencil-gray">
-            <li>画面下の共有ボタンを押す</li>
-            <li>「ホーム画面に追加」を選ぶ</li>
-            <li>右上の「追加」を押す</li>
+            <li>{t("iosStepOne")}</li>
+            <li>{t("iosStepTwo")}</li>
+            <li>{t("iosStepThree")}</li>
           </ol>
           <button type="button" className={`mt-4 ${secondaryButtonClass}`} onClick={onDismiss}>
-            あとで
+            {t("later")}
           </button>
         </>
       )}

@@ -1,15 +1,22 @@
 import type { MetadataRoute } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const [locale, common, pwa] = await Promise.all([
+    getLocale(),
+    getTranslations("Common"),
+    getTranslations("Pwa"),
+  ]);
+
   return {
-    name: "Poop Battler",
-    short_name: "Poop Battler",
-    description: "食事と排便の記録を、うんちモンスターとのバトルとして続けられるアプリ。",
+    name: common("appName"),
+    short_name: pwa("manifestShortName"),
+    description: pwa("manifestDescription"),
     start_url: "/",
     display: "standalone",
     background_color: "#ffe0ef",
     theme_color: "#ffe0ef",
-    lang: "ja",
+    lang: locale,
     icons: [
       {
         src: "/icon",
