@@ -98,11 +98,11 @@ export function MealPhotoPicker({
       )}
       <div className="flex flex-wrap gap-2">
         {status !== "ready" && status !== "starting" && (
-          <button type="button" onClick={() => void start()} className="meal-photo-button">
+          <button type="button" onClick={() => void start()} className="meal-photo-button max-sm:flex-1 max-sm:justify-center">
             <Camera aria-hidden="true" className="size-4" />カメラで撮る
           </button>
         )}
-        <label htmlFor={inputId} className="meal-photo-button meal-photo-button-primary">
+        <label htmlFor={inputId} className="meal-photo-button meal-photo-button-primary max-sm:flex-1 max-sm:justify-center">
           <ImagePlus aria-hidden="true" className="size-4" />{selectLabel === "ファイルを選択する" ? (hasPhoto ? "写真を変更" : "写真を選ぶ") : selectLabel}
         </label>
         {hasPhoto && onPhotoCleared && <button type="button" onClick={onPhotoCleared} className="meal-text-action"><Trash2 aria-hidden="true" className="size-4" />削除</button>}
