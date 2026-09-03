@@ -33,8 +33,11 @@ values
   ('user_b', gen_random_uuid()),
   ('meal_a', gen_random_uuid()),
   ('meal_b', gen_random_uuid()),
+  ('meal_rpc_a', gen_random_uuid()),
   ('battle_a', gen_random_uuid()),
-  ('battle_b', gen_random_uuid());
+  ('battle_b', gen_random_uuid()),
+  ('battle_rpc_a', gen_random_uuid()),
+  ('battle_rpc_photo_a', gen_random_uuid());
 
 create or replace function pg_temp.fixture(p_key text)
 returns uuid
@@ -69,7 +72,8 @@ $$;
 insert into public.meal_logs (id, user_id, image_path, tag)
 values
   (pg_temp.fixture('meal_a'), pg_temp.fixture('user_a'), 'meals/a.jpg', 'curry'),
-  (pg_temp.fixture('meal_b'), pg_temp.fixture('user_b'), 'meals/b.jpg', 'meat');
+  (pg_temp.fixture('meal_b'), pg_temp.fixture('user_b'), 'meals/b.jpg', 'meat'),
+  (pg_temp.fixture('meal_rpc_a'), pg_temp.fixture('user_a'), 'meals/rpc-a.jpg', 'curry');
 
 -- status を completed にしておく。active はユーザーごと1件までの部分ユニーク
 -- インデックスがあるため、fixture で active を占有すると後段の
@@ -112,6 +116,160 @@ begin
     )::text,
     true
   );
+end;
+$$;
+
+-- complete_battle の検査はこの後で先に実行するため、拒否判定とアサーションの
+-- 最小ヘルパーをここで定義する（後段のRLS検査でも同名関数を定義し直す）。
+create or replace function pg_temp.allowed(p_sql text)
+returns boolean
+language plpgsql
+as $$
+declare
+  affected bigint;
+begin
+  execute p_sql;
+  get diagnostics affected = row_count;
+  return affected > 0;
+exception
+  when insufficient_privilege or check_violation then
+    return false;
+end;
+$$;
+
+create or replace function pg_temp.expect(p_label text, p_actual boolean, p_expected boolean)
+returns void
+language plpgsql
+as $$
+begin
+  if p_actual is distinct from p_expected then
+    raise exception 'FAIL: % — 期待 % / 実際 %',
+      p_label,
+      case when p_expected then '許可' else '拒否' end,
+      case when p_actual then '許可' else '拒否' end;
+  end if;
+  raise notice 'ok: %', p_label;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- complete_battle RPC: 原子性・所有者・冪等性を検査する
+-- ---------------------------------------------------------------------------
+-- この専用バトルは、後段のRLS検査より前に完了まで済ませる。これにより
+-- active の部分ユニークインデックスとRLS検査が干渉しない。
+insert into public.battle_results (id, user_id, enemy_character_id, enemy_attribute)
+values (
+  pg_temp.fixture('battle_rpc_a'),
+  pg_temp.fixture('user_a'),
+  'curry-poop',
+  'curry'
+);
+
+do $$
+declare
+  a uuid := pg_temp.fixture('user_a');
+  b uuid := pg_temp.fixture('user_b');
+  meal_a uuid := pg_temp.fixture('meal_rpc_a');
+  meal_b uuid := pg_temp.fixture('meal_b');
+  battle_no_meal uuid := pg_temp.fixture('battle_rpc_a');
+  battle_with_meal uuid := pg_temp.fixture('battle_rpc_photo_a');
+  first_result record;
+  repeated_result record;
+  photo_result record;
+  repeated_photo_result record;
+begin
+  perform pg_temp.become(a);
+
+  -- 写真なしは必ず仲間化せず、排便ログをちょうど1件だけ作る。
+  select * into first_result
+  from public.complete_battle(battle_no_meal, 4::smallint, 'normal', 'brown', 'easy', null);
+  perform pg_temp.expect(
+    'complete_battle 写真なしは仲間化しない',
+    first_result.status = 'completed'
+      and first_result.companionship_result = false
+      and first_result.character_id is null,
+    true);
+  perform pg_temp.expect(
+    'complete_battle 写真なしは排便ログを1件作る',
+    (select count(*) = 1 from public.bowel_logs where battle_result_id = battle_no_meal),
+    true);
+
+  -- 同一バトルの再実行は、新しい排便ログも抽選も作らず既存結果を返す。
+  select * into repeated_result
+  from public.complete_battle(battle_no_meal, 1::smallint, 'small', 'green', 'hard', null);
+  perform pg_temp.expect(
+    'complete_battle 再実行は同じ結果を返す',
+    repeated_result.status = first_result.status
+      and repeated_result.companionship_result = first_result.companionship_result
+      and repeated_result.character_id is not distinct from first_result.character_id,
+    true);
+  perform pg_temp.expect(
+    'complete_battle 再実行で排便ログを増やさない',
+    (select count(*) = 1 from public.bowel_logs where battle_result_id = battle_no_meal),
+    true);
+
+  -- 完了後は active が無いため、写真付きの次のバトルを作れる。
+  insert into public.battle_results (
+    id, user_id, enemy_character_id, enemy_attribute
+  ) values (
+    battle_with_meal, a, 'curry-poop', 'curry'
+  );
+
+  -- 他人の食事IDを渡した試行は、確定を残さず拒否する。
+  perform pg_temp.expect(
+    'complete_battle 他人の食事ログは拒否',
+    pg_temp.allowed(format(
+      'select * from public.complete_battle(%L, 4::smallint, ''normal'', ''brown'', ''easy'', %L)',
+      battle_with_meal, meal_b)),
+    false);
+  perform pg_temp.expect(
+    'complete_battle 拒否後に排便ログを残さない',
+    (select count(*) = 0 from public.bowel_logs where battle_result_id = battle_with_meal),
+    true);
+
+  select * into photo_result
+  from public.complete_battle(battle_with_meal, 4::smallint, 'normal', 'brown', 'easy', meal_a);
+  perform pg_temp.expect(
+    'complete_battle 写真ありは完了する',
+    photo_result.status = 'completed',
+    true);
+  perform pg_temp.expect(
+    'complete_battle は本人の食事ログだけをバトルへ保存する',
+    (select meal_log_id = meal_a from public.battle_results where id = battle_with_meal),
+    true);
+  perform pg_temp.expect(
+    'complete_battle 仲間化成功時だけ所有キャラクターを作る',
+    (photo_result.companionship_result and photo_result.character_id is not null
+      and (select count(*) = 1 from public.user_characters where acquired_from_battle_id = battle_with_meal))
+    or (not photo_result.companionship_result and photo_result.character_id is null
+      and (select count(*) = 0 from public.user_characters where acquired_from_battle_id = battle_with_meal)),
+    true);
+
+  select * into repeated_photo_result
+  from public.complete_battle(battle_with_meal, 7::smallint, 'large', 'green', 'hard', meal_a);
+  perform pg_temp.expect(
+    'complete_battle 写真ありも再抽選しない',
+    repeated_photo_result.companionship_result = photo_result.companionship_result
+      and repeated_photo_result.character_id is not distinct from photo_result.character_id,
+    true);
+
+  perform pg_temp.become(b);
+  perform pg_temp.expect(
+    'complete_battle 他人のバトルは拒否',
+    pg_temp.allowed(format(
+      'select * from public.complete_battle(%L, 4::smallint, ''normal'', ''brown'', ''easy'', null)',
+      battle_no_meal)),
+    false);
+
+  perform set_config('role', 'anon', true);
+  perform pg_temp.expect(
+    'complete_battle anon は実行できない',
+    pg_temp.allowed(format(
+      'select * from public.complete_battle(%L, 4::smallint, ''normal'', ''brown'', ''easy'', null)',
+      battle_no_meal)),
+    false);
+
+  reset role;
 end;
 $$;
 
@@ -289,7 +447,7 @@ begin
       'insert into public.user_characters (user_id, character_id) values (%L, ''curry-poop'')', a)),
     false);
 
-  -- UPDATE: 本人の行は更新でき、他人の行は更新できない ----------------------
+  -- UPDATE: 食事ログだけがクライアントから更新できる --------------------------
   perform pg_temp.expect(
     'meal_logs UPDATE 本人',
     pg_temp.allowed(format('update public.meal_logs set note = ''ok'' where id = %L', meal_a)),
@@ -307,9 +465,9 @@ begin
     false);
 
   perform pg_temp.expect(
-    'battle_results UPDATE 本人',
+    'battle_results UPDATE 本人でも拒否',
     pg_temp.allowed(format('update public.battle_results set status = ''won'' where id = %L', battle_a)),
-    true);
+    false);
   perform pg_temp.expect(
     'battle_results UPDATE 他人',
     pg_temp.allowed(format('update public.battle_results set status = ''won'' where id = %L', battle_b)),
@@ -440,14 +598,13 @@ begin
       ('authenticated', 'characters', 'SELECT'),
       -- プロフィールは本人が読むだけ（作成はトリガー）。
       ('authenticated', 'profiles', 'SELECT'),
-      -- 食事とバトルはクライアントが作成・更新する。
+      -- 食事はクライアントが作成・更新する。バトルの確定はRPCだけが行う。
       ('authenticated', 'meal_logs', 'SELECT'),
       ('authenticated', 'meal_logs', 'INSERT'),
       ('authenticated', 'meal_logs', 'UPDATE'),
       ('authenticated', 'meal_logs', 'DELETE'),
       ('authenticated', 'battle_results', 'SELECT'),
       ('authenticated', 'battle_results', 'INSERT'),
-      ('authenticated', 'battle_results', 'UPDATE'),
       -- 排便ログと所有キャラクターは読み取り専用。
       ('authenticated', 'bowel_logs', 'SELECT'),
       ('authenticated', 'user_characters', 'SELECT')
