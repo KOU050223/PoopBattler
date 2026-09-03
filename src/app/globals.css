@@ -45,6 +45,25 @@ body {
 }
 
 @layer components {
+  .logs-page-header { @apply mb-5; }
+  .logs-page-header h1 { @apply text-[1.75rem] font-black tracking-[-0.04em] text-charcoal sm:text-3xl; }
+  .logs-page-header p { @apply mt-1 text-[15px] font-medium text-pencil-gray; }
+  .battle-report-card { @apply flex flex-col gap-3 rounded-2xl bg-paper-white p-4 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] transition-transform duration-200 hover:-translate-y-px sm:p-5; }
+  .battle-report-card h2 { @apply text-[17px] font-black tracking-[-0.025em] text-charcoal; }
+  .battle-report-date { @apply mt-1 text-xs font-medium text-pencil-gray; }
+  .battle-report-complete { @apply inline-flex shrink-0 items-center gap-1 rounded-md bg-blush-wash px-2 py-1 text-[11px] font-bold text-flush-edge; }
+  .battle-report-meta { @apply flex flex-wrap gap-2; }
+  .battle-report-attribute, .battle-report-companion, .battle-report-meal { @apply inline-flex items-center gap-1 rounded-full border border-cotton-pink bg-paper-white px-2.5 py-1 text-xs font-bold text-charcoal; }
+  .battle-report-companion { @apply border-blush-wash bg-blush-wash/45 text-pencil-gray; }
+  .battle-report-companion-success { @apply border-cotton-pink bg-blush-wash text-flush-edge; }
+  .battle-report-meal { @apply border-transparent bg-blush-wash/45 text-pencil-gray; }
+  .battle-condition { @apply rounded-xl bg-blush-wash/40 p-3; }
+  .battle-condition h3 { @apply mb-2 text-xs font-black text-charcoal; }
+  .battle-condition dl { @apply grid grid-cols-2 gap-2; }
+  .battle-condition dl > div { @apply rounded-lg bg-paper-white/75 px-2.5 py-2; }
+  .battle-condition dt { @apply text-[11px] font-medium text-pencil-gray; }
+  .battle-condition dd { @apply mt-0.5 text-sm font-bold text-charcoal; }
+  .battle-condition-missing { @apply rounded-xl bg-blush-wash/40 px-3 py-2.5 text-xs font-medium text-pencil-gray; }
   .meal-page-header { @apply mb-5; }
   .meal-page-header h1 { @apply text-[1.75rem] font-black tracking-[-0.04em] text-charcoal sm:text-3xl; }
   .meal-page-header p { @apply mt-1 text-[15px] font-medium text-pencil-gray; }
