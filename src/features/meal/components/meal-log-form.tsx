@@ -22,7 +22,6 @@ type MealLogFormProps = {
   /** 戦闘後など、食事を残さずに先へ進むとき。未指定ならスキップボタンは出さない。 */
   onSkip?: () => void | Promise<void>;
   skipLabel?: string;
-  autoOpenPicker?: boolean;
   refreshOnSuccess?: boolean;
   /** 保存ボタンと完了ボタンのあいだ。戦闘後の今回ログなど。 */
   children?: ReactNode;
@@ -42,7 +41,6 @@ export function MealLogForm({
   onSave,
   onSkip,
   skipLabel = "記録せずに完了する",
-  autoOpenPicker = false,
   refreshOnSuccess = true,
   children,
 }: MealLogFormProps) {
@@ -145,7 +143,6 @@ export function MealLogForm({
           </div>
         )}
         <MealPhotoPicker
-          autoOpen={autoOpenPicker}
           error={errors.photo}
           hasPhoto={Boolean(photo)}
           onPhotoCleared={() => {
