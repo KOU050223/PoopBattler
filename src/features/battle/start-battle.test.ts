@@ -191,6 +191,66 @@ describe("startBattle", () => {
     expect(result.status).toBe("error");
   });
 
+  it("所持個体の読み出しに失敗したらバトルを作らずに失敗を返す", async () => {
+    // 失敗を「所持ゼロ」に潰すと、空のパーティでバトルが作られてしまう。
+    // 以後の再試行はそのバトルを再開するだけなので、本来のパーティで
+    // 戦い直せない。開始そのものを止めるのが正しい（Codex P1 指摘）。
+    const startBattleRpc = vi.fn();
+    const result = await startBattle(
+      createGateway({
+        findOwnedCharacters: vi
+          .fn()
+          .mockResolvedValue({ owned: [], failed: true }),
+        startBattle: startBattleRpc,
+      }),
+    );
+
+    expect(result.status).toBe("error");
+    expect(startBattleRpc).not.toHaveBeenCalled();
+  });
+
+  it("所持個体がゼロでもレンタルで開始できる", async () => {
+    // 「読み出しに失敗」と「本当に0体」は別物。後者は今までどおり進む。
+    const startBattleRpc = vi.fn().mockResolvedValue({
+      battle: startedBattleRow(),
+      failed: false,
+    });
+    const result = await startBattle(
+      createGateway({
+        findOwnedCharacters: vi
+          .fn()
+          .mockResolvedValue({ owned: [], failed: false }),
+        startBattle: startBattleRpc,
+      }),
+    );
+
+    expect(result.status).toBe("started");
+    expect(startBattleRpc).toHaveBeenCalledWith([]);
+  });
+
+  it("所持個体は最大3体まで開始RPCへ渡す", async () => {
+    const startBattleRpc = vi.fn().mockResolvedValue({
+      battle: startedBattleRow(),
+      failed: false,
+    });
+    await startBattle(
+      createGateway({
+        findOwnedCharacters: vi.fn().mockResolvedValue({
+          owned: [
+            { id: "uc-1" },
+            { id: "uc-2" },
+            { id: "uc-3" },
+            { id: "uc-4" },
+          ],
+          failed: false,
+        }),
+        startBattle: startBattleRpc,
+      }),
+    );
+
+    expect(startBattleRpc).toHaveBeenCalledWith(["uc-1", "uc-2", "uc-3"]);
+  });
+
   it("レンタル候補の読み出しに失敗しても敵を代替パーティにする", async () => {
     const result = await startBattle(
       createGateway({

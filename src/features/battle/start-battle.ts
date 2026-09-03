@@ -143,10 +143,18 @@ export async function startBattle(gateway: StartBattleGateway): Promise<StartBat
   }
 
   // 選出UI（バトル/06）が未実装なので、所持個体は新しい順に最大3体を自動で使う。
+  //
+  // 読み出しに失敗したら開始しない。失敗を「所持ゼロ」に潰すと、空の
+  // party_snapshot でバトルが作られてしまう。以後の再試行はそのバトルを
+  // 再開するだけなので、本来のパーティで戦い直せない（エラーも出ないまま
+  // レンタルに置き換わる）。レンタルは候補が無いときの穴埋めであって、
+  // 通信失敗の代替ではない。
   const { owned, failed: ownedFailed } = await gateway.findOwnedCharacters();
-  const ownedIds = ownedFailed
-    ? []
-    : owned.slice(0, PARTY_SIZE).map((row) => row.id);
+  if (ownedFailed) {
+    return { status: "error", message: START_ERROR };
+  }
+
+  const ownedIds = owned.slice(0, PARTY_SIZE).map((row) => row.id);
 
   // active行の検索・敵選定・INSERTは start_battle RPC だけが行う。
   const { battle, failed: startFailed } = await gateway.startBattle(ownedIds);

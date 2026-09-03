@@ -156,29 +156,54 @@ begin
   -- 選出は「本人の所持個体」だけを採る。他人の行や存在しないIDは、
   -- エラーにせず単に落とす（存在の有無をIDから読み取らせない）。
   -- 順序は渡された配列の並びを保つ。
+  --
+  -- 同じIDが複数回渡されたら、最初の1回だけを採る。unnest は重複を
+  -- そのまま返すため、素通しにすると1体の高ステータス個体で3枠すべてを
+  -- 埋められる。3体分の耐久を1体の数値で得られてしまうので潰す。
+  --
+  -- 上限3体への絞り込みは重複を除いた「後」に行う。先に位置で切ると、
+  -- 重複を混ぜられたぶんだけ実際の選出数が減る。
+  with picked as (
+    select distinct on (uc.id)
+      uc.id as user_character_id,
+      uc.character_id,
+      uc.hp,
+      uc.power,
+      uc.speed,
+      c.attribute,
+      c.name,
+      ids.ord
+    from unnest(p_user_character_ids) with ordinality as ids(id, ord)
+    join public.user_characters as uc
+      on uc.id = ids.id
+     and uc.user_id = v_user_id
+    join public.characters as c
+      on c.id = uc.character_id
+    order by uc.id, ids.ord
+  ),
+  party as (
+    select *
+    from picked
+    order by ord
+    limit 3
+  )
   select coalesce(
     jsonb_agg(
       jsonb_build_object(
-        'user_character_id', uc.id,
-        'character_id', uc.character_id,
-        'attribute', c.attribute,
-        'name', c.name,
-        'hp', uc.hp,
-        'power', uc.power,
-        'speed', uc.speed
+        'user_character_id', party.user_character_id,
+        'character_id', party.character_id,
+        'attribute', party.attribute,
+        'name', party.name,
+        'hp', party.hp,
+        'power', party.power,
+        'speed', party.speed
       )
-      order by ids.ord
+      order by party.ord
     ),
     '[]'::jsonb
   )
   into v_party
-  from unnest(p_user_character_ids) with ordinality as ids(id, ord)
-  join public.user_characters as uc
-    on uc.id = ids.id
-   and uc.user_id = v_user_id
-  join public.characters as c
-    on c.id = uc.character_id
-  where ids.ord <= 3;
+  from party;
 
   insert into public.battle_results (
     user_id,

@@ -36,6 +36,7 @@ values
   ('user_c', gen_random_uuid()),
   ('uc_c1', gen_random_uuid()),
   ('uc_c2', gen_random_uuid()),
+  ('uc_c3', gen_random_uuid()),
   ('uc_b1', gen_random_uuid()),
   ('meal_a', gen_random_uuid()),
   ('meal_b', gen_random_uuid()),
@@ -115,7 +116,8 @@ values
 insert into public.user_characters (id, user_id, character_id, hp, power, speed)
 values
   (pg_temp.fixture('uc_c1'), pg_temp.fixture('user_c'), 'curry-poop', 260, 24, 18),
-  (pg_temp.fixture('uc_c2'), pg_temp.fixture('user_c'), 'curry-poop', 300, 30, 12);
+  (pg_temp.fixture('uc_c2'), pg_temp.fixture('user_c'), 'curry-poop', 300, 30, 12),
+  (pg_temp.fixture('uc_c3'), pg_temp.fixture('user_c'), 'meat-poop', 210, 16, 25);
 
 -- ---------------------------------------------------------------------------
 -- 検査用ヘルパー
@@ -409,6 +411,7 @@ declare
   c uuid := pg_temp.fixture('user_c');
   uc1 uuid := pg_temp.fixture('uc_c1');
   uc2 uuid := pg_temp.fixture('uc_c2');
+  uc3 uuid := pg_temp.fixture('uc_c3');
   -- become の後は rls_fixture を読めないので、ここで取っておく。
   others_uc uuid := pg_temp.fixture('uc_b1');
   started record;
@@ -426,8 +429,10 @@ begin
     '同じ character_id を2体持ち、それぞれ別の3値になる',
     (select count(*) = 2 from public.user_characters
       where user_id = c and character_id = 'curry-poop')
+    -- 同じ種族の2体が別の3値であること（他の種族は数に入れない）。
     and (select count(distinct (hp, power, speed)) = 2
-      from public.user_characters where user_id = c),
+      from public.user_characters
+      where user_id = c and character_id = 'curry-poop'),
     true);
 
   select * into before_row from public.user_characters where id = uc1;
@@ -453,6 +458,39 @@ begin
     'start_battle は敵の3値もサーバー側で確定させる',
     started.enemy_hp > 0 and started.enemy_power > 0 and started.enemy_speed > 0,
     true);
+
+  -- 同じIDを重ねても1体分にしかならない ------------------------------------
+  -- 1体の高ステータス個体で3枠を埋め、3体分の耐久を得る経路を塞ぐ。
+  -- ここは開始したバトルを畳んでから次の検査へ進む。
+  perform public.complete_battle(battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+
+  declare
+    dup_started record;
+  begin
+    select * into dup_started
+    from public.start_battle(array[uc1, uc1, uc1]);
+    perform pg_temp.expect(
+      '同じ個体IDを3回渡しても1体分にしかならない',
+      jsonb_array_length(dup_started.party_snapshot) = 1
+        and (dup_started.party_snapshot -> 0 ->> 'user_character_id')::uuid = uc1,
+      true);
+    perform public.complete_battle(dup_started.battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+
+    -- 重複を混ぜても、実在する3体はきちんと3体とも選べる。
+    -- 重複排除より先に3体で切ると、ここが2体に減って落ちる。
+    select * into dup_started
+    from public.start_battle(array[uc1, uc1, uc2, uc3]);
+    perform pg_temp.expect(
+      '重複を混ぜても別個体3体はすべて選出される',
+      jsonb_array_length(dup_started.party_snapshot) = 3,
+      true);
+    perform public.complete_battle(dup_started.battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+  end;
+
+  -- 再開の検査のためにバトルを取り直す。
+  select * into started from public.start_battle(array[uc1]);
+  battle_id := started.battle_id;
+  snapshot := started.party_snapshot;
 
   -- 再開では、渡された選出を無視して保存済みのパーティを返す ----------------
   -- ここを見ないと、劣勢になったところで開始を呼び直し、無傷の別個体へ
