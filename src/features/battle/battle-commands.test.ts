@@ -4,13 +4,13 @@ import {
   AUTO_ATTACK_DAMAGE,
   AUTO_ATTACK_PERIOD_TICKS,
   BASE_SPEED,
-  GUARD_COOLDOWN_MS,
   GUARD_DURATION_MS,
   INITIAL_ENEMY_HP,
   INITIAL_MEMBER_HP,
   SPECIAL_GAUGE_MAX,
   SWITCH_STUN_MS,
   computeAttackDamage,
+  guardCooldownTicks,
   msToTicks,
   shouldAutoAttack,
   specialChargeTicks,
@@ -123,11 +123,30 @@ describe("まもれ", () => {
     let state = applySetStance(applyBattleStart(startInput), "guard");
     state = tickTimes(state, msToTicks(GUARD_DURATION_MS));
     expect(state.playerStance).toBe("fight");
-    expect(state.playerGuardCooldownTicks).toBe(msToTicks(GUARD_COOLDOWN_MS));
+    expect(state.playerGuardCooldownTicks).toBe(guardCooldownTicks(BASE_SPEED));
 
     const rejected = applySetStance(state, "guard");
     expect(rejected.playerStance).toBe("fight");
     expect(rejected.playerGuardRemainingTicks).toBe(0);
+  });
+
+  it("中断時のクールはガードしていた場の一体の Speed で決まる", () => {
+    const started = applyBattleStart({
+      ...startInput,
+      party: [
+        { ...startInput.party[0], speed: 40 },
+        { ...startInput.party[1], speed: 10 },
+        startInput.party[2],
+      ],
+    });
+    const guarding = applySetStance(started, "guard");
+
+    const fought = applySetStance(guarding, "fight");
+    expect(fought.playerGuardCooldownTicks).toBe(guardCooldownTicks(40));
+
+    const switched = applySwitchMember(guarding, 1);
+    expect(switched.activeIndex).toBe(1);
+    expect(switched.playerGuardCooldownTicks).toBe(guardCooldownTicks(40));
   });
 });
 

@@ -13,6 +13,7 @@ import {
   SWITCH_STUN_MS,
   TIMEOUT_TICKS,
   computeAttackDamage,
+  guardCooldownTicks,
   msToTicks,
   shouldAutoAttack,
   type AutoAttackSide,
@@ -195,9 +196,29 @@ describe("applyBattleStart / applyBattleTick", () => {
     const guardExpired = tickTimes(guardStarted, msToTicks(GUARD_DURATION_MS));
     expect(guardExpired.playerStance).toBe("fight");
     expect(guardExpired.enemy?.hp).toBe(INITIAL_ENEMY_HP);
+    expect(guardExpired.playerGuardCooldownTicks).toBe(
+      guardCooldownTicks(BASE_SPEED),
+    );
 
     const returnedToAuto = tickTimes(guardExpired, AUTO_ATTACK_PERIOD_TICKS);
     expect(returnedToAuto.enemy?.hp).toBe(INITIAL_ENEMY_HP - damage);
+  });
+
+  it("敵のガードも5秒で解け、敵の Speed でクールに入る", () => {
+    const started = applyBattleStart({
+      ...startInput,
+      enemy: { ...startInput.enemy, speed: 40 },
+    });
+    const guardingEnemy: BattleSnapshot = {
+      ...started,
+      enemyStance: "guard",
+      enemyGuardRemainingTicks: msToTicks(GUARD_DURATION_MS),
+    };
+
+    const expired = tickTimes(guardingEnemy, msToTicks(GUARD_DURATION_MS));
+    expect(expired.enemyStance).toBe("fight");
+    expect(expired.enemyGuardRemainingTicks).toBe(0);
+    expect(expired.enemyGuardCooldownTicks).toBe(guardCooldownTicks(40));
   });
 
   it("控えは場に出るまでダメージを受けない", () => {

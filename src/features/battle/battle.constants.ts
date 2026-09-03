@@ -62,8 +62,7 @@ export const BATTLE_SPEED_STORAGE_KEY = "poop-battler.battle-speed";
 export const HIT_MOTION_MS = 350;
 
 export const TIMEOUT_MS = 90_000;
-export const GUARD_DURATION_MS = 10_000;
-export const GUARD_COOLDOWN_MS = 15_000;
+export const GUARD_DURATION_MS = 5_000;
 export const SWITCH_STUN_MS = 1_000;
 // 踏ん張り積算（約3秒）より長くし、振り切る前に時間切れしない（Issue #94 / #116）。
 export const PLAYER_SPECIAL_CHARGE_MS = 15_000;
@@ -81,6 +80,9 @@ export const AUTO_ATTACK_PERIOD_TICKS = 5;
 export const BASE_SPEED = 20;
 export const MIN_AUTO_ATTACK_PERIOD_TICKS = 2;
 export const MAX_AUTO_ATTACK_PERIOD_TICKS = 10;
+export const BASE_GUARD_COOLDOWN_TICKS = 30;
+export const MIN_GUARD_COOLDOWN_TICKS = 10;
+export const MAX_GUARD_COOLDOWN_TICKS = 60;
 export const AUTO_ATTACK_CHANCE = 0.5;
 export const SPECIAL_BASE_DAMAGE = 4;
 export const SPECIAL_DAMAGE_MULTIPLIER = 10;
@@ -224,6 +226,25 @@ export function autoAttackPeriodTicks(speed: number): number {
   return Math.min(
     MAX_AUTO_ATTACK_PERIOD_TICKS,
     Math.max(MIN_AUTO_ATTACK_PERIOD_TICKS, period),
+  );
+}
+
+/**
+ * Speed からまもれ後のクールティックを求める（Issue #120）。
+ *
+ * BASE_SPEED (20) が従来相当の 30 ティック。通常攻撃と同じく反比例で、
+ * 速い個体ほど短く、遅い個体ほど長くする。
+ */
+export function guardCooldownTicks(speed: number): number {
+  if (!Number.isFinite(speed) || speed <= 0) {
+    return MAX_GUARD_COOLDOWN_TICKS;
+  }
+
+  const cooldown = Math.round((BASE_GUARD_COOLDOWN_TICKS * BASE_SPEED) / speed);
+
+  return Math.min(
+    MAX_GUARD_COOLDOWN_TICKS,
+    Math.max(MIN_GUARD_COOLDOWN_TICKS, cooldown),
   );
 }
 
