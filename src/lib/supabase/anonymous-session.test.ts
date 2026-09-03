@@ -150,6 +150,7 @@ describe("ensureAnonymousSession", () => {
       data: { user: { id: "new-anonymous-user" } },
       error: null,
     });
+    const signOut = vi.fn().mockResolvedValue({ error: null });
 
     const result = await ensureAnonymousSession({
       getSession: vi.fn().mockResolvedValue({
@@ -160,10 +161,12 @@ describe("ensureAnonymousSession", () => {
         data: { user: null },
         error: { message: "User from sub claim in JWT does not exist" },
       }),
+      signOut,
       signInAnonymously,
     });
 
     expect(result).toEqual({ status: "ready" });
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
     expect(signInAnonymously).toHaveBeenCalledOnce();
   });
 });
