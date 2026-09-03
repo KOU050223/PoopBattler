@@ -252,7 +252,7 @@ describe("applyBattleStart / applyBattleTick", () => {
     expect(wiped.status).toBe("defeated");
   });
 
-  it("タイムアップは残HPが多い側が勝つ", () => {
+  it("タイムアップは1体でも残っていれば完了し、3体全滅だけ敗北する", () => {
     const started = applyBattleStart(startInput);
     const beforeTimeout = applyBattleTick({
       ...started,
@@ -260,13 +260,26 @@ describe("applyBattleStart / applyBattleTick", () => {
     });
     expect(beforeTimeout.status).toBe("active");
 
-    const won = applyBattleTick({
+    const survived = applyBattleTick({
       ...started,
       elapsedTicks: TIMEOUT_TICKS,
     });
-    expect(won.status).toBe("completing");
+    expect(survived.status).toBe("completing");
 
-    const lost = applyBattleTick({
+    // 1体戦闘不能 + 2体目半分 + 敵HPが高い。旧実装は残HP割合で敗北にしていた。
+    const oneKoHalfHp = applyBattleTick({
+      ...started,
+      elapsedTicks: TIMEOUT_TICKS,
+      party: [
+        { ...started.party![0], hp: 0 },
+        { ...started.party![1], hp: Math.floor(INITIAL_MEMBER_HP / 2) },
+        started.party![2],
+      ],
+      enemy: { ...started.enemy!, hp: 400 },
+    });
+    expect(oneKoHalfHp.status).toBe("completing");
+
+    const lastMemberLowHp = applyBattleTick({
       ...started,
       elapsedTicks: TIMEOUT_TICKS,
       party: [
@@ -276,7 +289,19 @@ describe("applyBattleStart / applyBattleTick", () => {
       ],
       enemy: { ...started.enemy!, hp: 400 },
     });
-    expect(lost.status).toBe("defeated");
+    expect(lastMemberLowHp.status).toBe("completing");
+
+    const wiped = applyBattleTick({
+      ...started,
+      elapsedTicks: TIMEOUT_TICKS,
+      party: [
+        { ...started.party![0], hp: 0 },
+        { ...started.party![1], hp: 0 },
+        { ...started.party![2], hp: 0 },
+      ],
+      enemy: { ...started.enemy!, hp: 400 },
+    });
+    expect(wiped.status).toBe("defeated");
   });
 
   describe("ベンチ回復", () => {
