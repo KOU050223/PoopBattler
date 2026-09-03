@@ -6,15 +6,18 @@ import {
   type BattleStance,
 } from "@/features/battle/battle.constants";
 import type { BattleParty } from "@/features/battle/battle.types";
+import {
+  captionTextClass,
+  secondaryButtonClass,
+  specialButtonClass,
+  stancePillClass,
+} from "@/lib/ui-classes";
 
-function controlClass(active: boolean, disabled: boolean) {
-  if (disabled) {
-    return "rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-400 dark:border-zinc-800";
+function controlClass(kind: "stance" | "special", active: boolean, disabled: boolean) {
+  if (kind === "special" && active && !disabled) {
+    return specialButtonClass;
   }
-  if (active) {
-    return "rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900";
-  }
-  return "rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700";
+  return stancePillClass(active, disabled);
 }
 
 export function BattleControls({
@@ -52,7 +55,7 @@ export function BattleControls({
       <div className="grid grid-cols-3 gap-2">
         <button
           type="button"
-          className={controlClass(playerStance === "fight", stunned)}
+          className={controlClass("stance", playerStance === "fight", stunned)}
           disabled={stunned}
           onClick={onFight}
         >
@@ -60,7 +63,7 @@ export function BattleControls({
         </button>
         <button
           type="button"
-          className={controlClass(playerStance === "guard", guardBlocked)}
+          className={controlClass("stance", playerStance === "guard", guardBlocked)}
           disabled={guardBlocked}
           onClick={onGuard}
         >
@@ -68,7 +71,7 @@ export function BattleControls({
         </button>
         <button
           type="button"
-          className={controlClass(playerStance === "special", !specialReady)}
+          className={controlClass("special", playerStance === "special", !specialReady)}
           disabled={!specialReady}
           onClick={activateSpecial}
         >
@@ -76,7 +79,7 @@ export function BattleControls({
         </button>
       </div>
       {reason ? (
-        <p role="status" className="text-center text-xs text-zinc-600 dark:text-zinc-400">
+        <p role="status" className={`text-center ${captionTextClass}`}>
           {reason}
         </p>
       ) : null}
@@ -85,7 +88,7 @@ export function BattleControls({
           {onDebugStrain ? (
             <button
               type="button"
-              className={controlClass(playerStance === "special", playerStance !== "special")}
+              className={controlClass("special", playerStance === "special", playerStance !== "special")}
               disabled={playerStance !== "special"}
               onClick={onDebugStrain}
             >
@@ -95,7 +98,7 @@ export function BattleControls({
           {onDebugComplete ? (
             <button
               type="button"
-              className={controlClass(false, false)}
+              className={secondaryButtonClass}
               onClick={onDebugComplete}
             >
               即完了（デバッグ）
@@ -115,7 +118,7 @@ export function BattleControls({
               type="button"
               disabled={down || stunned}
               onClick={() => onSwitch(index)}
-              className={controlClass(false, down || stunned)}
+              className={controlClass("stance", false, down || stunned)}
             >
               交代 {member.name ?? `控え${index + 1}`}
             </button>
