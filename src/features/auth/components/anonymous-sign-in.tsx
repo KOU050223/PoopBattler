@@ -6,7 +6,16 @@ import { signInAnonymouslyFromBrowser } from "@/lib/supabase/anonymous-session";
 
 type Status = "loading" | "ready" | "error";
 
-export function AnonymousSignIn() {
+type Props = {
+  /**
+   * セッションが使える状態になった時に呼ぶ。匿名サインインはブラウザで行うため、
+   * サーバー側で読んだアカウント状態は初回訪問では未サインインになる。
+   * 呼び出し元がここで読み直す。
+   */
+  onReady?: () => void;
+};
+
+export function AnonymousSignIn({ onReady }: Props = {}) {
   const [status, setStatus] = useState<Status>("loading");
   const [message, setMessage] = useState("");
   const hasInitialized = useRef(false);
@@ -25,11 +34,12 @@ export function AnonymousSignIn() {
       }
 
       setStatus("ready");
+      onReady?.();
     } catch {
       setStatus("error");
       setMessage("接続の準備に失敗しました。通信環境を確認して再試行してください。");
     }
-  }, []);
+  }, [onReady]);
 
   useEffect(() => {
     if (hasInitialized.current) return;
@@ -54,9 +64,6 @@ export function AnonymousSignIn() {
           </button>
         </>
       )}
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        ブラウザのデータを削除した場合や別の端末へ移行した場合、この匿名アカウントと記録は復旧できません。
-      </p>
     </section>
   );
 }

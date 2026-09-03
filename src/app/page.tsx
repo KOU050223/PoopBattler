@@ -1,9 +1,24 @@
 import Link from "next/link";
 
 import { navigationItems } from "@/components/layout/navigation";
-import { AnonymousSignIn } from "@/features/auth/components/anonymous-sign-in";
+import { getAccountStatusAction } from "@/features/account/actions";
+import { AccountSection } from "@/features/account/components/account-section";
+import { AuthCallbackNotice } from "@/features/account/components/auth-callback-notice";
 
-export default function Home() {
+function firstValue(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+
+  return value ?? null;
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+  const accountStatus = await getAccountStatusAction();
+
   return (
     <div className="flex flex-1 flex-col items-center bg-zinc-50 font-sans dark:bg-black">
       <main className="flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-16">
@@ -14,7 +29,15 @@ export default function Home() {
           </p>
         </div>
 
-        <AnonymousSignIn />
+        <AuthCallbackNotice
+          linked={firstValue(params.auth_linked) === "1"}
+          errorCode={firstValue(params.auth_error)}
+        />
+
+        <AccountSection
+          initialStatus={accountStatus}
+          loadStatus={getAccountStatusAction}
+        />
 
         <nav aria-label="各画面へ移動">
           <ul className="flex flex-col gap-2">

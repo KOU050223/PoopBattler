@@ -155,7 +155,13 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# `redirectTo` に渡す URL は *完全一致* でここに並べる。ここに無い URL を渡すと
+# Supabase は黙って site_url へ戻すため、「成功したのに元の画面に戻らない」形で失敗する。
+additional_redirect_urls = [
+  "https://127.0.0.1:3000",
+  "http://127.0.0.1:3000/auth/callback",
+  "http://localhost:3000/auth/callback",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -172,7 +178,11 @@ enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = true
 # Allow/disallow testing manual linking of accounts
-enable_manual_linking = false
+# 匿名ユーザーを linkIdentity() で Google へ昇格させるために必須。
+# false のままだと 422 (manual_linking_disabled) で失敗する。
+# 本番では Dashboard > Authentication > Sign In / Providers の
+# "Allow manual linking" を同様に有効にする（config.toml はローカル専用）。
+enable_manual_linking = true
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
 minimum_password_length = 6
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
@@ -314,6 +324,20 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
+[auth.external.google]
+# ローカルスタックで Google ログイン/連携を試すときに true にする。
+# 本番は Dashboard > Authentication > Sign In / Providers で有効にする。
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+url = ""
+# ローカルの Google ログインでは nonce 検証を通せないため true にする（本番は false のまま）。
+skip_nonce_check = true
+
+# Apple は対象外（issue #41）。Developer Program の加入・証明書・審査で所要時間が読めず、
+# 課金の前提を人質に取るため。継続利用版で別issueとして扱う。
 [auth.external.apple]
 enabled = false
 client_id = ""

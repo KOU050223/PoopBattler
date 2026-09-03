@@ -111,6 +111,99 @@ supabase migration list     # ローカルとリモートの適用状況を突�
 - **匿名サインインの有効化。** `config.toml` の `enable_anonymous_sign_ins` は
   ローカルスタック用の設定。本番では Dashboard > Authentication > Sign In / Providers から
   Anonymous Sign-Ins を有効にする。
+- **Googleログインとアカウント連携の有効化。** 次節のとおり Dashboard 側で別途設定する。
+
+## Googleアカウント連携をセットアップする
+
+匿名ユーザーを Google アカウントへ昇格させる導線（issue #41）には、
+コードの他に **Google Cloud 側と Supabase 側の設定**が要る。`config.toml` は
+ローカルスタック専用なので、本番は必ず Dashboard で同じ設定を行う。
+
+**Appleは対象外。** Developer Program の加入・証明書・審査で所要時間が読めず、
+課金の前提を人質に取るため。継続利用版で別issueとして扱う。
+
+### 1. Google Cloud Console で OAuth クライアントを作る
+
+1. <https://console.cloud.google.com/apis/credentials> を開く（プロジェクトが無ければ作る）。
+2. **OAuth consent screen** を設定する。External を選び、アプリ名・サポートメール・
+   デベロッパー連絡先を埋める。スコープは既定（`email`, `profile`, `openid`）のままでよい。
+   公開前はテストユーザーに自分のGoogleアカウントを追加しておく。
+3. **Credentials > Create Credentials > OAuth client ID** を選ぶ。
+   - Application type: **Web application**
+   - **Authorized redirect URIs** に Supabase のコールバックを *完全一致* で入れる。
+
+     | 用途 | URI |
+     | --- | --- |
+     | 本番（Supabaseプロジェクト） | `https://<project-ref>.supabase.co/auth/v1/callback` |
+     | ローカルスタック | `http://127.0.0.1:54321/auth/v1/callback` |
+
+     `<project-ref>` は Dashboard の URL に含まれるID。**アプリ側の
+     `/auth/callback` ではない**。Googleが戻る先はSupabaseで、そこから
+     アプリの `/auth/callback` へ転送される。
+4. 発行された **Client ID** と **Client secret** を控える。
+
+### 2. Supabase Dashboard で有効化する（本番）
+
+Dashboard > Authentication > **Sign In / Providers** で次の2つを行う。
+
+1. **Google** を有効にし、上で控えた Client ID / Client Secret を貼る。
+2. **Allow manual linking** を有効にする。
+   これが無効だと `linkIdentity()` が `manual_linking_disabled` で失敗し、
+   昇格の導線が一切動かない（画面には「アカウント連携がサーバー側で
+   有効になっていません」と出る）。
+
+さらに Dashboard > Authentication > **URL Configuration** で、
+アプリのコールバックを **Redirect URLs** に完全一致で追加する。
+
+```text
+https://<本番ドメイン>/auth/callback
+```
+
+ここに無いURLを `redirectTo` に渡すと、Supabaseはエラーを返さず
+**Site URL へ黙って戻す**。「連携は成功したのに元の画面に戻らない」という
+形で失敗するため、追加漏れに気づきにくい。
+
+### 3. ローカルスタックで試す（任意）
+
+Google の往復までローカルで確認したい場合のみ。
+
+1. `.env.local` に Client ID / Secret を設定する（`.env.local.example` 参照）。
+
+   ```bash
+   SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=...
+   SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=...
+   ```
+
+2. `config.toml` の `[auth.external.google]` の `enabled` を `true` にする。
+3. **スタックを起動し直す。** `config.toml` の変更は `supabase db reset` では
+   反映されない。認証コンテナの設定は起動時にしか読まれないため、
+   `supabase stop && supabase start` が必要。
+
+```bash
+supabase stop && supabase start
+```
+
+`.env.local` の `NEXT_PUBLIC_SUPABASE_URL` がローカル（`http://127.0.0.1:54321`）を
+指していることも確認する。本番URLのままだとローカルの設定は使われない。
+
+### 昇格でユーザーIDは変わらない
+
+`linkIdentity()` は既存の `auth.users` 行に identity を足すだけで、
+`auth.users.id` は変わらない。`profiles` を作るトリガー
+`on_auth_user_created` は `AFTER INSERT ON auth.users` なので昇格では発火せず、
+プロフィールも増えない。**このため専用のマイグレーションは不要**で、
+匿名のうちに作ったデータはそのまま昇格後のユーザーから読める。
+
+### 既存アカウントとの衝突
+
+そのGoogleアカウントが既に別ユーザーに紐づいている場合、Supabaseは
+`identity_already_exists` を返して連携を拒否する。**MVPではデータの
+マージを行わない**ため、画面はエラーを提示するだけで、両方のユーザーの
+データはどちらも変更されない。
+
+別端末で既存アカウントへ戻りたい場合は、連携ではなく
+「既にアカウントをお持ちの方はこちら」からログインする。この経路は
+その端末で匿名のまま作ったデータを引き継がない旨を確認してから実行する。
 
 ## 型安全なアクセス
 
