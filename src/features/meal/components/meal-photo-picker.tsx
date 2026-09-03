@@ -9,7 +9,6 @@ import { captionTextClass, primaryButtonClass, secondaryButtonClass } from "@/li
 
 type MealPhotoPickerProps = {
   error?: string;
-  autoOpen?: boolean;
   selectLabel?: string;
   hasPhoto?: boolean;
   onPhotoCleared?: () => void;
@@ -33,7 +32,6 @@ function getCameraMessage(status: MealCameraStatus) {
 /** 端末カメラ撮影とファイル選択を同じ検証ルールでフォームへ渡す。 */
 export function MealPhotoPicker({
   error,
-  autoOpen = false,
   selectLabel = "ファイルを選択する",
   hasPhoto = false,
   onPhotoCleared,
@@ -45,11 +43,6 @@ export function MealPhotoPicker({
   const videoRef = useRef<HTMLVideoElement>(null);
   const { stream, status, start, stop } = useMealCamera();
   const cameraMessage = getCameraMessage(status);
-
-  useEffect(() => {
-    if (!autoOpen) return;
-    inputRef.current?.click();
-  }, [autoOpen]);
 
   useEffect(() => {
     const video = videoRef.current;

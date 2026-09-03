@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { getBattleHistoryAction } from "@/features/bowel-log/actions";
 import { BattleHistoryList } from "@/features/bowel-log/components/battle-history-list";
@@ -8,13 +9,13 @@ export const metadata: Metadata = {
 };
 
 export default async function LogsPage() {
-  const logs = await getBattleHistoryAction();
+  const [logs, t] = await Promise.all([getBattleHistoryAction(), getTranslations("Pages.logs")]);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col">
       <header className="logs-page-header">
-        <h1>バトルの記録</h1>
-        <p>戦いの結果と、その日のコンディションを振り返ろう。</p>
+        <h1>{t("title")}</h1>
+        <p>{t("description")}</p>
       </header>
       <BattleHistoryList logs={logs} />
     </div>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { deleteMealLogAction, getMealLogsAction, replaceMealLogPhotoAction, saveMealLogAction } from "@/features/meal/actions";
 import { MealLogForm } from "@/features/meal/components/meal-log-form";
@@ -9,16 +10,16 @@ export const metadata: Metadata = {
 };
 
 export default async function MealsPage() {
-  const mealLogs = await getMealLogsAction();
+  const [mealLogs, t] = await Promise.all([getMealLogsAction(), getTranslations("Pages.meals")]);
 
   return (
     <div className="mx-auto w-full max-w-2xl">
       <header className="meal-page-header">
-        <h1>今日、何食べた？</h1>
-        <p>食べたものが、次のうんちモンスターになる。</p>
+        <h1>{t("title")}</h1>
+        <p>{t("description")}</p>
       </header>
       <section aria-labelledby="meal-entry-title" className="meal-form-section">
-        <h2 id="meal-entry-title">今日のごはん</h2>
+        <h2 id="meal-entry-title">{t("entryTitle")}</h2>
         <MealLogForm onSave={saveMealLogAction} />
       </section>
       <MealLogList initialLogs={mealLogs} onDelete={deleteMealLogAction} onReplacePhoto={replaceMealLogPhotoAction} />
