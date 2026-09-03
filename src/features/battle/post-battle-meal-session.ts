@@ -8,6 +8,11 @@ export function mealLogIdForComplete(sessionMealLogIds: readonly string[]): stri
   return sessionMealLogIds.at(-1) ?? null;
 }
 
+/** 投げ入れ演出に使う写真は、この回で最後に記録したもの。 */
+export function lastSessionPhotoId(logs: readonly { photoId: string }[]): string | null {
+  return logs.at(-1)?.photoId ?? null;
+}
+
 export function postBattleCompleteLabel(sessionCount: number): string {
   return sessionCount === 0 ? "記録せずに完了する" : "完了する";
 }
