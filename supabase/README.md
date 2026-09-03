@@ -168,16 +168,35 @@ Dashboard > Authentication > **Sign In / Providers** で次の2つを行う。
    昇格の導線が一切動かない（画面には「アカウント連携がサーバー側で
    有効になっていません」と出る）。
 
-さらに Dashboard > Authentication > **URL Configuration** で、
-アプリのコールバックを **Redirect URLs** に完全一致で追加する。
+また、Google のパネルでは **Enable Sign in with Google** のトグルを
+忘れずに有効にする。Client ID / Secret を入れただけでは有効にならず、
+画面には「Googleログインがサーバー側で有効になっていません」と出る。
+
+`Skip nonce checks` と `Allow users without an email` は **無効のまま**にする。
+前者はiOS向けの緩和でセキュリティを下げるだけ、後者を有効にすると
+メールアドレスの無いユーザーが生まれ、課金時の復旧手段という
+連携の目的そのものが崩れる。
+
+### URL Configuration
+
+<https://supabase.com/dashboard/project/gdkfnhrqlpabnycayohi/auth/url-configuration>
+
+本番は Vercel の `https://poop-battler.vercel.app`。
+
+- **Site URL**: `https://poop-battler.vercel.app`
+- **Redirect URLs** に完全一致で追加:
 
 ```text
-https://<本番ドメイン>/auth/callback
+https://poop-battler.vercel.app/auth/callback
 ```
 
 ここに無いURLを `redirectTo` に渡すと、Supabaseはエラーを返さず
 **Site URL へ黙って戻す**。「連携は成功したのに元の画面に戻らない」という
 形で失敗するため、追加漏れに気づきにくい。
+
+なお `/auth/callback` はこのPRで追加するルートなので、**マージして
+Vercelへデプロイされるまで本番には存在しない**（404になる）。
+本番で連携を試すのはデプロイ後。
 
 ### 3. ローカルスタックで試す（任意）
 
