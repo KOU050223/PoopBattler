@@ -53,8 +53,13 @@ export function matchupTone(
 
 export const PARTY_SIZE = 3;
 
-// 1 tick = 500ms。UI の間隔もこれに合わせる。ダメージは tick 回数だけで決まる。
+// 1 tick = 500ms（等倍）。倍速は間隔だけ短くする。ダメージとタイムアップは tick 回数だけで決まる。
 export const TICK_INTERVAL_MS = 500;
+export const BATTLE_SPEEDS = [1, 2] as const;
+export type BattleSpeed = (typeof BATTLE_SPEEDS)[number];
+export const DEFAULT_BATTLE_SPEED: BattleSpeed = 1;
+export const BATTLE_SPEED_STORAGE_KEY = "poop-battler.battle-speed";
+export const HIT_MOTION_MS = 350;
 
 export const TIMEOUT_MS = 90_000;
 export const GUARD_DURATION_MS = 10_000;
@@ -82,7 +87,7 @@ export const SPECIAL_GAUGE_MAX = 100;
 export const SPECIAL_GAUGE_PER_TICK = 2;
 
 // 通常攻撃は双方とも 5 tick ごとの窓で半々。1発 20。
-// 必殺は従来の基礎 4 に倍率を掛ける。タイムアップ 90秒は残HP判定用。
+// 必殺は従来の基礎 4 に倍率を掛ける。タイムアップは 180 tick（等倍で 90秒）で残HP判定。
 export const INITIAL_ENEMY_HP = 480;
 export const INITIAL_MEMBER_HP = 240;
 
@@ -108,6 +113,24 @@ export type WheelAttribute = (typeof TYPE_WHEEL)[number];
 
 export function msToTicks(ms: number): number {
   return Math.floor(ms / TICK_INTERVAL_MS);
+}
+
+export const TIMEOUT_TICKS = msToTicks(TIMEOUT_MS);
+
+export function isBattleSpeed(value: unknown): value is BattleSpeed {
+  return value === 1 || value === 2;
+}
+
+export function tickIntervalMs(speed: BattleSpeed): number {
+  return TICK_INTERVAL_MS / speed;
+}
+
+export function scaleByBattleSpeed(value: number, speed: BattleSpeed): number {
+  return value / speed;
+}
+
+export function nextBattleSpeed(speed: BattleSpeed): BattleSpeed {
+  return speed === 1 ? 2 : 1;
 }
 
 export function typeMultiplier(

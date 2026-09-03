@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
 import { MEAL_TAGS, type MealTag } from "@/features/meal/meal.types";
+import { mutedTextClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type MealSaveConfirmationModalProps = {
   isOpen: boolean;
@@ -81,13 +82,13 @@ export function MealSaveConfirmationModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="w-full max-w-sm rounded-lg border border-zinc-300 bg-white p-5 shadow-xl dark:border-zinc-700 dark:bg-black"
+            className="w-full max-w-sm rounded-2xl border-2 border-faded-gray bg-paper-white p-6 shadow-raised-gray"
           >
-            <h2 id="meal-confirmation-title" className="font-semibold">この内容で保存しますか？</h2>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{tagLabel}として記録します。</p>
+            <h2 id="meal-confirmation-title" className="font-bold text-charcoal">この内容で保存しますか？</h2>
+            <p className={`mt-2 ${mutedTextClass}`}>{tagLabel}として記録します。</p>
             <div className="mt-5 flex gap-3">
-              <button type="button" onClick={onCancel} disabled={isSaving} className="min-h-11 rounded-md border border-zinc-300 px-4 dark:border-zinc-700">戻る</button>
-              <button type="button" onClick={onConfirm} disabled={isSaving} className="min-h-11 rounded-md bg-zinc-900 px-4 font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-black">{isSaving ? "保存中…" : "保存する"}</button>
+              <button type="button" onClick={onCancel} disabled={isSaving} className={secondaryButtonClass}>戻る</button>
+              <button type="button" onClick={onConfirm} disabled={isSaving} className={primaryButtonClass}>{isSaving ? "保存中…" : "保存する"}</button>
             </div>
           </motion.div>
         </motion.div>

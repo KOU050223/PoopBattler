@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { navTabClass } from "@/lib/ui-classes";
+
 import { navigationItems } from "./navigation";
 
 /**
@@ -15,9 +17,9 @@ export function BottomNavigation() {
   return (
     <nav
       aria-label="メインナビゲーション"
-      className="fixed inset-x-0 bottom-0 z-10 border-t border-zinc-200 bg-white pb-[env(safe-area-inset-bottom)] dark:border-zinc-800 dark:bg-black"
+      className="fixed inset-x-0 bottom-0 z-10 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
     >
-      <ul className="mx-auto flex max-w-3xl">
+      <ul className="mx-auto flex max-w-3xl gap-1 rounded-2xl border-2 border-faded-gray bg-paper-white p-1 shadow-raised-gray">
         {navigationItems.map(({ href, label, icon: Icon }) => {
           const isCurrent = pathname === href || pathname.startsWith(`${href}/`);
 
@@ -26,11 +28,7 @@ export function BottomNavigation() {
               <Link
                 href={href}
                 aria-current={isCurrent ? "page" : undefined}
-                className={`flex min-h-14 flex-col items-center justify-center gap-1 text-xs ${
-                  isCurrent
-                    ? "text-zinc-900 dark:text-zinc-100"
-                    : "text-zinc-500 dark:text-zinc-400"
-                }`}
+                className={navTabClass(isCurrent)}
               >
                 <Icon aria-hidden="true" className="size-5" />
                 <span>{label}</span>

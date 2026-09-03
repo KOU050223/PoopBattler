@@ -76,6 +76,9 @@ function createGateway(supabase: SupabaseClient): StartBattleGateway {
         || typeof battle.resumed !== "boolean"
         || !isPartySnapshot(battle.party_snapshot)
       ) {
+        console.error("[start_battle rpc]", error?.message ?? error, {
+          rowCount: Array.isArray(data) ? data.length : data == null ? 0 : "non-array",
+        });
         return { battle: null, failed: true };
       }
 

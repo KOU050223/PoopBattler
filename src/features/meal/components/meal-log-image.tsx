@@ -38,11 +38,11 @@ export function MealLogImage({ photoId }: MealLogImageProps) {
   }, [photoId]);
 
   if (isMissing) {
-    return <p className="flex aspect-video items-center justify-center rounded-md bg-zinc-100 p-3 text-center text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">この端末では画像を表示できません。</p>;
+    return <p className="flex aspect-video items-center justify-center rounded-2xl bg-blush-wash p-3 text-center text-sm font-medium text-pencil-gray">この端末では画像を表示できません。</p>;
   }
   if (!imageUrl) {
-    return <div aria-label="食事写真を読み込み中" className="aspect-video animate-pulse rounded-md bg-zinc-100 dark:bg-zinc-900" />;
+    return <div aria-label="食事写真を読み込み中" className="aspect-video animate-pulse rounded-2xl bg-blush-wash" />;
   }
 
-  return <Image src={imageUrl} alt="保存した食事の写真" width={720} height={405} unoptimized className="aspect-video w-full rounded-md object-cover" />;
+  return <Image src={imageUrl} alt="保存した食事の写真" width={720} height={405} unoptimized className="aspect-video w-full rounded-2xl object-cover" />;
 }

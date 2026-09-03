@@ -9,6 +9,7 @@ import { MealSaveConfirmationModal } from "./meal-save-confirmation-modal";
 import { MealTagSelector } from "./meal-tag-selector";
 import { deleteMealPhoto, isMealPhotoStorageError, saveMealPhoto } from "@/features/meal/meal-photo-storage";
 import { type MealLogDraft, type MealLogSaveResult, type MealTag } from "@/features/meal/meal.types";
+import { captionTextClass, fieldClass, primaryButtonClass } from "@/lib/ui-classes";
 
 type FieldErrors = Partial<Record<"photo" | "tag" | "eatenAt" | "save", string>>;
 
@@ -116,7 +117,7 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
       inert={isConfirming}
     >
       <div className="flex flex-col gap-2">
-        <p className="font-medium">
+        <p className="font-bold text-charcoal">
           食事の写真 <span aria-hidden="true">*</span>
         </p>
         <MealPhotoPicker
@@ -138,13 +139,13 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
             width={720}
             height={405}
             unoptimized
-            className="aspect-video w-full rounded-lg border border-zinc-200 object-cover dark:border-zinc-800"
+            className="aspect-video w-full rounded-2xl border-2 border-faded-gray object-cover shadow-raised-gray"
           />
         )}
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="meal-eaten-at" className="font-medium">食事した日時</label>
+        <label htmlFor="meal-eaten-at" className="font-bold text-charcoal">食事した日時</label>
         <input
           id="meal-eaten-at"
           type="datetime-local"
@@ -152,7 +153,7 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
           onChange={(event) => setEatenAt(event.target.value)}
           aria-invalid={Boolean(errors.eatenAt)}
           aria-describedby={errors.eatenAt ? "meal-eaten-at-error" : undefined}
-          className="min-h-11 rounded-md border border-zinc-300 bg-transparent px-3 dark:border-zinc-700"
+          className={fieldClass}
         />
         {errors.eatenAt && <p id="meal-eaten-at-error" className="text-sm text-red-600">{errors.eatenAt}</p>}
       </div>
@@ -168,13 +169,13 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
       />
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="meal-note" className="font-medium">メモ <span className="text-sm font-normal text-zinc-500">（任意）</span></label>
-        <textarea id="meal-note" value={note} onChange={(event) => setNote(event.target.value)} rows={3} maxLength={500} className="rounded-md border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700" />
+        <label htmlFor="meal-note" className="font-bold text-charcoal">メモ <span className={`${captionTextClass} font-medium`}>（任意）</span></label>
+        <textarea id="meal-note" value={note} onChange={(event) => setNote(event.target.value)} rows={3} maxLength={500} className={`${fieldClass} py-2`} />
       </div>
 
       {errors.save && <p role="alert" className="text-sm text-red-600">{errors.save}</p>}
-      {isComplete && <p role="status" className="text-sm text-green-700 dark:text-green-400">入力内容を保存しました。</p>}
-      <button type="submit" className="min-h-12 rounded-md bg-zinc-900 px-4 font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-black">
+      {isComplete && <p role="status" className="text-sm font-medium text-spark-blue">入力内容を保存しました。</p>}
+      <button type="submit" className={primaryButtonClass}>
         保存内容を確認する
       </button>
 

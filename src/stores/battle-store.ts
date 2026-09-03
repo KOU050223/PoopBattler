@@ -10,6 +10,7 @@ import {
 import {
   applyBeginSpecial,
   applyFireSpecial,
+  applyMarkCompleting,
   applyMarkDefeated,
   applySetBowelDraft,
   applySetStance,
@@ -52,13 +53,14 @@ export function getBattleStateStorage(): StateStorage {
 
 export type BattleStore = BattleSnapshot & {
   start: (input: BattleStartInput) => void;
-  tick: (now?: number) => void;
+  tick: () => void;
   setStance: (stance: Exclude<BattleStance, "special">) => void;
   switchMember: (partyIndex: number) => void;
   beginSpecial: () => void;
   fireSpecial: () => void;
   restore: (snapshot: BattleSnapshot) => void;
   markDefeated: () => void;
+  markCompleting: () => void;
   setBowelDraft: (draft: BowelDraft | null) => void;
   reset: () => void;
 };
@@ -68,7 +70,7 @@ export const useBattleStore = create<BattleStore>()(
     (set) => ({
       ...IDLE_BATTLE_SNAPSHOT,
       start: (input) => set(applyBattleStart(input)),
-      tick: (now = Date.now()) => set((state) => applyBattleTick(state, now)),
+      tick: () => set((state) => applyBattleTick(state)),
       setStance: (stance) => set((state) => applySetStance(state, stance)),
       switchMember: (partyIndex) =>
         set((state) => applySwitchMember(state, partyIndex)),
@@ -76,6 +78,7 @@ export const useBattleStore = create<BattleStore>()(
       fireSpecial: () => set((state) => applyFireSpecial(state)),
       restore: (snapshot) => set(partializeBattleStore(snapshot)),
       markDefeated: () => set((state) => applyMarkDefeated(state)),
+      markCompleting: () => set((state) => applyMarkCompleting(state)),
       setBowelDraft: (draft) => set((state) => applySetBowelDraft(state, draft)),
       reset: () => set(IDLE_BATTLE_SNAPSHOT),
     }),

@@ -86,7 +86,7 @@ describe("useBattleStore", () => {
 
   it("start と tick がストアの指定値だけを更新する", () => {
     useBattleStore.getState().start(startInput);
-    useBattleStore.getState().tick(0);
+    useBattleStore.getState().tick();
 
     const state = useBattleStore.getState();
     expect(state.status).toBe("active");
@@ -94,6 +94,15 @@ describe("useBattleStore", () => {
     expect(state.enemy?.hp).toBe(INITIAL_ENEMY_HP);
     expect(state).not.toHaveProperty("comboGauge");
     expect(state).not.toHaveProperty("fed");
+  });
+
+  it("markCompleting は進行中のバトルを勝利にする", () => {
+    useBattleStore.getState().start(startInput);
+    useBattleStore.getState().markCompleting();
+
+    const state = useBattleStore.getState();
+    expect(state.status).toBe("completing");
+    expect(state.enemy?.hp).toBe(0);
   });
 
   it("restore は渡したスナップショットに置き換える", () => {

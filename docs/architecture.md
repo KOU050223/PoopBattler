@@ -59,11 +59,17 @@ src/
 │  │  ├─ logs/page.tsx
 │  │  └─ collection/page.tsx
 │  ├─ api/                 # Webhookなど、HTTP APIが必要なものだけ
+│  ├─ auth/
+│  │  └─ callback/route.ts # OAuthから戻る先。codeをセッションへ交換する
 │  ├─ layout.tsx
 │  └─ page.tsx
 ├─ proxy.ts                 # SupabaseセッションCookieの更新
 │
 ├─ features/
+│  ├─ account/
+│  │  ├─ components/
+│  │  ├─ actions.ts        # 匿名のままか、Google連携済みかを返す
+│  │  └─ account.types.ts
 │  ├─ battle/
 │  │  ├─ components/
 │  │  ├─ hooks/
@@ -96,7 +102,10 @@ src/
 │  ├─ supabase/
 │  │  ├─ client.ts         # ブラウザ用クライアント
 │  │  ├─ server.ts         # Server Component / Server Action用
-│  │  └─ proxy.ts          # セッション更新処理本体
+│  │  ├─ proxy.ts          # セッション更新処理本体
+│  │  ├─ anonymous-session.ts # 匿名サインイン（UIへは結果だけ返す）
+│  │  ├─ google-identity.ts   # Google連携／ログイン（同上）
+│  │  └─ auth-callback.ts     # OAuthのcode交換。Route Handlerが使う
 │  ├─ motion.ts            # 権限・対応状況・加速度取得を扱うラッパー
 │  ├─ wake-lock.ts         # 画面スリープ抑止のベストエフォート処理
 │  └─ utils.ts
@@ -140,6 +149,19 @@ src/
    `lib/supabase/anonymous-session.ts` の `signInAnonymouslyFromBrowser()` が
    クライアントの生成を内側に閉じ込め、UIには結果だけを返す。DB操作が可能な
    クライアントをコンポーネントへ渡さないことで、境界にlint抑制を置かずに済む。
+
+   Googleアカウントへの昇格（`lib/supabase/google-identity.ts`）も同じ形を取る。
+   `linkIdentity()` / `signInWithOAuth()` はブラウザ側のリダイレクトなので
+   Server Action には置けないが、だからといってコンポーネントで生のSDKを
+   触ってよいことにはならない。生成をモジュールの内側に閉じ、UIには
+   結果だけを返す。
+
+   **Route Handler も例外にしない。** `app/auth/callback/route.ts` は許可リストに
+   入っていないため、自分でクライアントを生成できない。OAuthの `code` を
+   セッションへ交換する処理は `lib/supabase/auth-callback.ts` に置き、
+   Route Handler はその結果でリダイレクト先を決めるだけにする。
+   許可リストへ `app/` を足して解決してはいけない。許可リストが
+   閉じている穴をそのまま開け直すことになる。
 4. バトル中のHP、コンボ、ゲージ、センサー値は Zustand でローカル管理する。`persist` で未完了バトルを `sessionStorage` に復元可能にし、Supabaseには確定結果だけを保存する。
 5. 共通化できないコンポーネントを `components/` に置かない。機能固有のものは各 `features/` の配下に置く。
 6. 環境変数とService Role Keyはクライアントへ公開しない。秘密鍵を要する処理はServer ActionまたはRoute Handlerに置く。

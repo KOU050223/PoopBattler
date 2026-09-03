@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 
 import {
   ATTRIBUTE_LABELS,
+  scaleByBattleSpeed,
+  type BattleSpeed,
   type CharacterAttribute,
 } from "@/features/battle/battle.constants";
 
@@ -22,13 +24,18 @@ export function BattleFigure({
   facing,
   motion: figureMotion,
   label,
+  depth,
+  speed,
 }: {
   attribute: CharacterAttribute;
   facing: "front" | "back";
   motion: "idle" | "hit" | "attack";
   label: string;
+  depth: "far" | "near";
+  speed: BattleSpeed;
 }) {
   const color = ATTRIBUTE_COLORS[attribute];
+  const sizeClass = depth === "far" ? "h-20 w-20" : "h-32 w-32";
 
   return (
     <motion.div
@@ -42,13 +49,17 @@ export function BattleFigure({
       }
       transition={
         figureMotion === "idle"
-          ? { repeat: Infinity, duration: 2.2, ease: "easeInOut" }
-          : { duration: 0.35 }
+          ? {
+              repeat: Infinity,
+              duration: scaleByBattleSpeed(2.2, speed),
+              ease: "easeInOut",
+            }
+          : { duration: scaleByBattleSpeed(0.35, speed) }
       }
     >
       <svg
         viewBox="0 0 72 80"
-        className="h-24 w-24"
+        className={sizeClass}
         aria-hidden="true"
         style={{ transform: facing === "back" ? "scaleX(-1)" : undefined }}
       >
@@ -73,7 +84,7 @@ export function BattleFigure({
         <line x1="28" y1="70" x2="24" y2="80" stroke="#171717" strokeWidth="1.6" />
         <line x1="44" y1="70" x2="48" y2="80" stroke="#171717" strokeWidth="1.6" />
       </svg>
-      <p className="max-w-28 truncate text-center text-xs text-zinc-600 dark:text-zinc-400">
+      <p className="max-w-28 truncate text-center text-[13px] font-medium text-pencil-gray">
         {label}
         <span className="block">{ATTRIBUTE_LABELS[attribute]}</span>
       </p>

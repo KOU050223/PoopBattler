@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { mutedTextClass } from "@/lib/ui-classes";
+
 type EmptyStateProps = {
   title: string;
   description?: string;
@@ -12,11 +14,9 @@ type EmptyStateProps = {
  */
 export function EmptyState({ title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-zinc-300 px-6 py-12 text-center dark:border-zinc-700">
-      <p className="font-medium text-zinc-900 dark:text-zinc-100">{title}</p>
-      {description && (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">{description}</p>
-      )}
+    <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-faded-gray bg-paper-white px-6 py-12 text-center">
+      <p className="font-bold text-charcoal">{title}</p>
+      {description && <p className={mutedTextClass}>{description}</p>}
       {action}
     </div>
   );
