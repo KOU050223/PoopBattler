@@ -77,6 +77,9 @@ export const GUARD_OUTGOING_MULTIPLIER = 0;
 
 export const AUTO_ATTACK_DAMAGE = 20;
 export const AUTO_ATTACK_PERIOD_TICKS = 5;
+export const BASE_SPEED = 20;
+export const MIN_AUTO_ATTACK_PERIOD_TICKS = 2;
+export const MAX_AUTO_ATTACK_PERIOD_TICKS = 10;
 export const AUTO_ATTACK_CHANCE = 0.5;
 export const SPECIAL_BASE_DAMAGE = 4;
 export const SPECIAL_DAMAGE_MULTIPLIER = 10;
@@ -87,6 +90,12 @@ export const SPECIAL_GAUGE_PER_TICK = 2;
 // 必殺は従来の基礎 4 に倍率を掛ける。タイムアップは 180 tick（等倍で 90秒）で残HP判定。
 export const INITIAL_ENEMY_HP = 480;
 export const INITIAL_MEMBER_HP = 240;
+
+// レンタル個体の3値。所有行が無いので、DBではなくここが出所になる（Issue #73）。
+// 抽選もされないため、この値は常に一定。
+export const RENTAL_HP = INITIAL_MEMBER_HP;
+export const RENTAL_POWER = AUTO_ATTACK_DAMAGE;
+export const RENTAL_SPEED = BASE_SPEED;
 
 export type AutoAttackSide = "player" | "enemy";
 
@@ -188,12 +197,33 @@ function unitIntervalHash(input: string): number {
   return (hash >>> 0) / 4_294_967_296;
 }
 
+/**
+ * Speed から通常攻撃の待ちティックを求める（Issue #73）。
+ *
+ * BASE_SPEED (20) がちょうど既定の 5 ティック。Speed が上がるほど待ちは短く、
+ * 反比例で減らす。極端な個体で 1 ティック連打や事実上の無攻撃にならないよう、
+ * 2〜10 ティックに丸める。
+ */
+export function autoAttackPeriodTicks(speed: number): number {
+  if (!Number.isFinite(speed) || speed <= 0) {
+    return MAX_AUTO_ATTACK_PERIOD_TICKS;
+  }
+
+  const period = Math.round((AUTO_ATTACK_PERIOD_TICKS * BASE_SPEED) / speed);
+
+  return Math.min(
+    MAX_AUTO_ATTACK_PERIOD_TICKS,
+    Math.max(MIN_AUTO_ATTACK_PERIOD_TICKS, period),
+  );
+}
+
 export function shouldAutoAttack(
   battleId: string,
   elapsedTicks: number,
   side: AutoAttackSide,
+  periodTicks: number = AUTO_ATTACK_PERIOD_TICKS,
 ): boolean {
-  if (elapsedTicks <= 0 || elapsedTicks % AUTO_ATTACK_PERIOD_TICKS !== 0) {
+  if (elapsedTicks <= 0 || elapsedTicks % periodTicks !== 0) {
     return false;
   }
 

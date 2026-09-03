@@ -12,8 +12,6 @@ import {
   ATTRIBUTE_LABELS,
   DEFAULT_BATTLE_SPEED,
   HIT_MOTION_MS,
-  INITIAL_ENEMY_HP,
-  INITIAL_MEMBER_HP,
   SPECIAL_GAUGE_MAX,
   matchupTone,
   nextBattleSpeed,
@@ -186,6 +184,9 @@ export function BattleScreen() {
         characterId: result.enemy.characterId,
         attribute: result.enemy.attribute,
         name: result.enemy.name,
+        hp: result.enemyHp,
+        power: result.enemyPower,
+        speed: result.enemySpeed,
       },
       party: result.party,
     });
@@ -294,7 +295,7 @@ export function BattleScreen() {
           <div className="flex flex-col items-end gap-2 pl-16">
             <HpBar
               current={snapshot.enemy.hp}
-              max={INITIAL_ENEMY_HP}
+              max={snapshot.enemy.maxHp}
               label={snapshot.enemy.name ?? "てき"}
               side="enemy"
             />
@@ -318,7 +319,7 @@ export function BattleScreen() {
             />
             <HpBar
               current={member.hp}
-              max={INITIAL_MEMBER_HP}
+              max={member.maxHp}
               label={member.name ?? "味方"}
               side="ally"
             />

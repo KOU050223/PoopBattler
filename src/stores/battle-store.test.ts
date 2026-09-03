@@ -6,16 +6,48 @@ import {
   IDLE_BATTLE_SNAPSHOT,
   partializeBattleStore,
 } from "@/features/battle/battle-snapshot";
-import { INITIAL_ENEMY_HP } from "@/features/battle/battle.constants";
+import {
+  AUTO_ATTACK_DAMAGE,
+  BASE_SPEED,
+  INITIAL_ENEMY_HP,
+  INITIAL_MEMBER_HP,
+} from "@/features/battle/battle.constants";
 import type { BattleStartInput } from "@/features/battle/battle.types";
 
 const startInput: BattleStartInput = {
   battleId: "battle-1",
-  enemy: { characterId: "meat-1", attribute: "meat" },
+  enemy: {
+    characterId: "meat-1",
+    attribute: "meat",
+    hp: INITIAL_ENEMY_HP,
+    power: AUTO_ATTACK_DAMAGE,
+    speed: BASE_SPEED,
+  },
   party: [
-    { characterId: "spicy-1", attribute: "spicy" },
-    { characterId: "normal-1", attribute: "normal" },
-    { characterId: "normal-2", attribute: "normal" },
+    {
+      userCharacterId: null,
+      characterId: "spicy-1",
+      attribute: "spicy",
+      hp: INITIAL_MEMBER_HP,
+      power: AUTO_ATTACK_DAMAGE,
+      speed: BASE_SPEED,
+    },
+    {
+      userCharacterId: null,
+      characterId: "normal-1",
+      attribute: "normal",
+      hp: INITIAL_MEMBER_HP,
+      power: AUTO_ATTACK_DAMAGE,
+      speed: BASE_SPEED,
+    },
+    {
+      userCharacterId: null,
+      characterId: "normal-2",
+      attribute: "normal",
+      hp: INITIAL_MEMBER_HP,
+      power: AUTO_ATTACK_DAMAGE,
+      speed: BASE_SPEED,
+    },
   ],
   now: 0,
 };
