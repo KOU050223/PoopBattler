@@ -25,18 +25,25 @@ pre-commit:
         # 「消しただけ」の変更が素通りする（新規チェックアウトで replay すると
         # スキーマは変わるのに、フックは型変更なしと判定してしまう）。
         # create or replace も拾う。RPCやビューの署名変更で型が変わるため。
-        if ! git diff --cached -U0 -- $staged_sql \
+        ddl=$(git diff --cached -U0 -- $staged_sql \
           | grep -E '^[+-]' \
           | grep -vE '^(\+\+\+|---)' \
           | grep -viE '^[+-][[:space:]]*--' \
-          | grep -qiE '(create([[:space:]]+or[[:space:]]+replace)?|alter|drop)[[:space:]]+(table|type|domain|view|materialized|function|procedure)|add[[:space:]]+column|drop[[:space:]]+column|alter[[:space:]]+column|add[[:space:]]+value'; then
+          | grep -iE '(create([[:space:]]+or[[:space:]]+replace)?|alter|drop)[[:space:]]+(table|type|domain|view|materialized|function|procedure)|add[[:space:]]+column|drop[[:space:]]+column|alter[[:space:]]+column|add[[:space:]]+value' || true)
+        if [ -z "$ddl" ]; then
           echo "マイグレーションは変更されたが、型定義に影響する文が無いため続行する。"
           echo "  （再生成結果の一致は CI の db:types:check が検証する）"
           exit 0
         fi
-        echo "エラー: 型定義に影響するマイグレーションを変更したが src/types/database.types.ts が更新されていない。"
-        echo "  npm run db:types を実行し、生成結果をステージしてからコミットすること。"
-        exit 1
+        # 生成型は公開スキーマだけを見る。private 関数の差し替えだけでは型は変わらない。
+        if echo "$ddl" | grep -viqE '^[+-][[:space:]]*(create([[:space:]]+or[[:space:]]+replace)?[[:space:]]+function|alter[[:space:]]+function|drop[[:space:]]+function([[:space:]]+if[[:space:]]+exists)?)[[:space:]].*\<private\.'; then
+          echo "エラー: 型定義に影響するマイグレーションを変更したが src/types/database.types.ts が更新されていない。"
+          echo "  npm run db:types を実行し、生成結果をステージしてからコミットすること。"
+          exit 1
+        fi
+        echo "private スキーマの関数だけの変更のため続行する。"
+        echo "  （再生成結果の一致は CI の db:types:check が検証する）"
+        exit 0
     lint:
       glob: "*.{ts,tsx,mts}"
       run: npm run lint

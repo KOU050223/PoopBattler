@@ -15,7 +15,7 @@ export function postBattleCompleteLabel(sessionCount: number): string {
 export function postBattleMealChanceCopy(existingCount: number, sessionCount: number): string {
   const total = existingCount + sessionCount;
   if (total === 0) {
-    return `食事ログがないと仲間になりません。今回記録すると25%、${COMPANIONSHIP_MEAL_LOG_CAP}件で100%です。記録しなくてもバトルは完了できます。`;
+    return `食事ログがないと仲間になりません。今回記録すると${companionshipChancePercent(1)}%、${COMPANIONSHIP_MEAL_LOG_CAP}件以上で${companionshipChancePercent(COMPANIONSHIP_MEAL_LOG_CAP)}%です。記録しなくてもバトルは完了できます。`;
   }
 
   const completeChance = companionshipChancePercent(total);
