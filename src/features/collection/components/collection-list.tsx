@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { ATTRIBUTE_LABELS } from "@/features/battle/battle.constants";
+import { PoopmFigure } from "@/features/poopm/components/poopm-figure";
+import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import {
@@ -48,11 +50,20 @@ export function CollectionList({ characters }: { characters: CollectionCharacter
           key={character.ownershipId}
           className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
         >
-          <div className="flex items-start justify-between gap-3">
-            <p className="font-semibold">{character.name}</p>
-            <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-100">
-              {COLLECTION_RARITY_LABELS[character.rarity]}
-            </span>
+          <div className="flex items-start gap-4">
+            <PoopmFigure
+              appearance={appearanceForCharacter(character.id)}
+              facing="front"
+              motion="idle"
+              label={character.name}
+              className="h-24 w-24 shrink-0"
+            />
+            <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+              <p className="min-w-0 font-semibold">{character.name}</p>
+              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                {COLLECTION_RARITY_LABELS[character.rarity]}
+              </span>
+            </div>
           </div>
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div>

@@ -27,13 +27,14 @@ export type AnonymousSessionResult =
   | { status: "ready" }
   | { status: "error"; message: string };
 
-function isStaleRefreshToken(error: AuthError | null): boolean {
+function isRecoverableInvalidSession(error: AuthError | null): boolean {
   if (!error) return false;
   const code = error.code ?? "";
   const message = error.message.toLowerCase();
   return code === "refresh_token_not_found"
     || code === "session_not_found"
-    || message.includes("refresh token");
+    || message.includes("refresh token")
+    || message.includes("user from sub claim in jwt does not exist");
 }
 
 async function signInAnonymously(
@@ -70,7 +71,7 @@ export async function ensureAnonymousSession(
       return { status: "ready" };
     }
 
-    if (!isStaleRefreshToken(userError)) {
+    if (!isRecoverableInvalidSession(userError)) {
       return {
         status: "error",
         message: userError?.message ?? "セッションを確認できません",

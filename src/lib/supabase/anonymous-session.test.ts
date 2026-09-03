@@ -144,4 +144,29 @@ describe("ensureAnonymousSession", () => {
 
     expect(result).toEqual({ status: "error", message: "もう一度お試しください。" });
   });
+
+  it("既存セッションのユーザー確認に失敗したら匿名サインインし直す", async () => {
+    const signInAnonymously = vi.fn().mockResolvedValue({
+      data: { user: { id: "new-anonymous-user" } },
+      error: null,
+    });
+    const signOut = vi.fn().mockResolvedValue({ error: null });
+
+    const result = await ensureAnonymousSession({
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { access_token: "stale" } },
+        error: null,
+      }),
+      getUser: vi.fn().mockResolvedValue({
+        data: { user: null },
+        error: { message: "User from sub claim in JWT does not exist" },
+      }),
+      signOut,
+      signInAnonymously,
+    });
+
+    expect(result).toEqual({ status: "ready" });
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(signInAnonymously).toHaveBeenCalledOnce();
+  });
 });
