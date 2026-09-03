@@ -46,7 +46,10 @@ values
   ('battle_b', gen_random_uuid()),
   ('battle_rpc_a', gen_random_uuid()),
   ('battle_rpc_empty', gen_random_uuid()),
-  ('battle_rpc_photo_a', gen_random_uuid());
+  ('battle_rpc_photo_a', gen_random_uuid()),
+  -- 購読（レポート課金）の検査用。user_a と user_b にそれぞれ1行。
+  ('sub_a', gen_random_uuid()),
+  ('sub_b', gen_random_uuid());
 
 create or replace function pg_temp.fixture(p_key text)
 returns uuid
@@ -956,7 +959,8 @@ begin
   from (values ('anon'), ('authenticated')) as r(role)
   cross join (values
     ('profiles'), ('characters'), ('meal_logs'),
-    ('battle_results'), ('bowel_logs'), ('user_characters')
+    ('battle_results'), ('bowel_logs'), ('user_characters'),
+    ('subscriptions')
   ) as t(tbl)
   -- CRUDだけでなく全テーブル権限を見る。TRUNCATE と MAINTAIN は行単位の権限では
   -- ないためRLSが効かず、CRUDだけを検査していると見落とす。
@@ -979,13 +983,95 @@ begin
       ('authenticated', 'battle_results', 'SELECT'),
       -- 排便ログと所有キャラクターは読み取り専用。
       ('authenticated', 'bowel_logs', 'SELECT'),
-      ('authenticated', 'user_characters', 'SELECT')
+      ('authenticated', 'user_characters', 'SELECT'),
+      -- 購読は本人が読むだけ。書き込みは Stripe の Webhook（service role）のみ。
+      ('authenticated', 'subscriptions', 'SELECT')
     ));
 
   if leftover is not null then
     raise exception 'FAIL: テーブル権限が設計と違う（過不足）— %', leftover;
   end if;
   raise notice 'ok: anon / authenticated の実効テーブル権限は設計どおり';
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- subscriptions: 本人だけが読め、誰も書けないこと
+-- ---------------------------------------------------------------------------
+-- レポート分析の閲覧権利。クライアントから書けると課金せずに権利を立てられる。
+-- SELECT ポリシーだけを作り、書き込みは Stripe の Webhook（service role）に限る
+-- 設計なので、「本人は読める（陽性）」と「他人の行は読めない・誰も書けない（陰性）」を
+-- 同じ実行で確かめる。
+--
+-- 準備は postgres ロールで行う。クライアントは INSERT できないため、
+-- ここで（RLS適用前に）行を作っておく。
+insert into public.subscriptions
+  (id, user_id, stripe_customer_id, stripe_subscription_id, status, current_period_end)
+values
+  (pg_temp.fixture('sub_a'), pg_temp.fixture('user_a'),
+   'cus_test_a', 'sub_test_a', 'active', now() + interval '30 days'),
+  (pg_temp.fixture('sub_b'), pg_temp.fixture('user_b'),
+   'cus_test_b', 'sub_test_b', 'active', now() + interval '30 days');
+
+do $$
+declare
+  a uuid := pg_temp.fixture('user_a');
+  b uuid := pg_temp.fixture('user_b');
+  -- 購読を持たないユーザー。INSERT の検査に使う。
+  e uuid := pg_temp.fixture('user_empty');
+  -- become の後は rls_fixture を読めないので、ここで取っておく。
+  sub_a uuid := pg_temp.fixture('sub_a');
+  sub_b uuid := pg_temp.fixture('sub_b');
+begin
+  perform pg_temp.become(a);
+
+  -- 読み取り -----------------------------------------------------------------
+  perform pg_temp.expect(
+    '本人は自分の購読を読める',
+    (select count(*) = 1 from public.subscriptions where id = sub_a),
+    true);
+
+  perform pg_temp.expect(
+    '他人の購読は読めない',
+    (select count(*) = 0 from public.subscriptions where id = sub_b),
+    true);
+
+  -- 書き込み -----------------------------------------------------------------
+  -- INSERT / UPDATE / DELETE のポリシーを作っていないため、自分の行であっても
+  -- 全て拒否される。ここが通ってしまうと、課金せずに権利を立てられる。
+  -- INSERT は購読を持たないユーザーで試す。既に行のある user_a で試すと
+  -- user_id の一意制約で落ち、allowed_uniq がそれを「拒否」へ畳んでしまう。
+  -- ポリシーが緩んでも気づけない偽の合格になる。
+  perform pg_temp.become(e);
+  perform pg_temp.expect(
+    '購読の無いユーザーでも自分名義の購読を作れない',
+    pg_temp.allowed(format(
+      'insert into public.subscriptions'
+      || ' (user_id, stripe_customer_id, stripe_subscription_id, status, current_period_end)'
+      || ' values (%L, %L, %L, %L, now() + interval ''30 days'')',
+      e, 'cus_forged', 'sub_forged', 'active')),
+    false);
+  perform pg_temp.become(a);
+
+  perform pg_temp.expect(
+    '自分の購読の状態を書き換えられない',
+    pg_temp.allowed(format(
+      'update public.subscriptions set status = ''active'','
+      || ' current_period_end = now() + interval ''3650 days'' where id = %L', sub_a)),
+    false);
+
+  perform pg_temp.expect(
+    '他人の購読を自分のものへ付け替えられない',
+    pg_temp.allowed(format(
+      'update public.subscriptions set user_id = %L where id = %L', a, sub_b)),
+    false);
+
+  perform pg_temp.expect(
+    '購読を削除できない',
+    pg_temp.allowed(format('delete from public.subscriptions where id = %L', sub_a)),
+    false);
+
+  reset role;
 end;
 $$;
 
@@ -1006,7 +1092,8 @@ begin
   from (values ('anon'), ('authenticated')) as r(role)
   cross join (values
     ('profiles'), ('characters'), ('meal_logs'),
-    ('battle_results'), ('bowel_logs'), ('user_characters')
+    ('battle_results'), ('bowel_logs'), ('user_characters'),
+    ('subscriptions')
   ) as t(tbl)
   where has_table_privilege(r.role, 'public.' || t.tbl, 'TRUNCATE');
 

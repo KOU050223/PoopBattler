@@ -28,23 +28,12 @@ const report: WeeklyReport = {
 };
 
 describe("WeeklyReportView", () => {
-  it("無料ユーザーには記録進捗とプレミアム導線だけを表示する", () => {
+  // 権利の判定は actions.ts が済ませており、このコンポーネントは
+  // 権利のある利用者にしか描かれない。表示の網羅だけを見る。
+  it("今週の詳細レポートを表示する", () => {
     const markup = renderToStaticMarkup(
       <NextIntlClientProvider locale="ja" messages={messages}>
-        <WeeklyReportView report={report} isPremium={false} />
-      </NextIntlClientProvider>,
-    );
-
-    expect(markup).toContain("今週は3件記録しました");
-    expect(markup).toContain("プレミアムで見る");
-    expect(markup).not.toContain("硬さの分布");
-    expect(markup).not.toContain("食事との記録上の関連");
-  });
-
-  it("プレミアムユーザーには今週の詳細レポートを表示する", () => {
-    const markup = renderToStaticMarkup(
-      <NextIntlClientProvider locale="ja" messages={messages}>
-        <WeeklyReportView report={report} isPremium />
+        <WeeklyReportView report={report} />
       </NextIntlClientProvider>,
     );
 

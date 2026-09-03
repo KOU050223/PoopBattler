@@ -66,9 +66,8 @@
     "recordedCount": "You logged {count} entries this week",
     "recordedDays": "You have entries for {count} days. Review summaries, comparisons, and meal trends with Premium.",
     "lockedTitle": "See this week's trends in more detail",
-    "lockedDescription": "With Premium, you can review changes in hardness and patterns between meals and bowel movements.",
+    "lockedDescription": "See how hardness changes and how meals relate to your records with Premium. What you see here is a sample, not your own data.",
     "viewPremium": "View with Premium",
-    "purchaseUnavailable": "Premium purchases are coming soon.",
     "highlights": "This week's highlights",
     "bowelCount": "Bowel movements",
     "recordDays": "Days logged",
@@ -106,6 +105,15 @@
     "mealAnalysis": "Related within 24h: {within24}; within 48h: {within48}. Average hardness: {average24} / {average48}.",
     "noRecords": "No records",
     "errorTitle": "Couldn't create the report",
-    "errorDescription": "Check your sign-in status and try again."
+    "errorDescription": "Check your sign-in status and try again.",
+    "teaserSampleLabel": "Sample view",
+    "purchase": "Get Premium",
+    "purchasePending": "Opening the checkout page…",
+    "linkRequiredTitle": "Link your account before purchasing",
+    "linkRequiredDescription": "Without linking, you cannot restore your purchase when you change devices.",
+    "linkAccount": "Link your Google account",
+    "purchaseSuccess": "Thank you for your purchase. It may take a moment to appear.",
+    "purchaseCanceled": "The purchase was canceled.",
+    "manageSubscription": "Manage subscription"
   }
 }
