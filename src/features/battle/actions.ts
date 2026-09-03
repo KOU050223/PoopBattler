@@ -161,7 +161,7 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
 
   const { data: battle, error: battleError } = await supabase
     .from("battle_results")
-    .select("completed_at")
+    .select("completed_at, meal_log_id")
     .eq("id", input.battleId)
     .eq("user_id", user.id)
     .eq("status", "completed")
@@ -193,6 +193,7 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     companionshipResult: result.companionship_result,
     acquiredCharacter,
     completedAt: battle.completed_at,
-    usedMealLog: Boolean(input.mealLogId),
+    // 冪等な再実行でも、リクエスト値ではなく確定済みバトルの値で表示を決める。
+    usedMealLog: battle.meal_log_id !== null,
   };
 }
