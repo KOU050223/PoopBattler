@@ -56,9 +56,9 @@ describe("getWeeklyReportAction", () => {
       meals: { total: 1, byTag: { vegetable: 1 } },
     });
     expect(supabase.bowelEq).toHaveBeenCalledWith("user_id", user.id);
-    expect(supabase.bowelGte).toHaveBeenCalledWith("logged_at", "2026-08-23T15:00:00.000Z");
+    expect(supabase.bowelGte).toHaveBeenCalledWith("logged_at", "2026-08-09T15:00:00.000Z");
     expect(supabase.mealEq).toHaveBeenCalledWith("user_id", user.id);
-    expect(supabase.mealGte).toHaveBeenCalledWith("eaten_at", "2026-08-29T15:00:00.000Z");
+    expect(supabase.mealGte).toHaveBeenCalledWith("eaten_at", "2026-08-09T15:00:00.000Z");
   });
 
   it("未認証時は記録を問い合わせず null を返す", async () => {

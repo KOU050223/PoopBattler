@@ -15,6 +15,13 @@ const report: WeeklyReport = {
   },
   meals: { total: 2, byTag: { vegetable: 2 } },
   mealRelationships: [{ tag: "vegetable", relatedBowelCount: 2, averageHardness: 4.5 }],
+  analysis: {
+    dailyCounts: [],
+    weekdayCounts: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 },
+    timeOfDayCounts: { morning: 0, afternoon: 0, evening: 0, night: 0 },
+    fourWeekTrend: [],
+    mealTagAnalyses: [],
+  },
 };
 
 describe("WeeklyReportView", () => {
@@ -33,6 +40,9 @@ describe("WeeklyReportView", () => {
     expect(markup).toContain("今週のうんちレポート");
     expect(markup).toContain("硬さの分布");
     expect(markup).toContain("食事との記録上の関連");
+    expect(markup).toContain("日別の記録");
+    expect(markup).toContain("4週間の推移");
+    expect(markup).toContain("食事タグ別の分析");
     expect(markup).toContain("野菜");
   });
 });

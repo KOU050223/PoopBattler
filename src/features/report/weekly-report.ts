@@ -1,3 +1,5 @@
+import { createReportAnalysis, type ReportAnalysis } from "./report-analysis";
+
 export type ReportBowelLog = {
   loggedAt: string;
   hardness: number;
@@ -30,6 +32,7 @@ export type WeeklyReport = {
   };
   meals: { total: number; byTag: Record<string, number> };
   mealRelationships: Array<{ tag: string; relatedBowelCount: number; averageHardness: number }>;
+  analysis: ReportAnalysis;
 };
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -117,6 +120,7 @@ export function createWeeklyReport({
     }
   }
 
+  const analysis = createReportAnalysis({ now, bowelLogs, mealLogs });
   return {
     range: { startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() },
     summary: {
@@ -138,5 +142,6 @@ export function createWeeklyReport({
         averageHardness: round(related.reduce((total, bowel) => total + bowel.hardness, 0) / related.length),
       }))
       .sort((a, b) => b.relatedBowelCount - a.relatedBowelCount || a.tag.localeCompare(b.tag)),
+    analysis,
   };
 }

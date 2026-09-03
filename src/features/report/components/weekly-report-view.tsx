@@ -67,7 +67,7 @@ export function WeeklyReportView({ report, isPremium }: Props) {
 }
 
 function PremiumReport({ report }: { report: WeeklyReport }) {
-  const { summary, breakdown, mealRelationships } = report;
+  const { summary, breakdown, mealRelationships, analysis } = report;
   return (
     <div className="space-y-5">
       <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="report-highlight-title">
@@ -96,10 +96,27 @@ function PremiumReport({ report }: { report: WeeklyReport }) {
         </div>
       </section>
 
+      <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="trend-title">
+        <h2 id="trend-title" className="text-lg font-black tracking-[-0.025em] text-charcoal">日別の記録</h2>
+        <div className="mt-4 grid grid-cols-5 gap-2">{analysis.dailyCounts.map((day) => <div key={day.date} className="rounded-lg bg-blush-wash/45 p-2 text-center"><p className="text-[11px] text-pencil-gray">{day.date.slice(5).replace("-", "/")}</p><p className="mt-1 text-lg font-black text-charcoal">{day.count}</p><p className="text-[11px] text-pencil-gray">件</p></div>)}</div>
+        <h3 className="mt-5 text-sm font-black text-charcoal">曜日・時間帯</h3>
+        <p className="mt-2 text-sm text-pencil-gray">もっとも記録が多い曜日: {Object.entries(analysis.weekdayCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "-"}。朝 {analysis.timeOfDayCounts.morning}件、昼 {analysis.timeOfDayCounts.afternoon}件、夜 {analysis.timeOfDayCounts.evening + analysis.timeOfDayCounts.night}件。</p>
+      </section>
+
+      <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="four-week-title">
+        <h2 id="four-week-title" className="text-lg font-black tracking-[-0.025em] text-charcoal">4週間の推移</h2>
+        <div className="mt-4 grid grid-cols-4 gap-2">{analysis.fourWeekTrend.map((week) => <div key={week.weekStartsAt} className="rounded-xl bg-blush-wash/45 p-3"><p className="text-[11px] text-pencil-gray">{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", timeZone: "Asia/Tokyo" }).format(new Date(week.weekStartsAt))}週</p><p className="mt-1 text-lg font-black text-charcoal">{week.bowelCount}回</p><p className="mt-1 text-[11px] text-pencil-gray">平均 {week.averageHardness ?? "-"}</p></div>)}</div>
+      </section>
+
       <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="meal-title">
         <div className="flex items-center gap-2"><Utensils aria-hidden="true" className="size-5 text-flush-edge" /><h2 id="meal-title" className="text-lg font-black tracking-[-0.025em] text-charcoal">食事との記録上の関連</h2></div>
         {mealRelationships.length === 0 ? <p className="mt-3 rounded-xl bg-blush-wash/45 p-3 text-sm leading-relaxed text-pencil-gray">食事と排便の両方を記録すると、24時間以内の記録上の関連をここで振り返れます。</p> : <ul className="mt-4 space-y-3">{mealRelationships.map((relationship) => <li key={relationship.tag} className="rounded-xl bg-blush-wash/45 p-3"><p className="font-bold text-charcoal">{mealTagLabel(relationship.tag)}</p><p className="mt-1 text-sm text-pencil-gray">{relationship.relatedBowelCount}件の排便記録と関連。平均の硬さは {relationship.averageHardness.toFixed(1)} です。</p></li>)}</ul>}
         <p className="mt-4 text-xs leading-relaxed text-pencil-gray">食事が原因であることを示すものではありません。あなたが記録した食事から24時間以内の排便を、振り返りやすく表示しています。</p>
+      </section>
+
+      <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="meal-analysis-title">
+        <h2 id="meal-analysis-title" className="text-lg font-black tracking-[-0.025em] text-charcoal">食事タグ別の分析</h2>
+        {analysis.mealTagAnalyses.length === 0 ? <p className="mt-3 text-sm leading-relaxed text-pencil-gray">同じ食事タグを5件以上、かつ24時間以内の排便を3件以上記録すると、ここに比較を表示します。</p> : <ul className="mt-4 space-y-3">{analysis.mealTagAnalyses.map((entry) => <li key={entry.tag} className="rounded-xl bg-blush-wash/45 p-3"><p className="font-bold text-charcoal">{mealTagLabel(entry.tag)} <span className="text-sm font-medium text-pencil-gray">{entry.mealCount}件の食事記録</span></p><p className="mt-1 text-sm text-pencil-gray">24時間内の関連 {entry.relatedWithin24Hours}件、48時間内 {entry.relatedWithin48Hours}件。平均の硬さは {entry.averageHardnessWithin24Hours ?? "-"} / {entry.averageHardnessWithin48Hours ?? "-"}。</p></li>)}</ul>}
       </section>
     </div>
   );

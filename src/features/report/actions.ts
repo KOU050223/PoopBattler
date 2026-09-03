@@ -11,18 +11,19 @@ export async function getWeeklyReportAction(now = new Date().toISOString()): Pro
   if (userError || !user) return null;
 
   const range = getWeeklyReportRange(now);
+  const fourWeekStartsAt = new Date(range.previousStartsAt.getTime() - 2 * 7 * 24 * 60 * 60 * 1000);
   const [bowelResult, mealResult] = await Promise.all([
     supabase
       .from("bowel_logs")
       .select("logged_at, hardness, amount, color, ease")
       .eq("user_id", user.id)
-      .gte("logged_at", range.previousStartsAt.toISOString())
+      .gte("logged_at", fourWeekStartsAt.toISOString())
       .order("logged_at", { ascending: false }),
     supabase
       .from("meal_logs")
       .select("eaten_at, tag")
       .eq("user_id", user.id)
-      .gte("eaten_at", range.relationshipMealStartsAt.toISOString())
+      .gte("eaten_at", fourWeekStartsAt.toISOString())
       .order("eaten_at", { ascending: false }),
   ]);
 
