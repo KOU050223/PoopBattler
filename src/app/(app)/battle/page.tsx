@@ -12,7 +12,7 @@ export default function BattlePage() {
     <>
       <PageHeader
         title="バトル"
-        description="端末を振ってうんちモンスターにダメージを与えます。"
+        description="通常攻撃は自動です。必殺の準備中だけ、踏ん張りで発射します。"
       />
       <EmptyState
         title="挑戦できる敵がいません"
