@@ -85,7 +85,8 @@ if grep -qs '^enabled = true' <(sed -n '/\[auth.external.google\]/,/^\[auth\.ext
   case "$probe" in
     *"client_id=env%28"*|*"client_id=&"*|*"client_id="[\&\"]*)
       echo "警告: Googleの認証情報が読めていない（client_idが未解決）。" >&2
-      echo "  .env.local の SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID / _SECRET を確認すること。" >&2
+      echo "  supabase/.env の SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID / _SECRET を確認すること" >&2
+      echo "  （.env.local ではない。config.toml の env(...) を読むのは Supabase CLI）。" >&2
       ;;
     *accounts.google.com*client_id=*)
       # Secret の正しさまでは確かめていない（実際の交換でしか分からない）。

@@ -90,9 +90,11 @@ export function GoogleAccountLink({ status, next = "/" }: Props) {
       {confirmingSignIn ? (
         <div className="flex flex-col gap-2 rounded border border-zinc-300 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-950">
           <p className="text-sm">
-            既にGoogleアカウントをお持ちの場合はログインできます。
-            <strong>この端末でいま記録したデータは引き継がれません。</strong>
-            続けますか？
+            <strong>以前にこのアプリでGoogle連携したことがある場合だけ</strong>
+            選んでください。連携したことのないGoogleアカウントを選ぶと、
+            新しいアカウントが作られ、
+            <strong>この端末の記録は取り出せなくなります。</strong>
+            はじめての方は「Googleアカウントと連携する」を選んでください。
           </p>
           <div className="flex gap-2">
             <button
@@ -120,7 +122,7 @@ export function GoogleAccountLink({ status, next = "/" }: Props) {
           onClick={() => setConfirmingSignIn(true)}
           className="min-h-12 rounded border border-zinc-400 px-4 py-2 disabled:opacity-60 dark:border-zinc-600"
         >
-          既にアカウントをお持ちの方はこちら
+          以前にGoogle連携した記録に戻る
         </button>
       )}
 

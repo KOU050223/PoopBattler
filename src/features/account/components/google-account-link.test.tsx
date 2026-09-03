@@ -27,7 +27,7 @@ describe("GoogleAccountLink", () => {
     expect(markup).toContain("Googleアカウントと連携する");
     // 別端末で既存アカウントへ戻る経路。これが無いと新端末では
     // identity_already_exists に突き当たり、同じデータへ戻れない。
-    expect(markup).toContain("既にアカウントをお持ちの方はこちら");
+    expect(markup).toContain("以前にGoogle連携した記録に戻る");
   });
 
   it("Google以外で昇格済みのユーザーには消失の警告も破壊的な導線も出さない", () => {
@@ -46,7 +46,7 @@ describe("GoogleAccountLink", () => {
     );
 
     expect(markup).not.toContain("記録が消える可能性があります");
-    expect(markup).not.toContain("既にアカウントをお持ちの方はこちら");
+    expect(markup).not.toContain("以前にGoogle連携した記録に戻る");
   });
 
   it("連携済みユーザーには昇格の導線も警告も出さない", () => {

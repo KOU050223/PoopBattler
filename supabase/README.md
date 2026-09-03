@@ -209,14 +209,32 @@ https://poop-battler.vercel.app/auth/callback**
 HTTPSトンネルを使うなら、そのホストも Redirect URLs に要る。
 登録が無いと、これも Site URL へ黙って戻って連携が完了しない。
 
+> **本番プロジェクトの Redirect URLs に、プレビューのホストをワイルドカードで
+> 登録してはいけない。** 例えば `https://*-kou050223s-projects.vercel.app/**`
+> のような登録は、**そのチームに作られる任意のプレビューを本番の
+> コールバック先として認可する**。プレビューのコードは
+> `buildCallbackUrl(window.location.origin, ...)` で自分自身を戻り先にでき、
+> 発行された認可コードをそのまま受け取れる。外部からのPRなど信頼できない
+> コードがプレビューに載ると、そこでGoogleログインした人の**本番アカウントの
+> セッションを奪える**。利便性のために本番の認可範囲を広げてはならない。
+
+安全な選択肢は次のいずれか。
+
+1. **プレビュー用に別のSupabaseプロジェクトを用意する**（推奨）。
+   本番の認可範囲を一切広げずに済む。Vercelの環境変数を Preview 環境だけ
+   そのプロジェクトへ向ける。
+2. **確認したい単一のデプロイURLだけを、その都度登録して後で消す。**
+   ワイルドカードにせず完全一致で登録する。
+
 ```text
-https://*-kou050223s-projects.vercel.app/auth/callback**
-https://<トンネルのホスト>/auth/callback**
+# 2 の場合。確認が済んだら消す
+https://poop-battler-git-<ブランチ名>-<チーム>.vercel.app/auth/callback**
 ```
 
-VercelのプレビューURLはデプロイごとに変わるため、ワイルドカードで
-まとめて許可する。トンネルは起動のたびにホスト名が変わる実装が多いので、
-その都度登録し直すか、固定ホスト名を発行できるものを使う。
+トンネルも同じで、起動ごとに変わるホストをワイルドカードでまとめず、
+その都度登録して消すか、固定ホスト名を発行できるものを使う。
+末尾の `**` はクエリ（`?next=`）に一致させるためのもので、
+**ホスト名側のワイルドカードとは意味が違う**。
 
 なお Google Cloud Console 側の Authorized redirect URIs は
 **Supabase のコールバック**（`https://<project-ref>.supabase.co/auth/v1/callback`）
