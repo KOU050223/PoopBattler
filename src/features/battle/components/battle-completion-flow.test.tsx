@@ -64,4 +64,20 @@ describe("BattleCompletionFlow", () => {
     expect(markup).toContain("完了する");
     expect(markup).not.toContain("記録せずに完了する");
   });
+
+  it("うんちの次の食事画面は、写真を選ぶボタンから始める", () => {
+    const markup = renderToStaticMarkup(
+      <BattleMealStep
+        existingMealLogCount={0}
+        sessionLogs={[]}
+        error={null}
+        onSave={async () => ({ success: false, message: "unused" })}
+        onComplete={() => undefined}
+        onAbandon={() => undefined}
+      />,
+    );
+    expect(markup).toContain("食事の記録");
+    expect(markup).toContain("写真を選ぶ");
+    expect(markup).toContain("カメラで撮る");
+  });
 });

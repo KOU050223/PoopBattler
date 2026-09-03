@@ -53,7 +53,6 @@ export function BattleMealStep({
         </p>
       </div>
       <MealLogForm
-        autoOpenPicker
         refreshOnSuccess={false}
         onSave={onSave}
         onSkip={onComplete}
