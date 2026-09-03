@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 import { navigationItems } from "@/components/layout/navigation";
-<<<<<<< HEAD
 import { getAccountStatusAction } from "@/features/account/actions";
 import { AccountSection } from "@/features/account/components/account-section";
 import { AuthCallbackNotice } from "@/features/account/components/auth-callback-notice";
+import { mutedTextClass } from "@/lib/ui-classes";
 
 function firstValue(value: string | string[] | undefined): string | null {
   if (Array.isArray(value)) return value[0] ?? null;
@@ -19,10 +19,6 @@ export default async function Home({
 }) {
   const params = await searchParams;
   const accountStatus = await getAccountStatusAction();
-=======
-import { AnonymousSignIn } from "@/features/auth/components/anonymous-sign-in";
-import { mutedTextClass } from "@/lib/ui-classes";
->>>>>>> origin/main
 
   return (
     <div className="flex flex-1 flex-col items-center bg-paper-white font-sans">

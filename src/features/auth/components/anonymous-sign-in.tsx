@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { signInAnonymouslyFromBrowser } from "@/lib/supabase/anonymous-session";
-import { captionTextClass, primaryButtonClass } from "@/lib/ui-classes";
+import { primaryButtonClass } from "@/lib/ui-classes";
 
 type Status = "loading" | "ready" | "error";
 
@@ -65,12 +65,6 @@ export function AnonymousSignIn({ onReady }: Props = {}) {
           </button>
         </>
       )}
-<<<<<<< HEAD
-=======
-      <p className={captionTextClass}>
-        ブラウザのデータを削除した場合や別の端末へ移行した場合、この匿名アカウントと記録は復旧できません。
-      </p>
->>>>>>> origin/main
     </section>
   );
 }
