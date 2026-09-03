@@ -12,7 +12,7 @@ describe("planSpecialMotion", () => {
     ).toBe("noop");
   });
 
-  it("許可時だけ準備中の揺れを待ち、拒否と未対応は即発射する", () => {
+  it("許可時だけ準備中の揺れ・傾きを待ち、拒否と未対応は即発射する", () => {
     expect(
       planSpecialMotion({ permission: "granted", enteredSpecial: true }),
     ).toBe("listen");

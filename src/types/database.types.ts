@@ -279,6 +279,7 @@ export type Database = {
           p_ease: string
           p_hardness: number
           p_meal_log_id?: string
+          p_meal_log_ids?: string[]
         }
         Returns: {
           battle_id: string

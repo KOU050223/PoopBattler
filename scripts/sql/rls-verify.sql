@@ -179,6 +179,23 @@ declare
   photo_result record;
   repeated_photo_result record;
 begin
+  perform pg_temp.expect(
+    'companionship_chance 0枚は0',
+    private.companionship_chance(0) = 0,
+    true);
+  perform pg_temp.expect(
+    'companionship_chance 1枚は25%',
+    private.companionship_chance(1) = 0.25,
+    true);
+  perform pg_temp.expect(
+    'companionship_chance 4枚は100%',
+    private.companionship_chance(4) = 1,
+    true);
+  perform pg_temp.expect(
+    'companionship_chance 5枚も100%',
+    private.companionship_chance(5) = 1,
+    true);
+
   perform pg_temp.become(a);
 
   -- 写真なしは必ず仲間化せず、排便ログをちょうど1件だけ作る。
@@ -224,6 +241,35 @@ begin
     'complete_battle 拒否後に排便ログを残さない',
     (select count(*) = 0 from public.bowel_logs where battle_result_id = battle_with_meal),
     true);
+
+  perform pg_temp.expect(
+    'complete_battle 他人の食事が混ざった配列は拒否',
+    pg_temp.allowed(format(
+      'select * from public.complete_battle(%L, 4::smallint, ''normal'', ''brown'', ''easy'', null, array[%L, %L]::uuid[])',
+      battle_with_meal, meal_a, meal_b)),
+    false);
+
+  begin
+    perform * from public.complete_battle(
+      battle_with_meal,
+      4::smallint,
+      'normal',
+      'brown',
+      'easy',
+      null,
+      array[
+        gen_random_uuid(),
+        gen_random_uuid(),
+        gen_random_uuid(),
+        gen_random_uuid(),
+        gen_random_uuid()
+      ]
+    );
+    perform pg_temp.expect('complete_battle 5枚は拒否', false, true);
+  exception
+    when invalid_parameter_value then
+      perform pg_temp.expect('complete_battle 5枚は拒否', true, true);
+  end;
 
   select * into photo_result
   from public.complete_battle(battle_with_meal, 4::smallint, 'normal', 'brown', 'easy', meal_a);

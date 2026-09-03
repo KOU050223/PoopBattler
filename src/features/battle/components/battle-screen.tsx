@@ -27,6 +27,7 @@ import { useBattleWakeLock } from "@/features/battle/hooks/use-battle-wake-lock"
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import { captionTextClass, mutedTextClass, primaryButtonClass, stancePillClass } from "@/lib/ui-classes";
+import { signInAnonymouslyFromBrowser } from "@/lib/supabase/anonymous-session";
 import { useBattleStore } from "@/stores/battle-store";
 
 const MATCHUP_LABEL = {
@@ -155,6 +156,13 @@ export function BattleScreen() {
   async function startBattle() {
     setStarting(true);
     setError(null);
+    const session = await signInAnonymouslyFromBrowser();
+    if (session.status === "error") {
+      setStarting(false);
+      setError("プレイの準備ができていません。時間をおいて再試行してください。");
+      return;
+    }
+
     const result = await startBattleAction();
     setStarting(false);
     if (result.status === "error") {
@@ -334,7 +342,7 @@ export function BattleScreen() {
         </div>
         {snapshot.playerStance === "special" ? (
           <p role="status" className="text-center text-sm">
-            踏ん張って発射！
+            踏ん張るか、端末を傾けて発射！
           </p>
         ) : null}
         <BattleControls

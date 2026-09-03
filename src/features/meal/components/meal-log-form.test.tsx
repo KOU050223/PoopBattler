@@ -26,5 +26,21 @@ describe("MealLogForm", () => {
     expect(markup).toContain("食事の写真");
     expect(markup).toContain("食事タグ");
     expect(markup).toContain("記録せずに完了する");
+    expect(markup).not.toContain("仲間になる確率");
+  });
+
+  it("複数枚のときは仲間化確率の説明を出す", () => {
+    const markup = renderToStaticMarkup(
+      <MealLogForm
+        maxPhotos={4}
+        photoCountHint={(photoCount) =>
+          photoCount === 0 ? "写真がないと仲間になりません。" : `写真${photoCount}枚`
+        }
+        onSave={async () => ({ success: false, message: "unused" })}
+        onSkip={() => undefined}
+      />,
+    );
+    expect(markup).toContain("写真がないと仲間になりません。");
+    expect(markup).toContain("ファイルを選択する");
   });
 });

@@ -9,6 +9,7 @@ import { captionTextClass, primaryButtonClass, secondaryButtonClass } from "@/li
 type MealPhotoPickerProps = {
   error?: string;
   autoOpen?: boolean;
+  selectLabel?: string;
   onPhotoSelected: (photo: File) => void;
   onValidationError: (message: string) => void;
 };
@@ -30,6 +31,7 @@ function getCameraMessage(status: MealCameraStatus) {
 export function MealPhotoPicker({
   error,
   autoOpen = false,
+  selectLabel = "ファイルを選択する",
   onPhotoSelected,
   onValidationError,
 }: MealPhotoPickerProps) {
@@ -96,7 +98,7 @@ export function MealPhotoPicker({
           </button>
         )}
         <label htmlFor={inputId} className={`flex cursor-pointer items-center ${primaryButtonClass}`}>
-          ファイルを選択する
+          {selectLabel}
         </label>
         <input
           ref={inputRef}

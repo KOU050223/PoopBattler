@@ -92,6 +92,7 @@ export type CompleteBattleInput = {
   battleId: string;
   bowelLog: BowelLog;
   mealLogId?: string | null;
+  mealLogIds?: string[] | null;
 };
 
 export type CompleteBattleResult =
@@ -115,13 +116,20 @@ function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value);
 }
 
+function isMealLogIds(value: unknown): value is string[] {
+  return Array.isArray(value)
+    && value.length <= 4
+    && value.every(isUuid);
+}
+
 function isCompleteBattleInput(value: unknown): value is CompleteBattleInput {
   if (!value || typeof value !== "object") return false;
 
   const input = value as Partial<CompleteBattleInput>;
   return isUuid(input.battleId)
     && isBowelLog(input.bowelLog)
-    && (input.mealLogId === undefined || input.mealLogId === null || isUuid(input.mealLogId));
+    && (input.mealLogId === undefined || input.mealLogId === null || isUuid(input.mealLogId))
+    && (input.mealLogIds === undefined || input.mealLogIds === null || isMealLogIds(input.mealLogIds));
 }
 
 /** 排便ログ・バトル結果・仲間化を RPC で一度だけ確定する。 */
@@ -147,6 +155,7 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     p_color: input.bowelLog.color,
     p_ease: input.bowelLog.ease,
     ...(input.mealLogId ? { p_meal_log_id: input.mealLogId } : {}),
+    ...(input.mealLogIds && input.mealLogIds.length > 0 ? { p_meal_log_ids: input.mealLogIds } : {}),
   };
   const { data, error } = await supabase.rpc("complete_battle", rpcInput);
   const result = data?.[0];

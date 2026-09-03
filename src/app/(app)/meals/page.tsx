@@ -16,7 +16,7 @@ export default async function MealsPage() {
     <div className="mx-auto flex w-full max-w-md flex-col gap-6">
       <PageHeader
         title="食事の記録"
-        description="写真とタグを残しておくと、バトル後の仲間化抽選に使えます。"
+        description="写真とタグを残しておくと、バトル後の仲間化抽選に使えます。写真が多いほど仲間になりやすくなります。"
       />
       <MealLogForm onSave={saveMealLogAction} />
       <MealLogList initialLogs={mealLogs} onDelete={deleteMealLogAction} onReplacePhoto={replaceMealLogPhotoAction} />
