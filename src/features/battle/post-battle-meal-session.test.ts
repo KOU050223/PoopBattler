@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  lastSessionPhotoId,
   mealLogIdForComplete,
   postBattleCompleteLabel,
   postBattleMealChanceCopy,
@@ -16,6 +17,19 @@ describe("mealLogIdForComplete", () => {
       "00000000-0000-4000-8000-000000000001",
       "00000000-0000-4000-8000-000000000002",
     ])).toBe("00000000-0000-4000-8000-000000000002");
+  });
+});
+
+describe("lastSessionPhotoId", () => {
+  it("今回の記録が無ければ投げ入れ写真も無い", () => {
+    expect(lastSessionPhotoId([])).toBeNull();
+  });
+
+  it("複数枚あっても最後の写真だけを投げ入れに使う", () => {
+    expect(lastSessionPhotoId([
+      { photoId: "00000000-0000-4000-8000-000000000021" },
+      { photoId: "00000000-0000-4000-8000-000000000022" },
+    ])).toBe("00000000-0000-4000-8000-000000000022");
   });
 });
 

@@ -20,9 +20,14 @@ import { MealLogForm } from "@/features/meal/components/meal-log-form";
 import type { MealLogDraft, MealLogSaveResult } from "@/features/meal/meal.types";
 import { mutedTextClass, primaryButtonClass } from "@/lib/ui-classes";
 
+export type BattleCompletedPayload = {
+  result: Extract<CompleteBattleResult, { success: true }>;
+  mealPhotoId: string | null;
+};
+
 type BattleCompletionFlowProps = {
   battleId: string;
-  onCompleted: (result: Extract<CompleteBattleResult, { success: true }>) => void;
+  onCompleted: (payload: BattleCompletedPayload) => void;
   onAbandon: () => void;
 };
 
@@ -78,6 +83,7 @@ export function BattleMealStep({
 export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: BattleCompletionFlowProps) {
   const submittingRef = useRef(false);
   const sessionMealLogIdsRef = useRef<string[]>([]);
+  const lastMealPhotoIdRef = useRef<string | null>(null);
   const [bowelLog, setBowelLog] = useState<BowelLog | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [existingMealLogCount, setExistingMealLogCount] = useState(0);
@@ -105,7 +111,10 @@ export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: Battl
         setError(result.message);
         return result;
       }
-      onCompleted(result);
+      onCompleted({
+        result,
+        mealPhotoId: lastMealPhotoIdRef.current,
+      });
       return result;
     } finally {
       submittingRef.current = false;
@@ -117,6 +126,7 @@ export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: Battl
     if (!saved.success) return saved;
 
     sessionMealLogIdsRef.current = [...sessionMealLogIdsRef.current, saved.mealLogId];
+    lastMealPhotoIdRef.current = draft.photoId;
     setSessionLogs((current) => [
       ...current,
       {
