@@ -10,6 +10,7 @@ import {
 import {
   applyBeginSpecial,
   applyFireSpecial,
+  applyMarkCompleting,
   applyMarkDefeated,
   applySetBowelDraft,
   applySetStance,
@@ -55,6 +56,7 @@ export type BattleStore = BattleSnapshot & {
   fireSpecial: () => void;
   restore: (snapshot: BattleSnapshot) => void;
   markDefeated: () => void;
+  markCompleting: () => void;
   setBowelDraft: (draft: BowelDraft | null) => void;
   reset: () => void;
 };
@@ -72,6 +74,7 @@ export const useBattleStore = create<BattleStore>()(
       fireSpecial: () => set((state) => applyFireSpecial(state)),
       restore: (snapshot) => set(partializeBattleStore(snapshot)),
       markDefeated: () => set((state) => applyMarkDefeated(state)),
+      markCompleting: () => set((state) => applyMarkCompleting(state)),
       setBowelDraft: (draft) => set((state) => applySetBowelDraft(state, draft)),
       reset: () => set(IDLE_BATTLE_SNAPSHOT),
     }),

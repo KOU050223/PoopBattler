@@ -64,6 +64,15 @@ describe("useBattleStore", () => {
     expect(state).not.toHaveProperty("fed");
   });
 
+  it("markCompleting は進行中のバトルを勝利にする", () => {
+    useBattleStore.getState().start(startInput);
+    useBattleStore.getState().markCompleting();
+
+    const state = useBattleStore.getState();
+    expect(state.status).toBe("completing");
+    expect(state.enemy?.hp).toBe(0);
+  });
+
   it("restore は渡したスナップショットに置き換える", () => {
     const snapshot = applyBattleStart(startInput);
     useBattleStore.getState().restore({

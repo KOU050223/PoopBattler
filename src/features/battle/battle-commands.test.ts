@@ -17,6 +17,7 @@ import {
 import {
   applyBeginSpecial,
   applyFireSpecial,
+  applyMarkCompleting,
   applyMarkDefeated,
   applySetBowelDraft,
   applySetStance,
@@ -175,6 +176,15 @@ describe("終了と下書き", () => {
     expect(applyMarkDefeated(applyBattleStart(startInput)).status).toBe(
       "defeated",
     );
+  });
+
+  it("markCompleting は戦闘中だけ敵HPを0にして勝利にする", () => {
+    expect(applyMarkCompleting(IDLE_BATTLE_SNAPSHOT).status).toBe("idle");
+
+    const won = applyMarkCompleting(applyBattleStart(startInput));
+    expect(won.status).toBe("completing");
+    expect(won.enemy?.hp).toBe(0);
+    expect(won.playerStance).toBe("fight");
   });
 
   it("排便下書きだけを保持する", () => {

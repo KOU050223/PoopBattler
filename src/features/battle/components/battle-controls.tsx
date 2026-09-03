@@ -28,6 +28,7 @@ export function BattleControls({
   onGuard,
   onSwitch,
   onDebugStrain,
+  onDebugComplete,
 }: {
   party: BattleParty;
   activeIndex: number;
@@ -39,6 +40,7 @@ export function BattleControls({
   onGuard: () => void;
   onSwitch: (index: number) => void;
   onDebugStrain?: () => void;
+  onDebugComplete?: () => void;
 }) {
   const { reason, activateSpecial } = useSpecialMotion();
   const stunned = switchStunTicks > 0;
@@ -78,15 +80,28 @@ export function BattleControls({
           {reason}
         </p>
       ) : null}
-      {process.env.NODE_ENV === "development" && onDebugStrain ? (
-        <button
-          type="button"
-          className={controlClass(playerStance === "special", playerStance !== "special")}
-          disabled={playerStance !== "special"}
-          onClick={onDebugStrain}
-        >
-          踏ん張る（デバッグ）
-        </button>
+      {process.env.NODE_ENV === "development" ? (
+        <div className="flex flex-col gap-2">
+          {onDebugStrain ? (
+            <button
+              type="button"
+              className={controlClass(playerStance === "special", playerStance !== "special")}
+              disabled={playerStance !== "special"}
+              onClick={onDebugStrain}
+            >
+              踏ん張る（デバッグ）
+            </button>
+          ) : null}
+          {onDebugComplete ? (
+            <button
+              type="button"
+              className={controlClass(false, false)}
+              onClick={onDebugComplete}
+            >
+              即完了（デバッグ）
+            </button>
+          ) : null}
+        </div>
       ) : null}
       <div className="grid grid-cols-2 gap-2">
         {party.map((member, index) => {
