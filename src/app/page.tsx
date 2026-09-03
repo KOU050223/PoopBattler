@@ -2,15 +2,10 @@ import Link from "next/link";
 
 import { navigationItems } from "@/components/layout/navigation";
 import { getAccountStatusAction } from "@/features/account/actions";
+import { readAuthErrorCode, readAuthLinked } from "@/features/account/callback-params";
 import { AccountSection } from "@/features/account/components/account-section";
 import { AuthCallbackNotice } from "@/features/account/components/auth-callback-notice";
 import { mutedTextClass } from "@/lib/ui-classes";
-
-function firstValue(value: string | string[] | undefined): string | null {
-  if (Array.isArray(value)) return value[0] ?? null;
-
-  return value ?? null;
-}
 
 export default async function Home({
   searchParams,
@@ -31,15 +26,8 @@ export default async function Home({
         </div>
 
         <AuthCallbackNotice
-          // URLのパラメータだけを信じない。`?auth_linked=1` は履歴や共有で
-          // 後から再訪でき、匿名のままの利用者に「連携できた＝記録は復旧
-          // できる」と誤って伝えてしまう。サーバーで読んだ実際の状態と
-          // 一致したときだけ成功を出す。
-          linked={
-            firstValue(params.auth_linked) === "1"
-            && accountStatus.hasGoogleIdentity
-          }
-          errorCode={firstValue(params.auth_error)}
+          linked={readAuthLinked(params, accountStatus.hasGoogleIdentity)}
+          errorCode={readAuthErrorCode(params)}
         />
 
         <AccountSection
