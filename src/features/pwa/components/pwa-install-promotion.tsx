@@ -2,11 +2,13 @@
 
 import { Download } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import {
   installPromotionKind,
+  PWA_INSTALL_PROMOTION_ELIGIBLE_STORAGE_KEY,
   PWA_INSTALL_PROMOTION_STORAGE_KEY,
+  shouldRememberInstallPromotionEligibility,
   type InstallPromotionKind,
 } from "@/features/pwa/pwa-install";
 import { cardClass, mutedTextClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
@@ -22,6 +24,10 @@ function hasShownPromotion() {
   return window.localStorage.getItem(PWA_INSTALL_PROMOTION_STORAGE_KEY) === "true";
 }
 
+function hasPromotionEligibility() {
+  return window.localStorage.getItem(PWA_INSTALL_PROMOTION_ELIGIBLE_STORAGE_KEY) === "true";
+}
+
 /** 初回バトルの記録完了後だけに置く、控えめなホーム画面追加案内。 */
 export function PwaInstallPromotion({ isFirstCompletedBattle }: { isFirstCompletedBattle: boolean }) {
   const t = useTranslations("Pwa");
@@ -32,6 +38,21 @@ export function PwaInstallPromotion({ isFirstCompletedBattle }: { isFirstComplet
     hasShownPromotion,
     () => true,
   );
+  const hasRememberedEligibility = useSyncExternalStore(
+    subscribeToPromotionStorage,
+    hasPromotionEligibility,
+    () => false,
+  );
+  const isEligibleForPromotion = shouldRememberInstallPromotionEligibility(
+    isFirstCompletedBattle,
+    hasRememberedEligibility,
+  );
+
+  useEffect(() => {
+    if (isFirstCompletedBattle) {
+      window.localStorage.setItem(PWA_INSTALL_PROMOTION_ELIGIBLE_STORAGE_KEY, "true");
+    }
+  }, [isFirstCompletedBattle]);
 
   const kind = installPromotionKind({
     hasNativePrompt: deferredPrompt !== null,
@@ -51,7 +72,7 @@ export function PwaInstallPromotion({ isFirstCompletedBattle }: { isFirstComplet
     setDismissed(true);
   }
 
-  if (!isFirstCompletedBattle || !kind || dismissed) return null;
+  if (!isEligibleForPromotion || !kind || dismissed) return null;
 
   return <InstallPromotionCard kind={kind} onDismiss={dismiss} onInstall={() => void install()} t={t} />;
 }

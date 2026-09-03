@@ -34,7 +34,7 @@ function isStandalone() {
 const subscribeToNothing = () => () => undefined;
 
 function browserIsIosSafari() {
-  return isIosSafari(navigator.userAgent, navigator.vendor);
+  return isIosSafari(navigator.userAgent, navigator.vendor, navigator.maxTouchPoints);
 }
 
 /**
