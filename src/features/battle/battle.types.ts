@@ -1,3 +1,4 @@
+import type { BowelLogDraft } from "@/features/bowel-log/bowel-log.types";
 import type { Database } from "@/types/database.types";
 
 import type {
@@ -32,12 +33,7 @@ export type BattleStartInput = {
 };
 
 // 未送信の排便入力。センサー値やカメラ画像はここに足さない。
-export type BowelDraft = {
-  hardness?: number;
-  amount?: string;
-  color?: string;
-  ease?: string;
-};
+export type BowelDraft = BowelLogDraft;
 
 export type BattleSnapshot = {
   status: BattleStatus;
