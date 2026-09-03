@@ -13,15 +13,25 @@ import { getMealLogsAction, saveMealLogAction } from "./actions";
 const user = { id: "00000000-0000-4000-8000-000000000001" };
 const photoId = "00000000-0000-4000-8000-000000000002";
 
-function createSupabase({ userData = user, insertError = null }: {
+const mealLogId = "00000000-0000-4000-8000-000000000009";
+
+function createSupabase({ userData = user, insertError = null, insertedId = mealLogId }: {
   userData?: typeof user | null;
   insertError?: { message: string } | null;
+  insertedId?: string | null;
 } = {}) {
-  const insert = vi.fn().mockResolvedValue({ error: insertError });
+  const single = vi.fn().mockResolvedValue({
+    data: insertError ? null : insertedId ? { id: insertedId } : null,
+    error: insertError,
+  });
+  const select = vi.fn().mockReturnValue({ single });
+  const insert = vi.fn().mockReturnValue({ select });
   return {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: userData }, error: null }) },
     from: vi.fn().mockReturnValue({ insert }),
     insert,
+    select,
+    single,
   };
 }
 
@@ -64,7 +74,10 @@ describe("saveMealLogAction", () => {
     const supabase = createSupabase();
     mocks.createClient.mockResolvedValue(supabase);
 
-    await expect(saveMealLogAction(createDraft())).resolves.toEqual({ success: true });
+    await expect(saveMealLogAction(createDraft())).resolves.toEqual({
+      success: true,
+      mealLogId,
+    });
     expect(supabase.insert).toHaveBeenCalledWith({
       user_id: user.id,
       eaten_at: "2026-09-02T12:34:56.000Z",
@@ -72,6 +85,7 @@ describe("saveMealLogAction", () => {
       tag: "curry",
       note: "昼ごはん",
     });
+    expect(supabase.select).toHaveBeenCalledWith("id");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/meals");
   });
 
@@ -101,6 +115,13 @@ describe("saveMealLogAction", () => {
 
     const failedInsert = createSupabase({ insertError: { message: "RLS denied" } });
     mocks.createClient.mockResolvedValueOnce(failedInsert);
+    await expect(saveMealLogAction(createDraft())).resolves.toEqual({
+      success: false,
+      message: "食事ログの保存に失敗しました。もう一度お試しください。",
+    });
+
+    const missingId = createSupabase({ insertedId: null });
+    mocks.createClient.mockResolvedValueOnce(missingId);
     await expect(saveMealLogAction(createDraft())).resolves.toEqual({
       success: false,
       message: "食事ログの保存に失敗しました。もう一度お試しください。",

@@ -15,7 +15,7 @@ import { useBattleStore } from "@/stores/battle-store";
 import { primaryButtonClass, stancePillClass } from "@/lib/ui-classes";
 
 type BowelLogFormProps = {
-  /** 検証済みの4項目を、バトル/05から完了/02へ渡す。 */
+  /** 検証済みの4項目を、戦闘後の食事写真選択へ渡す。 */
   onSubmit: (log: BowelLog) => void | Promise<void>;
 };
 
