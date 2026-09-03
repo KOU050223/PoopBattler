@@ -76,8 +76,13 @@ describe("battle snapshot persist", () => {
   });
 
   it("保存済みに switchCooldownTicks が無くても 0 に戻す", () => {
-    const { switchCooldownTicks: _ignored, ...legacy } = IDLE_BATTLE_SNAPSHOT;
-    const persisted = partializeBattleStore(legacy as typeof IDLE_BATTLE_SNAPSHOT);
+    const legacy = { ...IDLE_BATTLE_SNAPSHOT } as Partial<
+      typeof IDLE_BATTLE_SNAPSHOT
+    >;
+    delete legacy.switchCooldownTicks;
+    const persisted = partializeBattleStore(
+      legacy as typeof IDLE_BATTLE_SNAPSHOT,
+    );
 
     expect(persisted.switchCooldownTicks).toBe(0);
   });
