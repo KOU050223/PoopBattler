@@ -111,6 +111,253 @@ supabase migration list     # ローカルとリモートの適用状況を突�
 - **匿名サインインの有効化。** `config.toml` の `enable_anonymous_sign_ins` は
   ローカルスタック用の設定。本番では Dashboard > Authentication > Sign In / Providers から
   Anonymous Sign-Ins を有効にする。
+- **Googleログインとアカウント連携の有効化。** 次節のとおり Dashboard 側で別途設定する。
+
+## Googleアカウント連携をセットアップする
+
+匿名ユーザーを Google アカウントへ昇格させる導線（issue #41）には、
+コードの他に **Google Cloud 側と Supabase 側の設定**が要る。`config.toml` は
+ローカルスタック専用なので、本番は必ず Dashboard で同じ設定を行う。
+
+**Appleは対象外。** Developer Program の加入・証明書・審査で所要時間が読めず、
+課金の前提を人質に取るため。継続利用版で別issueとして扱う。
+
+### 1. Google Cloud Console で OAuth クライアントを作る
+
+このプロジェクトのGoogle Cloudプロジェクトは `poop-battler`。以下のリンクは
+そのプロジェクトに固定してある。
+
+1. **先に OAuth consent screen を設定する。**
+   <https://console.cloud.google.com/auth/overview?project=poop-battler>
+
+   External を選び、アプリ名・サポートメール・デベロッパー連絡先を埋める。
+   スコープは既定（`email`, `profile`, `openid`）のままでよい。
+   公開前はテストユーザーに自分のGoogleアカウントを追加しておく。
+
+   **順序が重要。** consent screen を設定する前に Credentials へ行くと、
+   クライアントの種類に「Web application」が出てこない。
+
+2. **Credentials > Create Credentials > OAuth client ID** を選ぶ。
+   <https://console.cloud.google.com/apis/credentials?project=poop-battler>
+   - Application type: **Web application**
+   - **Authorized redirect URIs** に Supabase のコールバックを *完全一致* で入れる。
+
+     | 用途 | URI |
+     | --- | --- |
+     | 本番（Supabaseプロジェクト） | `https://gdkfnhrqlpabnycayohi.supabase.co/auth/v1/callback` |
+     | ローカルスタック | `http://127.0.0.1:54321/auth/v1/callback` |
+
+     ホスト名は Supabase プロジェクトのもの（`NEXT_PUBLIC_SUPABASE_URL` と同じ）。
+     **アプリ側の `/auth/callback` ではない**。Googleが戻る先はSupabaseで、
+     そこからアプリの `/auth/callback` へ転送される。
+3. 発行された **Client ID** と **Client secret** を控える。
+
+> `gcloud` では作れない。OAuthクライアントの発行は IAP OAuth Admin API 経由に
+> なるが、この API は組織に属さないプロジェクトを拒否し（`Project must belong
+> to an organization`）、2026年3月19日に廃止済み。Consoleで作る。
+
+### 2. Supabase Dashboard で有効化する（本番）
+
+<https://supabase.com/dashboard/project/gdkfnhrqlpabnycayohi/auth/providers>
+
+Dashboard > Authentication > **Sign In / Providers** で次の2つを行う。
+
+1. **Google** を有効にし、上で控えた Client ID / Client Secret を貼る。
+2. **Allow manual linking** を有効にする。
+   これが無効だと `linkIdentity()` が `manual_linking_disabled` で失敗し、
+   昇格の導線が一切動かない（画面には「アカウント連携がサーバー側で
+   有効になっていません」と出る）。
+
+また、Google のパネルでは **Enable Sign in with Google** のトグルを
+忘れずに有効にする。Client ID / Secret を入れただけでは有効にならず、
+画面には「Googleログインがサーバー側で有効になっていません」と出る。
+
+`Skip nonce checks` と `Allow users without an email` は **無効のまま**にする。
+前者はiOS向けの緩和でセキュリティを下げるだけ、後者を有効にすると
+メールアドレスの無いユーザーが生まれ、課金時の復旧手段という
+連携の目的そのものが崩れる。
+
+### URL Configuration
+
+<https://supabase.com/dashboard/project/gdkfnhrqlpabnycayohi/auth/url-configuration>
+
+本番は Vercel の `https://poop-battler.vercel.app`。
+
+- **Site URL**: `https://poop-battler.vercel.app`
+- **Redirect URLs** に完全一致で追加:
+
+```text
+https://poop-battler.vercel.app/auth/callback
+```
+
+`redirectTo` には戻り先を `?next=` で載せるため、Dashboard 側も
+**クエリ付きで一致する形**にする必要がある。Dashboard の Redirect URLs は
+末尾のワイルドカードを解釈するので、次のように登録する。
+
+```text
+https://poop-battler.vercel.app/auth/callback**
+```
+
+クエリ無しだけを登録すると `?next=` 付きが一致せず、Supabase はエラーを
+返さないまま Site URL へ戻す。**`/?code=...` がトップに落ちて連携が
+完了しない**という形で失敗するため、原因が分かりにくい。
+
+### プレビュー配信・トンネルから試す場合
+
+戻り先は `window.location.origin` から組み立てる。つまり**開いている
+ホスト名がそのまま使われる**ため、Vercelのプレビュー配信や実機確認用の
+HTTPSトンネルを使うなら、そのホストも Redirect URLs に要る。
+登録が無いと、これも Site URL へ黙って戻って連携が完了しない。
+
+> **本番プロジェクトの Redirect URLs に、プレビューのホストをワイルドカードで
+> 登録してはいけない。** 例えば `https://*-kou050223s-projects.vercel.app/**`
+> のような登録は、**そのチームに作られる任意のプレビューを本番の
+> コールバック先として認可する**。プレビューのコードは
+> `buildCallbackUrl(window.location.origin, ...)` で自分自身を戻り先にでき、
+> 発行された認可コードをそのまま受け取れる。外部からのPRなど信頼できない
+> コードがプレビューに載ると、そこでGoogleログインした人の**本番アカウントの
+> セッションを奪える**。利便性のために本番の認可範囲を広げてはならない。
+
+安全な選択肢は次のいずれか。
+
+1. **プレビュー用に別のSupabaseプロジェクトを用意する**（推奨）。
+   本番の認可範囲を一切広げずに済む。Vercelの環境変数を Preview 環境だけ
+   そのプロジェクトへ向ける。
+2. **確認したい単一のデプロイURLだけを、その都度登録して後で消す。**
+   ワイルドカードにせず完全一致で登録する。
+
+```text
+# 2 の場合。確認が済んだら消す
+https://poop-battler-git-<ブランチ名>-<チーム>.vercel.app/auth/callback**
+```
+
+トンネルも同じで、起動ごとに変わるホストをワイルドカードでまとめず、
+その都度登録して消すか、固定ホスト名を発行できるものを使う。
+末尾の `**` はクエリ（`?next=`）に一致させるためのもので、
+**ホスト名側のワイルドカードとは意味が違う**。
+
+なお Google Cloud Console 側の Authorized redirect URIs は
+**Supabase のコールバック**（`https://<project-ref>.supabase.co/auth/v1/callback`）
+だけでよい。Googleが戻る先は常にSupabaseで、アプリのホストではないため、
+プレビューやトンネルを増やしてもGoogle側の登録は変わらない。
+
+ここに無いURLを `redirectTo` に渡すと、Supabaseはエラーを返さず
+**Site URL へ黙って戻す**。「連携は成功したのに元の画面に戻らない」という
+形で失敗するため、追加漏れに気づきにくい。
+
+なお `/auth/callback` はこのPRで追加するルートなので、**マージして
+Vercelへデプロイされるまで本番には存在しない**（404になる）。
+本番で連携を試すのはデプロイ後。
+
+### 3. localhost で開発する
+
+Google連携をローカルで動かす方法は2つある。**どちらを使うかで、
+リダイレクトURIを登録する場所が変わる。**
+
+Googleが戻る先は常に「アプリが繋いでいるSupabase」であって、アプリ自身
+（`:3000`）ではない。ローカルスタックに繋ぐなら `:54321` を Google 側へ、
+本番Supabaseに繋ぐなら Supabase Dashboard 側へ登録する、と考えると迷わない。
+
+| | A: ローカルSupabase | B: 本番Supabase |
+| --- | --- | --- |
+| Google Console | `http://127.0.0.1:54321/auth/v1/callback` を追加 | 不要 |
+| Supabase Dashboard | 不要 | Redirect URLs に `http://localhost:3000/auth/callback` を追加 |
+| データの行き先 | ローカルに隔離される | **本番DBに混ざる** |
+| Client ID / Secret | `.env.local` に必要 | 不要 |
+
+**Aを推奨する。** 昇格や衝突の確認は「同じGoogleアカウントで別ユーザーを
+作る」といった操作を繰り返すため、本番DBに検証用のユーザーが溜まる。
+
+#### A: ローカルスタックに繋ぐ
+
+1. Google Console のOAuthクライアントに、**既存のURIを消さずに追加**する。
+
+   ```text
+   http://127.0.0.1:54321/auth/v1/callback
+   ```
+
+2. **置き場所が2つある。混同すると起動はするが認証情報だけが空になる。**
+
+   | ファイル | 読むのは | 入れるもの |
+   | --- | --- | --- |
+   | `.env.local`（リポジトリ直下） | Next.js | `NEXT_PUBLIC_SUPABASE_*` |
+   | `supabase/.env` | Supabase CLI | `SUPABASE_AUTH_EXTERNAL_GOOGLE_*` |
+
+   `config.toml` の `env(...)` を解決するのは **CLI** なので、OAuthの
+   認証情報を `.env.local` に書いても渡らない。`supabase/.env` に置く
+   （`supabase/.env.example` をコピーする。`.gitignore` 済み）。
+
+   ```bash
+   # .env.local
+   NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<supabase status の Publishable key>
+
+   # supabase/.env
+   SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=...
+   SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=...
+   ```
+
+   `NEXT_PUBLIC_SUPABASE_URL` が本番URLのままだと、ローカルの設定は
+   一切使われない。**変更を忘れても動いてしまう**（本番に繋がるだけ）ので、
+   「ローカルのつもりで本番を触っていた」に気づきにくい。
+
+3. `config.toml` の `[auth.external.google]` の `enabled` を `true` にする。
+4. **スタックを起動し直す。** `config.toml` の変更は `supabase db reset` では
+   反映されない。認証コンテナの設定は起動時にしか読まれないため。
+
+   ```bash
+   npm run dev:all
+   ```
+
+   `dev:all` はスタックとNext.jsをまとめて起動する（`scripts/dev-all.sh`）。
+   手で叩くのとの違いは次の3点で、いずれも「失敗する」ではなく
+   **「黙って間違う」経路**を塞ぐためにある。
+
+   - `supabase start` の前に `.env.local` を読み込む。忘れると
+     プロバイダが「有効だが認証情報が空」で起動する。
+   - 起動済みでも必ず停止してから起動し直す。`supabase status` が通ることは
+     「設定が最新であること」を意味しない。古い `config.toml` のまま動き続ける。
+   - 起動後に `client_id` が解決できているかまで確認する。環境変数が空だと
+     Supabase は `env(...)` を展開せずその文字列を client_id に載せるため、
+     Googleの画面まで進んでから `invalid_client` で落ちる。
+
+   手で起動する場合は `supabase stop && supabase start` のあと `npm run dev`。
+
+`site_url` と `additional_redirect_urls` は `config.toml` に設定済みなので、
+`http://localhost:3000` と `http://127.0.0.1:3000` のどちらで開いても戻れる。
+
+#### B: 本番Supabaseに繋ぐ
+
+`.env.local` は本番のURL・キーのまま、Supabase Dashboard の
+**URL Configuration > Redirect URLs** に次を追加するだけでよい。
+`buildCallbackUrl()` が `?next=` を付けるため、ここでも末尾の `**` が要る。
+
+```text
+http://localhost:3000/auth/callback**
+http://127.0.0.1:3000/auth/callback**
+```
+
+Client ID / Secret は Dashboard 側に入っているので `.env.local` には要らない。
+手軽な代わりに、ローカルでの操作がそのまま本番のユーザーとして残る。
+
+### 昇格でユーザーIDは変わらない
+
+`linkIdentity()` は既存の `auth.users` 行に identity を足すだけで、
+`auth.users.id` は変わらない。`profiles` を作るトリガー
+`on_auth_user_created` は `AFTER INSERT ON auth.users` なので昇格では発火せず、
+プロフィールも増えない。**このため専用のマイグレーションは不要**で、
+匿名のうちに作ったデータはそのまま昇格後のユーザーから読める。
+
+### 既存アカウントとの衝突
+
+そのGoogleアカウントが既に別ユーザーに紐づいている場合、Supabaseは
+`identity_already_exists` を返して連携を拒否する。**MVPではデータの
+マージを行わない**ため、画面はエラーを提示するだけで、両方のユーザーの
+データはどちらも変更されない。
+
+別端末で既存アカウントへ戻りたい場合は、連携ではなく
+「既にアカウントをお持ちの方はこちら」からログインする。この経路は
+その端末で匿名のまま作ったデータを引き継がない旨を確認してから実行する。
 
 ## 型安全なアクセス
 
