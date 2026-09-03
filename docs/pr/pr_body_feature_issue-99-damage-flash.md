@@ -6,7 +6,7 @@ Closes #99
 
 ## 変更内容
 
-- `BattleFigure` に被ダメージ時の赤フラッシュ用 filter アニメーションを追加
+- `BattleFigure` に被ダメージ時の赤フラッシュ用オーバーレイアニメーションを追加
 - `prefers-reduced-motion` 相当の設定では点滅を控えめにするよう `useReducedMotion()` を反映
 - HP低下イベントごとに再生キーを更新し、連続被弾でもフラッシュが再生されるように変更
 

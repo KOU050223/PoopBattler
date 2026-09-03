@@ -2,7 +2,7 @@
 
 **PR/ブランチ**: `feature/issue-99-damage-flash`  
 **レビュー日時**: 2026-09-04  
-**変更規模**: +43 / -7 / 2ファイル
+**変更規模**: +171 / -8 / 4ファイル
 
 ---
 
@@ -30,8 +30,10 @@ Issue #99 の要件に沿って、バトル中に被ダメージ側のうんち�
 
 ## 変更ファイル一覧
 
-- `src/features/battle/components/battle-figure.tsx`: Modified, +39 / -5, 懸念度 低
+- `src/features/battle/components/battle-figure.tsx`: Modified, +29 / -8, 懸念度 低
 - `src/features/battle/components/battle-screen.tsx`: Modified, +4 / -0, 懸念度 低
+- `docs/pr/pr_body_feature_issue-99-damage-flash.md`: Added, +36 / -0, 懸念度 低
+- `docs/reviews/pr_review_feature_issue-99-damage-flash_20260904.md`: Added, +100 / -0, 懸念度 低
 
 ---
 
@@ -41,7 +43,7 @@ Issue #99 の要件に沿って、バトル中に被ダメージ側のうんち�
 
 #### 変更の意図
 
-`motion === "hit"` のとき、うんちくん本体に赤寄りの CSS filter を短時間だけかける。`useReducedMotion()` 時は点滅回数と強度を抑え、アクセシビリティ要件に合わせている。
+`motion === "hit"` のとき、うんちくん本体の上に赤い半透明オーバーレイを短時間だけ重ねる。`useReducedMotion()` 時は点滅回数と強度を抑え、アクセシビリティ要件に合わせている。
 
 #### 指摘事項
 
