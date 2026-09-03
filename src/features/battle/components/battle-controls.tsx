@@ -51,8 +51,8 @@ export function BattleControls({
   const guardBlocked = playerGuardCooldownTicks > 0 || playerStance === "guard" || stunned;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-3 gap-2">
+    <div className="flex flex-col gap-3 pb-2">
+      <div className="grid grid-cols-3 gap-3">
         <button
           type="button"
           className={controlClass("stance", playerStance === "fight", stunned)}
@@ -106,7 +106,7 @@ export function BattleControls({
           ) : null}
         </div>
       ) : null}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         {party.map((member, index) => {
           if (index === activeIndex) {
             return null;

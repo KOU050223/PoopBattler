@@ -139,7 +139,7 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
             width={720}
             height={405}
             unoptimized
-            className="aspect-video w-full rounded-xl border-2 border-faded-gray object-cover"
+            className="aspect-video w-full rounded-2xl border-2 border-faded-gray object-cover shadow-raised-gray"
           />
         )}
       </div>

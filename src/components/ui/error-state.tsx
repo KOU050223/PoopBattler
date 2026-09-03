@@ -17,7 +17,7 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className="flex flex-col items-center gap-3 rounded-xl border-2 border-faded-gray px-6 py-12 text-center"
+      className="flex flex-col items-center gap-3 rounded-2xl border-2 border-faded-gray bg-paper-white px-6 py-12 text-center shadow-raised-gray"
     >
       <p className="font-bold text-charcoal">{title}</p>
       <p className={mutedTextClass}>{description}</p>

@@ -99,7 +99,7 @@ export function MealPhotoPicker({ error, onPhotoSelected, onValidationError }: M
       </div>
 
       {(status === "starting" || status === "ready") && (
-        <div className="flex flex-col gap-3 rounded-xl border-2 border-faded-gray p-3">
+        <div className="flex flex-col gap-3 rounded-2xl border-2 border-faded-gray bg-paper-white p-3 shadow-raised-gray">
           <video ref={videoRef} playsInline muted className="aspect-video w-full rounded-xl bg-night-ink object-cover" />
           {status === "starting" ? (
             <div className="flex items-center gap-3">

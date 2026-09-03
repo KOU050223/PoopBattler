@@ -33,7 +33,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       lang={locale}
       className={`${nunito.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-paper-white font-sans text-charcoal">
+      <body className="flex min-h-full flex-col bg-blush-wash font-sans text-charcoal">
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>

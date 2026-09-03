@@ -278,7 +278,7 @@ export function BattleScreen() {
       <section className="flex flex-col gap-5">
         <div className="relative flex items-center justify-center">
           <p
-            className={`rounded-full px-3 py-1 text-xs font-medium ${MATCHUP_CLASS[tone]}`}
+            className={`rounded-xl px-3 py-1 text-xs font-medium ${MATCHUP_CLASS[tone]}`}
           >
             {MATCHUP_LABEL[tone]}
           </p>
@@ -292,7 +292,7 @@ export function BattleScreen() {
             ×{speed}
           </button>
         </div>
-        <div className="relative flex min-h-72 flex-col justify-between overflow-hidden rounded-xl border-2 border-faded-gray bg-blush-wash px-3 py-4">
+        <div className="relative flex min-h-72 flex-col justify-between overflow-hidden rounded-2xl border-2 border-faded-gray bg-paper-white px-4 py-5 shadow-raised-gray">
           <div className="flex flex-col items-end gap-2 pl-16">
             <HpBar
               current={snapshot.enemy.hp}

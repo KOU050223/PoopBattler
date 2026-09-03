@@ -82,7 +82,7 @@ export function MealSaveConfirmationModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="w-full max-w-sm rounded-xl border-2 border-faded-gray bg-paper-white p-5"
+            className="w-full max-w-sm rounded-2xl border-2 border-faded-gray bg-paper-white p-6 shadow-raised-gray"
           >
             <h2 id="meal-confirmation-title" className="font-bold text-charcoal">この内容で保存しますか？</h2>
             <p className={`mt-2 ${mutedTextClass}`}>{tagLabel}として記録します。</p>
