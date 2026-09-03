@@ -137,6 +137,10 @@ describe("揺れ判定", () => {
 });
 
 describe("advanceStrainAccumulation", () => {
+  it("必要な踏ん張り時間は3秒", () => {
+    expect(STRAIN_REQUIRED_MS).toBe(3_000);
+  });
+
   it("静止は積まず、短いスパイクでも発射しない", () => {
     expect(
       advanceStrainAccumulation({
@@ -155,7 +159,7 @@ describe("advanceStrainAccumulation", () => {
     ).toEqual({ accumulatedMs: 50, fired: false });
   });
 
-  it("しきい値以上の揺れを約10秒続けると発射する", () => {
+  it("しきい値以上の揺れを約3秒続けると発射する", () => {
     const finished = advanceStrainAccumulation({
       accumulatedMs: STRAIN_REQUIRED_MS - 50,
       dtMs: 50,
@@ -173,13 +177,16 @@ describe("advanceStrainAccumulation", () => {
   });
 
   it("途切れると進捗が落ち、すぐには発射しない", () => {
+    const accumulatedBeforeIdle = STRAIN_REQUIRED_MS - 200;
     const afterIdle = advanceStrainAccumulation({
-      accumulatedMs: 5_000,
+      accumulatedMs: accumulatedBeforeIdle,
       dtMs: 1_000,
       straining: false,
     });
     expect(afterIdle.fired).toBe(false);
-    expect(afterIdle.accumulatedMs).toBe(5_000 - 1_000 * STRAIN_IDLE_DECAY_RATE);
+    expect(afterIdle.accumulatedMs).toBe(
+      accumulatedBeforeIdle - 1_000 * STRAIN_IDLE_DECAY_RATE,
+    );
 
     const spikeAfterIdle = advanceStrainAccumulation({
       accumulatedMs: afterIdle.accumulatedMs,
@@ -230,7 +237,7 @@ describe("createStrainListener", () => {
     }
   }
 
-  it("静止・短いスパイクでは撃たず、約10秒続けると撃ち、途切れ後はすぐ撃たない", () => {
+  it("静止・短いスパイクでは撃たず、約3秒続けると撃ち、途切れ後はすぐ撃たない", () => {
     const host = createHost();
     const onStrain = vi.fn();
     const onProgress = vi.fn();
@@ -275,8 +282,8 @@ describe("createStrainListener", () => {
       now: () => interruptedClock.now,
     });
     listener.start();
-    emitUntil(interrupted, spike, interruptedClock, 5_000);
-    emitUntil(interrupted, rest, interruptedClock, 6_000);
+    emitUntil(interrupted, spike, interruptedClock, STRAIN_REQUIRED_MS - 500);
+    emitUntil(interrupted, rest, interruptedClock, STRAIN_REQUIRED_MS + 500);
     interruptedClock.now += SAMPLE_MS;
     interrupted.emit(spike);
     expect(interruptedStrain).not.toHaveBeenCalled();

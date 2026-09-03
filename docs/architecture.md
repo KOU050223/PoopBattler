@@ -197,7 +197,7 @@ type PoopmFigureProps = {
 
 ## センサー・画面状態の扱い
 
-- 加速度は通常攻撃に使わない。必殺の準備ウィンドウでしきい値以上の揺れを約10秒積む（[`battle.md`](./battle.md)）。
+- 加速度は通常攻撃に使わない。必殺の準備ウィンドウでしきい値以上の揺れを約3秒積む（[`battle.md`](./battle.md)）。
 - `lib/motion.ts` は `DeviceMotionEvent.requestPermission()` を、必殺を押したユーザー操作の中で呼び出す。`granted`、`denied`、未対応を画面へ返し、利用不可時は準備を省略して即発射する。
 - モーションAPIとカメラはHTTPS環境でのみ利用する。実機検証はVercel Preview DeploymentまたはHTTPSトンネルを使い、端末からローカルHTTPサーバーへ直接アクセスしない。
 - カメラは戦闘後ガチャの画面だけが開く。バトル画面は `getUserMedia()` を呼ばない。
