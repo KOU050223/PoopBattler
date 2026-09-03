@@ -13,7 +13,7 @@ describe("i18n 疎通", () => {
   });
 
   it("存在するキーは日本語の文言を返す", () => {
-    expect(t("Common.appName")).toBe("うんちバトラー");
+    expect(t("Common.appName")).toBe("踏ん張れ！ブリュレイド！！");
   });
 
   it("存在しないキーは空文字ではなくキー名を返す", () => {
