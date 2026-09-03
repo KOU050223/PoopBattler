@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { readBattleSpeed, subscribeBattleSpeed, writeBattleSpeed } from "@/features/battle/battle-speed";
 import {
   startBattleAction,
@@ -17,6 +17,7 @@ import {
   nextBattleSpeed,
   scaleByBattleSpeed,
   tickIntervalMs,
+  type BattleSpeed,
 } from "@/features/battle/battle.constants";
 import { BattleControls } from "@/features/battle/components/battle-controls";
 import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
@@ -49,28 +50,60 @@ function HpBar({
   max,
   label,
   side,
+  hitFlashKey,
+  speed,
 }: {
   current: number;
   max: number;
   label: string;
   side: "ally" | "enemy";
+  hitFlashKey: number;
+  speed: BattleSpeed;
 }) {
+  const reduceMotion = useReducedMotion();
   const ratio = Math.max(0, Math.min(1, current / max));
   const fillClass = side === "enemy" ? "bg-night-ink" : "bg-flush-pink";
+  const fillColor = side === "enemy" ? "var(--color-night-ink)" : "var(--color-flush-pink)";
+  const flashColor = "var(--color-danger-edge)";
+  const textColor = "var(--color-pencil-gray)";
+  const textFlash = reduceMotion
+    ? [textColor, flashColor, textColor]
+    : [textColor, flashColor, textColor, flashColor, textColor];
+  const fillFlash = reduceMotion
+    ? [fillColor, flashColor, fillColor]
+    : [fillColor, flashColor, fillColor, flashColor, fillColor];
+  const flashTransition = {
+    duration: scaleByBattleSpeed(reduceMotion ? 0.22 : 0.48, speed),
+    ease: "easeOut",
+  };
   return (
     <div className="flex w-full flex-col gap-1">
-      <div className={`flex justify-between ${captionTextClass}`}>
+      <motion.div
+        key={`hp-text-${hitFlashKey}`}
+        className={`flex justify-between ${captionTextClass}`}
+        initial={false}
+        animate={{
+          color: hitFlashKey > 0 ? textFlash : textColor,
+        }}
+        transition={flashTransition}
+      >
         <span>{label}</span>
         <span>
           {current} / {max}
         </span>
-      </div>
+      </motion.div>
       <div className="h-2 overflow-hidden rounded-full bg-blush-wash">
         <motion.div
           className={`h-full ${fillClass}`}
           initial={false}
-          animate={{ width: `${ratio * 100}%` }}
-          transition={{ duration: 0.2 }}
+          animate={{
+            width: `${ratio * 100}%`,
+            backgroundColor: hitFlashKey > 0 ? fillFlash : fillColor,
+          }}
+          transition={{
+            width: { duration: 0.2 },
+            backgroundColor: flashTransition,
+          }}
         />
       </div>
     </div>
@@ -302,6 +335,8 @@ export function BattleScreen() {
               max={snapshot.enemy.maxHp}
               label={snapshot.enemy.name ?? "てき"}
               side="enemy"
+              hitFlashKey={enemyHitFlashKey}
+              speed={speed}
             />
             <BattleFigure
               characterId={snapshot.enemy.characterId}
@@ -311,7 +346,6 @@ export function BattleScreen() {
               label={snapshot.enemy.name ?? "てき"}
               depth="far"
               speed={speed}
-              hitFlashKey={enemyHitFlashKey}
             />
           </div>
           <div className="flex flex-col items-start gap-2 pr-16">
@@ -323,13 +357,14 @@ export function BattleScreen() {
               label={member.name ?? "味方"}
               depth="near"
               speed={speed}
-              hitFlashKey={playerHitFlashKey}
             />
             <HpBar
               current={member.hp}
               max={member.maxHp}
               label={member.name ?? "味方"}
               side="ally"
+              hitFlashKey={playerHitFlashKey}
+              speed={speed}
             />
           </div>
         </div>
@@ -361,7 +396,6 @@ export function BattleScreen() {
           playerGauge={snapshot.playerGauge}
           playerGuardCooldownTicks={snapshot.playerGuardCooldownTicks}
           switchStunTicks={snapshot.switchStunTicks}
-          onFight={() => useBattleStore.getState().setStance("fight")}
           onGuard={() => useBattleStore.getState().setStance("guard")}
           onSwitch={(index) => useBattleStore.getState().switchMember(index)}
           onDebugStrain={() => useBattleStore.getState().fireSpecial()}

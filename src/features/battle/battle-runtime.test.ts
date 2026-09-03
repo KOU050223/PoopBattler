@@ -4,8 +4,12 @@ import {
   AUTO_ATTACK_DAMAGE,
   AUTO_ATTACK_PERIOD_TICKS,
   BASE_SPEED,
+  BENCH_GAUGE_RECOVERY_PER_TICK,
+  BENCH_HP_RECOVERY_RATE,
+  GUARD_DURATION_MS,
   INITIAL_ENEMY_HP,
   INITIAL_MEMBER_HP,
+  SPECIAL_GAUGE_MAX,
   SPECIAL_GAUGE_PER_TICK,
   SWITCH_STUN_MS,
   TIMEOUT_TICKS,
@@ -14,7 +18,7 @@ import {
   shouldAutoAttack,
   type AutoAttackSide,
 } from "./battle.constants";
-import { applySetStance } from "./battle-commands";
+import { applySetStance, applySwitchMember } from "./battle-commands";
 import { applyBattleStart, applyBattleTick } from "./battle-runtime";
 import type { BattleSnapshot, BattleStartInput } from "./battle.types";
 
@@ -93,6 +97,17 @@ function battleIdWithSwingAt(side: AutoAttackSide, tick: number, shouldHit: bool
   throw new Error("auto-attack battleId が見つからない");
 }
 
+function battleIdWithPlayerHitsAt(ticks: readonly number[]): string {
+  for (let index = 0; index < 10_000; index += 1) {
+    const battleId = `roll-${index}`;
+    if (ticks.every((tick) => shouldAutoAttack(battleId, tick, "player"))) {
+      return battleId;
+    }
+  }
+
+  throw new Error("auto-attack battleId が見つからない");
+}
+
 function autoDamage(
   attackerAttribute: "spicy" | "meat",
   defenderAttribute: "spicy" | "meat",
@@ -153,6 +168,37 @@ describe("applyBattleStart / applyBattleTick", () => {
     expect(enemyHit.party?.[0].hp).toBe(
       INITIAL_MEMBER_HP - autoDamage("meat", "spicy"),
     );
+  });
+
+  it("無操作なら殴り、ガード中は殴らず、ガード終了後はまた自動で殴る", () => {
+    const firstSwingTick = AUTO_ATTACK_PERIOD_TICKS;
+    const afterGuardSwingTick = msToTicks(GUARD_DURATION_MS) +
+      AUTO_ATTACK_PERIOD_TICKS;
+    const battleId = battleIdWithPlayerHitsAt([
+      firstSwingTick,
+      afterGuardSwingTick,
+    ]);
+    const damage = autoDamage("spicy", "meat");
+
+    const idle = tickTimes(
+      applyBattleStart({ ...startInput, battleId }),
+      firstSwingTick,
+    );
+    expect(idle.enemy?.hp).toBe(INITIAL_ENEMY_HP - damage);
+
+    const guardStarted = applySetStance(
+      applyBattleStart({ ...startInput, battleId }),
+      "guard",
+    );
+    const guarding = tickTimes(guardStarted, firstSwingTick);
+    expect(guarding.enemy?.hp).toBe(INITIAL_ENEMY_HP);
+
+    const guardExpired = tickTimes(guardStarted, msToTicks(GUARD_DURATION_MS));
+    expect(guardExpired.playerStance).toBe("fight");
+    expect(guardExpired.enemy?.hp).toBe(INITIAL_ENEMY_HP);
+
+    const returnedToAuto = tickTimes(guardExpired, AUTO_ATTACK_PERIOD_TICKS);
+    expect(returnedToAuto.enemy?.hp).toBe(INITIAL_ENEMY_HP - damage);
   });
 
   it("控えは場に出るまでダメージを受けない", () => {
@@ -231,5 +277,86 @@ describe("applyBattleStart / applyBattleTick", () => {
       enemy: { ...started.enemy!, hp: 400 },
     });
     expect(lost.status).toBe("defeated");
+  });
+
+  describe("ベンチ回復", () => {
+    it("ベンチの味方HPが毎ティック回復し、場の味方HPは回復しない", () => {
+      const started = applyBattleStart(startInput);
+      // ベンチの味方にダメージを与えた状態を作る
+      const damaged: BattleSnapshot = {
+        ...started,
+        party: [
+          started.party![0], // 場（activeIndex=0）
+          { ...started.party![1], hp: 100 }, // ベンチ: ダメージを受けた状態
+          { ...started.party![2], hp: 100 }, // ベンチ: ダメージを受けた状態
+        ],
+      };
+
+      const afterOneTick = applyBattleTick(damaged);
+      const hpRecovery = Math.max(1, Math.floor(INITIAL_MEMBER_HP * BENCH_HP_RECOVERY_RATE));
+
+      // 場の味方はベンチ回復しない
+      expect(afterOneTick.party![0].hp).toBe(started.party![0].hp);
+      // ベンチの味方は回復する
+      expect(afterOneTick.party![1].hp).toBe(100 + hpRecovery);
+      expect(afterOneTick.party![2].hp).toBe(100 + hpRecovery);
+    });
+
+    it("戦闘不能のキャラはベンチ回復しない", () => {
+      const started = applyBattleStart(startInput);
+      const withKo: BattleSnapshot = {
+        ...started,
+        party: [
+          started.party![0],
+          { ...started.party![1], hp: 0 }, // 戦闘不能
+          { ...started.party![2], hp: 100 },
+        ],
+      };
+
+      const afterOneTick = applyBattleTick(withKo);
+      expect(afterOneTick.party![1].hp).toBe(0);
+      expect(afterOneTick.party![2].hp).toBeGreaterThan(100);
+    });
+
+    it("HPはmaxHpを超えない", () => {
+      const started = applyBattleStart(startInput);
+      // maxHpと同じHPの味方はそれ以上回復しない
+      const afterOneTick = applyBattleTick(started);
+      expect(afterOneTick.party![1].hp).toBe(started.party![1].maxHp);
+      expect(afterOneTick.party![2].hp).toBe(started.party![2].maxHp);
+    });
+
+    it("ベンチの必殺ゲージが毎ティック回復し、上限を超えない", () => {
+      const started = applyBattleStart(startInput);
+      const after10 = tickTimes(started, 10);
+
+      // ベンチのゲージが溜まっている
+      expect(after10.benchGauges[1]).toBe(BENCH_GAUGE_RECOVERY_PER_TICK * 10);
+      expect(after10.benchGauges[2]).toBe(BENCH_GAUGE_RECOVERY_PER_TICK * 10);
+      // 場のスロットはベンチ回復の対象外
+      expect(after10.benchGauges[0]).toBe(0);
+    });
+
+    it("ベンチゲージはSPECIAL_GAUGE_MAXを超えない", () => {
+      const started = applyBattleStart(startInput);
+      const manyTicks = Math.ceil(SPECIAL_GAUGE_MAX / BENCH_GAUGE_RECOVERY_PER_TICK) + 10;
+      const afterMany = tickTimes(started, manyTicks);
+
+      expect(afterMany.benchGauges[1]).toBe(SPECIAL_GAUGE_MAX);
+      expect(afterMany.benchGauges[2]).toBe(SPECIAL_GAUGE_MAX);
+    });
+
+    it("交代時にベンチで溜まったゲージを引き継ぐ", () => {
+      const started = applyBattleStart(startInput);
+      // 10ティック進めてベンチゲージを溜める
+      const after10 = tickTimes(started, 10);
+      const expectedBenchGauge = BENCH_GAUGE_RECOVERY_PER_TICK * 10;
+      expect(after10.benchGauges[1]).toBe(expectedBenchGauge);
+
+      // メンバー1に交代
+      const switched = applySwitchMember(after10, 1);
+      expect(switched.playerGauge).toBe(expectedBenchGauge);
+      expect(switched.benchGauges[1]).toBe(0);
+    });
   });
 });
