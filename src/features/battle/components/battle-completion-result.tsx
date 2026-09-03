@@ -6,6 +6,7 @@ import { ATTRIBUTE_LABELS } from "@/features/battle/battle.constants";
 import type { CompleteBattleResult } from "@/features/battle/actions";
 import { PoopmFigure } from "@/features/poopm/components/poopm-figure";
 import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
+import { PwaInstallPromotion } from "@/features/pwa/components/pwa-install-promotion";
 import { mutedTextClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type CompletionSuccess = Extract<CompleteBattleResult, { success: true }>;
@@ -70,6 +71,7 @@ export function BattleCompletionResult({ result }: { result: CompletionSuccess }
           履歴を見る
         </Link>
       </div>
+      <PwaInstallPromotion />
     </section>
   );
 }

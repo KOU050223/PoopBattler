@@ -5,6 +5,7 @@ import { getLocale } from "next-intl/server";
 
 import { AppHeader } from "@/components/layout/app-header";
 import { HeaderAccountSlot } from "@/features/account/components/header-account-slot";
+import { PwaInstallProvider } from "@/features/pwa/components/pwa-install-provider";
 
 import "./globals.css";
 
@@ -20,6 +21,11 @@ export const metadata: Metadata = {
     template: "%s | Poop Battler",
   },
   description: "食事と排便の記録を、うんちモンスターとのバトルとして続けられるアプリ。",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Poop Battler",
+  },
 };
 
 export const viewport: Viewport = {
@@ -27,6 +33,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   colorScheme: "light",
+  themeColor: "#ffe0ef",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -38,10 +45,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${nunito.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-blush-wash font-sans text-charcoal">
-        <NextIntlClientProvider>
-          <AppHeader action={<HeaderAccountSlot />} />
-          {children}
-        </NextIntlClientProvider>
+        <PwaInstallProvider>
+          <NextIntlClientProvider>
+            <AppHeader action={<HeaderAccountSlot />} />
+            {children}
+          </NextIntlClientProvider>
+        </PwaInstallProvider>
       </body>
     </html>
   );
