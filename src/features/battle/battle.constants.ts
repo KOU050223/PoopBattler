@@ -93,7 +93,8 @@ export const BENCH_HP_RECOVERY_RATE = 0.01; // maxHp の 1% / tick
 export const BENCH_GAUGE_RECOVERY_PER_TICK = 1; // 場の半分のペースでゲージ回復
 
 // 通常攻撃は双方とも 5 tick ごとの窓で半々。1発 20。
-// 必殺は従来の基礎 4 に倍率を掛ける。タイムアップは 180 tick（等倍で 90秒）で残HP判定。
+// 必殺は従来の基礎 4 に倍率を掛ける。タイムアップは 180 tick（等倍で 90秒）。
+// 1体でも残っていれば完了し、敗北は3体全滅だけ（Issue #102）。
 export const INITIAL_ENEMY_HP = 480;
 export const INITIAL_MEMBER_HP = 240;
 
