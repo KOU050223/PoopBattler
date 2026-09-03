@@ -31,12 +31,14 @@ insert into rls_fixture (key, id)
 values
   ('user_a', gen_random_uuid()),
   ('user_b', gen_random_uuid()),
+  ('user_empty', gen_random_uuid()),
   ('meal_a', gen_random_uuid()),
   ('meal_b', gen_random_uuid()),
   ('meal_rpc_a', gen_random_uuid()),
   ('battle_a', gen_random_uuid()),
   ('battle_b', gen_random_uuid()),
   ('battle_rpc_a', gen_random_uuid()),
+  ('battle_rpc_empty', gen_random_uuid()),
   ('battle_rpc_photo_a', gen_random_uuid());
 
 create or replace function pg_temp.fixture(p_key text)
@@ -56,14 +58,18 @@ select
   now(),
   now()
 from rls_fixture f
-where f.key in ('user_a', 'user_b');
+where f.key in ('user_a', 'user_b', 'user_empty');
 
 -- トリガーが実際に発火したかを先に確認する。ここが通らないと、
 -- 以降の「他人の行が見えない」は単に行が無いだけになってしまう。
 do $$
 begin
   if (select count(*) from public.profiles
-      where id in (pg_temp.fixture('user_a'), pg_temp.fixture('user_b'))) <> 2 then
+      where id in (
+        pg_temp.fixture('user_a'),
+        pg_temp.fixture('user_b'),
+        pg_temp.fixture('user_empty')
+      )) <> 3 then
     raise exception 'FAIL: on_auth_user_created が profiles を作っていない';
   end if;
 end;
@@ -158,58 +164,82 @@ $$;
 -- この専用バトルは、後段のRLS検査より前に完了まで済ませる。これにより
 -- active の部分ユニークインデックスとRLS検査が干渉しない。
 insert into public.battle_results (id, user_id, enemy_character_id, enemy_attribute)
-values (
-  pg_temp.fixture('battle_rpc_a'),
-  pg_temp.fixture('user_a'),
-  'curry-poop',
-  'curry'
-);
+values
+  (
+    pg_temp.fixture('battle_rpc_a'),
+    pg_temp.fixture('user_a'),
+    'curry-poop',
+    'curry'
+  ),
+  (
+    pg_temp.fixture('battle_rpc_empty'),
+    pg_temp.fixture('user_empty'),
+    'curry-poop',
+    'curry'
+  );
 
 do $$
 declare
   a uuid := pg_temp.fixture('user_a');
   b uuid := pg_temp.fixture('user_b');
+  empty_user uuid := pg_temp.fixture('user_empty');
   meal_a uuid := pg_temp.fixture('meal_rpc_a');
   meal_b uuid := pg_temp.fixture('meal_b');
   battle_no_meal uuid := pg_temp.fixture('battle_rpc_a');
+  battle_empty uuid := pg_temp.fixture('battle_rpc_empty');
   battle_with_meal uuid;
   first_result record;
   repeated_result record;
+  empty_result record;
   started_photo_battle record;
   photo_result record;
   repeated_photo_result record;
 begin
   perform pg_temp.expect(
-    'companionship_chance 0枚は0',
+    'companionship_chance 0件は0',
     private.companionship_chance(0) = 0,
     true);
   perform pg_temp.expect(
-    'companionship_chance 1枚は25%',
+    'companionship_chance 1件は25%',
     private.companionship_chance(1) = 0.25,
     true);
   perform pg_temp.expect(
-    'companionship_chance 4枚は100%',
+    'companionship_chance 4件は100%',
     private.companionship_chance(4) = 1,
     true);
   perform pg_temp.expect(
-    'companionship_chance 5枚も100%',
+    'companionship_chance 5件も100%',
     private.companionship_chance(5) = 1,
+    true);
+
+  perform pg_temp.become(empty_user);
+
+  -- 食事ログが1件も無いユーザーは、紐付けなし完了でも仲間化しない。
+  select * into empty_result
+  from public.complete_battle(battle_empty, 4::smallint, 'normal', 'brown', 'easy', null);
+  perform pg_temp.expect(
+    'complete_battle 食事ログ0件は仲間化しない',
+    empty_result.status = 'completed'
+      and empty_result.companionship_result = false
+      and empty_result.character_id is null,
     true);
 
   perform pg_temp.become(a);
 
-  -- 写真なしは必ず仲間化せず、排便ログをちょうど1件だけ作る。
+  -- 食事を今回紐付けなくても完了できる。排便ログをちょうど1件だけ作る。
   select * into first_result
   from public.complete_battle(battle_no_meal, 4::smallint, 'normal', 'brown', 'easy', null);
   perform pg_temp.expect(
-    'complete_battle 写真なしは仲間化しない',
-    first_result.status = 'completed'
-      and first_result.companionship_result = false
-      and first_result.character_id is null,
+    'complete_battle 紐付けなしでも完了する',
+    first_result.status = 'completed',
     true);
   perform pg_temp.expect(
-    'complete_battle 写真なしは排便ログを1件作る',
+    'complete_battle 紐付けなしは排便ログを1件作る',
     (select count(*) = 1 from public.bowel_logs where battle_result_id = battle_no_meal),
+    true);
+  perform pg_temp.expect(
+    'complete_battle 紐付けなしは meal_log_id を空のままにする',
+    (select meal_log_id is null from public.battle_results where id = battle_no_meal),
     true);
 
   -- 同一バトルの再実行は、新しい排便ログも抽選も作らず既存結果を返す。
@@ -226,7 +256,7 @@ begin
     (select count(*) = 1 from public.bowel_logs where battle_result_id = battle_no_meal),
     true);
 
-  -- 完了後は active が無いため、RPCで写真付きの次のバトルを開始できる。
+  -- 完了後は active が無いため、RPCで次のバトルを開始できる。
   select * into started_photo_battle from public.start_battle();
   battle_with_meal := started_photo_battle.battle_id;
 
@@ -242,39 +272,10 @@ begin
     (select count(*) = 0 from public.bowel_logs where battle_result_id = battle_with_meal),
     true);
 
-  perform pg_temp.expect(
-    'complete_battle 他人の食事が混ざった配列は拒否',
-    pg_temp.allowed(format(
-      'select * from public.complete_battle(%L, 4::smallint, ''normal'', ''brown'', ''easy'', null, array[%L, %L]::uuid[])',
-      battle_with_meal, meal_a, meal_b)),
-    false);
-
-  begin
-    perform * from public.complete_battle(
-      battle_with_meal,
-      4::smallint,
-      'normal',
-      'brown',
-      'easy',
-      null,
-      array[
-        gen_random_uuid(),
-        gen_random_uuid(),
-        gen_random_uuid(),
-        gen_random_uuid(),
-        gen_random_uuid()
-      ]
-    );
-    perform pg_temp.expect('complete_battle 5枚は拒否', false, true);
-  exception
-    when invalid_parameter_value then
-      perform pg_temp.expect('complete_battle 5枚は拒否', true, true);
-  end;
-
   select * into photo_result
   from public.complete_battle(battle_with_meal, 4::smallint, 'normal', 'brown', 'easy', meal_a);
   perform pg_temp.expect(
-    'complete_battle 写真ありは完了する',
+    'complete_battle 食事ログを紐付けて完了する',
     photo_result.status = 'completed',
     true);
   perform pg_temp.expect(
@@ -292,7 +293,7 @@ begin
   select * into repeated_photo_result
   from public.complete_battle(battle_with_meal, 7::smallint, 'large', 'green', 'hard', meal_a);
   perform pg_temp.expect(
-    'complete_battle 写真ありも再抽選しない',
+    'complete_battle 紐付けありも再抽選しない',
     repeated_photo_result.companionship_result = photo_result.companionship_result
       and repeated_photo_result.character_id is not distinct from photo_result.character_id,
     true);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   completeBattleAction,
@@ -8,12 +8,12 @@ import {
 } from "@/features/battle/actions";
 import { isBattleGoneMessage } from "@/features/battle/complete-battle-error";
 import {
-  COMPANIONSHIP_PHOTO_CAP,
+  COMPANIONSHIP_MEAL_LOG_CAP,
   companionshipChancePercent,
 } from "@/features/battle/companionship-chance";
 import { BowelLogForm } from "@/features/bowel-log/components/bowel-log-form";
 import type { BowelLog } from "@/features/bowel-log/bowel-log.types";
-import { saveMealLogAction } from "@/features/meal/actions";
+import { getMealLogsAction, saveMealLogAction } from "@/features/meal/actions";
 import { MealLogForm } from "@/features/meal/components/meal-log-form";
 import type { MealLogDraft, MealLogSaveResult } from "@/features/meal/meal.types";
 import { mutedTextClass, primaryButtonClass } from "@/lib/ui-classes";
@@ -26,15 +26,20 @@ type BattleCompletionFlowProps = {
 
 /**
  * 排便の次に、食事タブと同じ記録フォームを出す。
- * 記録しなくてもバトルは完了できる。
+ * 記録しなくてもバトルは完了できる。仲間化確率は食事ログの件数で決まる。
  */
 export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: BattleCompletionFlowProps) {
   const submittingRef = useRef(false);
-  const savedMealLogIdsRef = useRef<string[]>([]);
+  const savedMealLogIdRef = useRef<string | null>(null);
   const [bowelLog, setBowelLog] = useState<BowelLog | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mealLogCount, setMealLogCount] = useState(0);
 
-  async function finish(mealLogIds: string[]) {
+  useEffect(() => {
+    void getMealLogsAction().then((logs) => setMealLogCount(logs.length));
+  }, []);
+
+  async function finish(mealLogId: string | null) {
     if (!bowelLog || submittingRef.current) {
       return { success: false as const, message: "記録を続けられませんでした。もう一度お試しください。" };
     }
@@ -46,8 +51,7 @@ export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: Battl
       const result = await completeBattleAction({
         battleId,
         bowelLog,
-        mealLogId: mealLogIds[0] ?? null,
-        mealLogIds,
+        mealLogId,
       });
       if (!result.success) {
         setError(result.message);
@@ -61,45 +65,39 @@ export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: Battl
   }
 
   async function saveMealAndComplete(draft: MealLogDraft): Promise<MealLogSaveResult> {
-    const photoIds = draft.photoIds && draft.photoIds.length > 0 ? draft.photoIds : [draft.photoId];
-    const savedIds = savedMealLogIdsRef.current;
-
-    while (savedIds.length < photoIds.length) {
-      const saved = await saveMealLogAction({
-        ...draft,
-        photoId: photoIds[savedIds.length]!,
-        photoIds: undefined,
-      });
+    let mealLogId = savedMealLogIdRef.current;
+    if (!mealLogId) {
+      const saved = await saveMealLogAction(draft);
       if (!saved.success) return saved;
-      savedIds.push(saved.mealLogId);
+      mealLogId = saved.mealLogId;
+      savedMealLogIdRef.current = mealLogId;
     }
 
-    const completed = await finish(savedIds);
+    const completed = await finish(mealLogId);
     if (!completed.success) {
       return { success: false, message: completed.message };
     }
-    return { success: true, mealLogId: savedIds[0]! };
+    return { success: true, mealLogId };
   }
+
+  const skipChance = companionshipChancePercent(mealLogCount);
+  const saveChance = companionshipChancePercent(mealLogCount + 1);
 
   return bowelLog ? (
     <section className="flex flex-col gap-5">
       <div className="flex flex-col gap-1 text-center">
         <p className="text-xl font-bold">食事の記録</p>
         <p className={`text-sm ${mutedTextClass}`}>
-          写真を増やすと仲間になる確率が上がります。1枚25%、最大4枚で100%です。記録しなくてもバトルは完了できます。
+          {mealLogCount === 0
+            ? `食事ログがないと仲間になりません。今回記録すると25%、${COMPANIONSHIP_MEAL_LOG_CAP}件で100%です。記録しなくてもバトルは完了できます。`
+            : `いま食事ログは${mealLogCount}件です。記録せずに完了すると${skipChance}%、今回記録すると${saveChance}%です。`}
         </p>
       </div>
       <MealLogForm
         autoOpenPicker
-        maxPhotos={COMPANIONSHIP_PHOTO_CAP}
-        photoCountHint={(photoCount) =>
-          photoCount === 0
-            ? "写真がないと仲間になりません。1枚で25%、4枚で100%です。"
-            : `写真${photoCount}枚 / 仲間になる確率 ${companionshipChancePercent(photoCount)}%`
-        }
         refreshOnSuccess={false}
         onSave={saveMealAndComplete}
-        onSkip={() => void finish([])}
+        onSkip={() => void finish(null)}
         skipLabel="記録せずに完了する"
       />
       {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}

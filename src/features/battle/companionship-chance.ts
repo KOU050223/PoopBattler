@@ -1,14 +1,14 @@
-/** 食事写真1枚あたりの仲間化確率。サーバーの `private.companionship_chance` と同じ。 */
-export const COMPANIONSHIP_CHANCE_PER_PHOTO = 0.25;
+/** 食事ログ1件あたりの仲間化確率。サーバーの `private.companionship_chance` と同じ。 */
+export const COMPANIONSHIP_CHANCE_PER_MEAL_LOG = 0.25;
 
-/** 抽選に使う写真枚数の上限。これ以上足しても確率は 100% のまま。 */
-export const COMPANIONSHIP_PHOTO_CAP = 4;
+/** 抽選に使う食事ログ件数の上限。これ以上あっても確率は 100% のまま。 */
+export const COMPANIONSHIP_MEAL_LOG_CAP = 4;
 
-export function companionshipChance(photoCount: number): number {
-  if (!Number.isInteger(photoCount) || photoCount <= 0) return 0;
-  return Math.min(1, photoCount * COMPANIONSHIP_CHANCE_PER_PHOTO);
+export function companionshipChance(mealLogCount: number): number {
+  if (!Number.isInteger(mealLogCount) || mealLogCount <= 0) return 0;
+  return Math.min(1, mealLogCount * COMPANIONSHIP_CHANCE_PER_MEAL_LOG);
 }
 
-export function companionshipChancePercent(photoCount: number): number {
-  return Math.round(companionshipChance(photoCount) * 100);
+export function companionshipChancePercent(mealLogCount: number): number {
+  return Math.round(companionshipChance(mealLogCount) * 100);
 }

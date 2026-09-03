@@ -92,7 +92,6 @@ export type CompleteBattleInput = {
   battleId: string;
   bowelLog: BowelLog;
   mealLogId?: string | null;
-  mealLogIds?: string[] | null;
 };
 
 export type CompleteBattleResult =
@@ -116,20 +115,13 @@ function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value);
 }
 
-function isMealLogIds(value: unknown): value is string[] {
-  return Array.isArray(value)
-    && value.length <= 4
-    && value.every(isUuid);
-}
-
 function isCompleteBattleInput(value: unknown): value is CompleteBattleInput {
   if (!value || typeof value !== "object") return false;
 
   const input = value as Partial<CompleteBattleInput>;
   return isUuid(input.battleId)
     && isBowelLog(input.bowelLog)
-    && (input.mealLogId === undefined || input.mealLogId === null || isUuid(input.mealLogId))
-    && (input.mealLogIds === undefined || input.mealLogIds === null || isMealLogIds(input.mealLogIds));
+    && (input.mealLogId === undefined || input.mealLogId === null || isUuid(input.mealLogId));
 }
 
 /** 排便ログ・バトル結果・仲間化を RPC で一度だけ確定する。 */
@@ -155,7 +147,6 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     p_color: input.bowelLog.color,
     p_ease: input.bowelLog.ease,
     ...(input.mealLogId ? { p_meal_log_id: input.mealLogId } : {}),
-    ...(input.mealLogIds && input.mealLogIds.length > 0 ? { p_meal_log_ids: input.mealLogIds } : {}),
   };
   const { data, error } = await supabase.rpc("complete_battle", rpcInput);
   const result = data?.[0];
@@ -188,6 +179,11 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     return { success: false, message: "バトル結果の取得に失敗しました。もう一度お試しください。" };
   }
 
+  const { count: mealLogCount } = await supabase
+    .from("meal_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
   let acquiredCharacter: Extract<CompleteBattleResult, { success: true }> ["acquiredCharacter"] = null;
   if (result.character_id) {
     const { data: character, error: characterError } = await supabase
@@ -211,7 +207,7 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     companionshipResult: result.companionship_result,
     acquiredCharacter,
     completedAt: battle.completed_at,
-    // 冪等な再実行でも、リクエスト値ではなく確定済みバトルの値で表示を決める。
-    usedMealLog: battle.meal_log_id !== null,
+    // 抽選したかは紐付けではなく、本人の食事ログ件数で決まる。
+    usedMealLog: (mealLogCount ?? 0) > 0,
   };
 }

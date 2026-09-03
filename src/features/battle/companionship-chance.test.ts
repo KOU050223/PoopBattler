@@ -1,22 +1,22 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  COMPANIONSHIP_CHANCE_PER_PHOTO,
-  COMPANIONSHIP_PHOTO_CAP,
+  COMPANIONSHIP_CHANCE_PER_MEAL_LOG,
+  COMPANIONSHIP_MEAL_LOG_CAP,
   companionshipChance,
   companionshipChancePercent,
 } from "./companionship-chance";
 
 describe("companionshipChance", () => {
-  it("写真が無いときは抽選しない", () => {
+  it("食事ログが無いときは抽選しない", () => {
     expect(companionshipChance(0)).toBe(0);
     expect(companionshipChance(-1)).toBe(0);
     expect(companionshipChance(1.5)).toBe(0);
   });
 
-  it("1枚あたり25%で、上限枚数で100%になる", () => {
-    expect(COMPANIONSHIP_CHANCE_PER_PHOTO).toBe(0.25);
-    expect(COMPANIONSHIP_PHOTO_CAP).toBe(4);
+  it("1件あたり25%で、上限件数で100%になる", () => {
+    expect(COMPANIONSHIP_CHANCE_PER_MEAL_LOG).toBe(0.25);
+    expect(COMPANIONSHIP_MEAL_LOG_CAP).toBe(4);
     expect(companionshipChance(1)).toBe(0.25);
     expect(companionshipChance(2)).toBe(0.5);
     expect(companionshipChance(3)).toBe(0.75);

@@ -47,7 +47,7 @@ export function BattleCompletionResult({ result }: { result: CompletionSuccess }
         <p className={`text-sm ${mutedTextClass}`}>
           {result.usedMealLog
             ? "今回は仲間になりませんでした。仲間化抽選は確定済みのため、再抽選はできません。"
-            : "この回は仲間になりません。食事写真を使わないバトルでは、仲間化抽選は行いません。"}
+            : "この回は仲間になりません。食事ログがないと、仲間化抽選は行いません。"}
         </p>
       )}
 
