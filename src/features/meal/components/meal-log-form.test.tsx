@@ -12,7 +12,7 @@ describe("MealLogForm", () => {
     const markup = renderToStaticMarkup(
       <MealLogForm onSave={async () => ({ success: false, message: "unused" })} />,
     );
-    expect(markup).toContain("保存内容を確認する");
+    expect(markup).toContain("この食事を記録する");
     expect(markup).not.toContain("記録せずに完了する");
   });
 

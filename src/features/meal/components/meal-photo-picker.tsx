@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import { Camera, ImagePlus, Trash2 } from "lucide-react";
 
 import { useMealCamera, type MealCameraStatus } from "@/features/meal/hooks/use-meal-camera";
 import { MEAL_PHOTO_ACCEPT, validateMealPhoto } from "@/features/meal/meal-photo-storage";
@@ -10,6 +11,8 @@ type MealPhotoPickerProps = {
   error?: string;
   autoOpen?: boolean;
   selectLabel?: string;
+  hasPhoto?: boolean;
+  onPhotoCleared?: () => void;
   onPhotoSelected: (photo: File) => void;
   onValidationError: (message: string) => void;
 };
@@ -32,6 +35,8 @@ export function MealPhotoPicker({
   error,
   autoOpen = false,
   selectLabel = "ファイルを選択する",
+  hasPhoto = false,
+  onPhotoCleared,
   onPhotoSelected,
   onValidationError,
 }: MealPhotoPickerProps) {
@@ -91,15 +96,23 @@ export function MealPhotoPicker({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-3">
+      {!hasPhoto && status !== "ready" && status !== "starting" && (
+        <div className="meal-upload-prompt">
+          <Camera aria-hidden="true" className="size-6 text-flush-edge" />
+          <p>今日のごはんを見せて</p>
+          <span>写真があると、あとで見返すのも楽しくなります。</span>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
         {status !== "ready" && status !== "starting" && (
-          <button type="button" onClick={() => void start()} className={secondaryButtonClass}>
-            カメラで撮影する
+          <button type="button" onClick={() => void start()} className="meal-photo-button">
+            <Camera aria-hidden="true" className="size-4" />カメラで撮る
           </button>
         )}
-        <label htmlFor={inputId} className={`flex cursor-pointer items-center ${primaryButtonClass}`}>
-          {selectLabel}
+        <label htmlFor={inputId} className="meal-photo-button meal-photo-button-primary">
+          <ImagePlus aria-hidden="true" className="size-4" />{selectLabel === "ファイルを選択する" ? (hasPhoto ? "写真を変更" : "写真を選ぶ") : selectLabel}
         </label>
+        {hasPhoto && onPhotoCleared && <button type="button" onClick={onPhotoCleared} className="meal-text-action"><Trash2 aria-hidden="true" className="size-4" />削除</button>}
         <input
           ref={inputRef}
           id={inputId}

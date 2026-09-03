@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { CheckCircle2, Swords, UserRoundPlus } from "lucide-react";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { ATTRIBUTE_LABELS } from "@/features/battle/battle.constants";
+import { MEAL_TAGS } from "@/features/meal/meal.types";
 
 import type { BattleHistoryLog } from "../actions";
 import {
@@ -20,6 +22,10 @@ function formatCompletedAt(value: string) {
 
 function optionLabel<T>(options: readonly { value: T; label: string }[], value: T) {
   return options.find((option) => option.value === value)?.label ?? String(value);
+}
+
+function mealTagLabel(value: string) {
+  return MEAL_TAGS.find((tag) => tag.value === value)?.label ?? "食事記録";
 }
 
 export function BattleHistoryList({ logs }: { logs: BattleHistoryLog[] }) {
@@ -41,60 +47,40 @@ export function BattleHistoryList({ logs }: { logs: BattleHistoryLog[] }) {
   }
 
   return (
-    <ol className="flex flex-col gap-4" aria-label="バトルと排便の履歴">
+    <ol className="flex flex-col gap-3" aria-label="バトルと排便の履歴">
       {logs.map((log) => (
-        <li key={log.battleId} className="flex flex-col gap-4 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+        <li key={log.battleId} className="battle-report-card">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-semibold">{log.enemy.name}とのバトル</p>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">確定日時: {formatCompletedAt(log.completedAt)}</p>
+              <div className="flex items-center gap-2">
+                <Swords aria-hidden="true" className="size-[18px] text-flush-edge" />
+                <h2>{log.enemy.name}とのバトル</h2>
+              </div>
+              <p className="battle-report-date">{formatCompletedAt(log.completedAt)}</p>
             </div>
-            <span className="rounded-full bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-              完了
-            </span>
+            <span className="battle-report-complete"><CheckCircle2 aria-hidden="true" className="size-3.5" />記録済み</span>
           </div>
 
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-            <div>
-              <dt className="text-zinc-600 dark:text-zinc-400">敵の属性</dt>
-              <dd>{ATTRIBUTE_LABELS[log.enemy.attribute]}</dd>
-            </div>
-            <div>
-              <dt className="text-zinc-600 dark:text-zinc-400">仲間化</dt>
-              <dd>{log.companionshipResult ? "仲間になった" : "仲間にならなかった"}</dd>
-            </div>
-            {log.mealTag ? (
-              <div>
-                <dt className="text-zinc-600 dark:text-zinc-400">食事タグ</dt>
-                <dd>{log.mealTag}</dd>
-              </div>
-            ) : null}
-          </dl>
+          <div className="battle-report-meta">
+            <span className="battle-report-attribute">属性: {ATTRIBUTE_LABELS[log.enemy.attribute]}</span>
+            <span className={`battle-report-companion ${log.companionshipResult ? "battle-report-companion-success" : ""}`}>
+              <UserRoundPlus aria-hidden="true" className="size-3.5" />{log.companionshipResult ? "仲間になった" : "仲間にならなかった"}
+            </span>
+            {log.mealTag ? <span className="battle-report-meal">きっかけ: {mealTagLabel(log.mealTag)}</span> : null}
+          </div>
 
           {log.bowelLog ? (
-            <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900">
-              <p className="mb-2 text-sm font-medium">排便の状態</p>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div>
-                  <dt className="text-zinc-600 dark:text-zinc-400">硬さ</dt>
-                  <dd>{optionLabel(BOWEL_HARDNESS_OPTIONS, log.bowelLog.hardness)}</dd>
-                </div>
-                <div>
-                  <dt className="text-zinc-600 dark:text-zinc-400">量</dt>
-                  <dd>{optionLabel(BOWEL_AMOUNT_OPTIONS, log.bowelLog.amount)}</dd>
-                </div>
-                <div>
-                  <dt className="text-zinc-600 dark:text-zinc-400">色</dt>
-                  <dd>{optionLabel(BOWEL_COLOR_OPTIONS, log.bowelLog.color)}</dd>
-                </div>
-                <div>
-                  <dt className="text-zinc-600 dark:text-zinc-400">出やすさ</dt>
-                  <dd>{optionLabel(BOWEL_EASE_OPTIONS, log.bowelLog.ease)}</dd>
-                </div>
+            <section className="battle-condition" aria-label="排便コンディション">
+              <h3>排便コンディション</h3>
+              <dl>
+                <div><dt>硬さ</dt><dd>{optionLabel(BOWEL_HARDNESS_OPTIONS, log.bowelLog.hardness)}</dd></div>
+                <div><dt>量</dt><dd>{optionLabel(BOWEL_AMOUNT_OPTIONS, log.bowelLog.amount)}</dd></div>
+                <div><dt>色</dt><dd>{optionLabel(BOWEL_COLOR_OPTIONS, log.bowelLog.color)}</dd></div>
+                <div><dt>出やすさ</dt><dd>{optionLabel(BOWEL_EASE_OPTIONS, log.bowelLog.ease)}</dd></div>
               </dl>
-            </div>
+            </section>
           ) : (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">排便の記録を取得できませんでした。</p>
+            <p className="battle-condition-missing">排便コンディションは記録されていません。</p>
           )}
         </li>
       ))}
