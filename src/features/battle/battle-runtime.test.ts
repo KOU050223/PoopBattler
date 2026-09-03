@@ -7,7 +7,7 @@ import {
   INITIAL_MEMBER_HP,
   SPECIAL_GAUGE_PER_TICK,
   SWITCH_STUN_MS,
-  TIMEOUT_MS,
+  TIMEOUT_TICKS,
   computeAttackDamage,
   msToTicks,
   shouldAutoAttack,
@@ -31,7 +31,7 @@ const startInput: BattleStartInput = {
 function tickTimes(state: BattleSnapshot, count: number): BattleSnapshot {
   let next = state;
   for (let index = 0; index < count; index += 1) {
-    next = applyBattleTick(next, 0);
+    next = applyBattleTick(next);
   }
   return next;
 }
@@ -150,18 +150,15 @@ describe("applyBattleStart / applyBattleTick", () => {
       true,
     );
     const started = applyBattleStart({ ...startInput, battleId });
-    const firstKo = applyBattleTick(
-      {
-        ...started,
-        elapsedTicks: AUTO_ATTACK_PERIOD_TICKS - 1,
-        party: [
-          { ...started.party![0], hp: 1 },
-          started.party![1],
-          started.party![2],
-        ],
-      },
-      0,
-    );
+    const firstKo = applyBattleTick({
+      ...started,
+      elapsedTicks: AUTO_ATTACK_PERIOD_TICKS - 1,
+      party: [
+        { ...started.party![0], hp: 1 },
+        started.party![1],
+        started.party![2],
+      ],
+    });
 
     expect(firstKo.status).toBe("active");
     expect(firstKo.activeIndex).toBe(1);
@@ -169,38 +166,42 @@ describe("applyBattleStart / applyBattleTick", () => {
     expect(firstKo.playerGauge).toBe(0);
     expect(firstKo.switchStunTicks).toBe(msToTicks(SWITCH_STUN_MS));
 
-    const wiped = applyBattleTick(
-      {
-        ...started,
-        elapsedTicks: AUTO_ATTACK_PERIOD_TICKS - 1,
-        party: [
-          { ...started.party![0], hp: 1 },
-          { ...started.party![1], hp: 0 },
-          { ...started.party![2], hp: 0 },
-        ],
-      },
-      0,
-    );
+    const wiped = applyBattleTick({
+      ...started,
+      elapsedTicks: AUTO_ATTACK_PERIOD_TICKS - 1,
+      party: [
+        { ...started.party![0], hp: 1 },
+        { ...started.party![1], hp: 0 },
+        { ...started.party![2], hp: 0 },
+      ],
+    });
     expect(wiped.status).toBe("defeated");
   });
 
   it("タイムアップは残HPが多い側が勝つ", () => {
     const started = applyBattleStart(startInput);
-    const won = applyBattleTick(started, TIMEOUT_MS);
+    const beforeTimeout = applyBattleTick({
+      ...started,
+      elapsedTicks: TIMEOUT_TICKS - 1,
+    });
+    expect(beforeTimeout.status).toBe("active");
+
+    const won = applyBattleTick({
+      ...started,
+      elapsedTicks: TIMEOUT_TICKS,
+    });
     expect(won.status).toBe("completing");
 
-    const lost = applyBattleTick(
-      {
-        ...started,
-        party: [
-          { ...started.party![0], hp: 10 },
-          { ...started.party![1], hp: 0 },
-          { ...started.party![2], hp: 0 },
-        ],
-        enemy: { ...started.enemy!, hp: 400 },
-      },
-      TIMEOUT_MS,
-    );
+    const lost = applyBattleTick({
+      ...started,
+      elapsedTicks: TIMEOUT_TICKS,
+      party: [
+        { ...started.party![0], hp: 10 },
+        { ...started.party![1], hp: 0 },
+        { ...started.party![2], hp: 0 },
+      ],
+      enemy: { ...started.enemy!, hp: 400 },
+    });
     expect(lost.status).toBe("defeated");
   });
 });

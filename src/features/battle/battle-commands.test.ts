@@ -41,7 +41,7 @@ const startInput: BattleStartInput = {
 function tickTimes(state: BattleSnapshot, count: number): BattleSnapshot {
   let next = state;
   for (let index = 0; index < count; index += 1) {
-    next = applyBattleTick(next, 0);
+    next = applyBattleTick(next);
   }
   return next;
 }

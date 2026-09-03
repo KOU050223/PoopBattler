@@ -54,7 +54,7 @@ describe("useBattleStore", () => {
 
   it("start と tick がストアの指定値だけを更新する", () => {
     useBattleStore.getState().start(startInput);
-    useBattleStore.getState().tick(0);
+    useBattleStore.getState().tick();
 
     const state = useBattleStore.getState();
     expect(state.status).toBe("active");

@@ -49,7 +49,7 @@ export function getBattleStateStorage(): StateStorage {
 
 export type BattleStore = BattleSnapshot & {
   start: (input: BattleStartInput) => void;
-  tick: (now?: number) => void;
+  tick: () => void;
   setStance: (stance: Exclude<BattleStance, "special">) => void;
   switchMember: (partyIndex: number) => void;
   beginSpecial: () => void;
@@ -66,7 +66,7 @@ export const useBattleStore = create<BattleStore>()(
     (set) => ({
       ...IDLE_BATTLE_SNAPSHOT,
       start: (input) => set(applyBattleStart(input)),
-      tick: (now = Date.now()) => set((state) => applyBattleTick(state, now)),
+      tick: () => set((state) => applyBattleTick(state)),
       setStance: (stance) => set((state) => applySetStance(state, stance)),
       switchMember: (partyIndex) =>
         set((state) => applySwitchMember(state, partyIndex)),

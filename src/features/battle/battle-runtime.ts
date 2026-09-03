@@ -6,7 +6,7 @@ import {
   SPECIAL_GAUGE_MAX,
   SPECIAL_GAUGE_PER_TICK,
   SWITCH_STUN_MS,
-  TIMEOUT_MS,
+  TIMEOUT_TICKS,
   computeAttackDamage,
   msToTicks,
   shouldAutoAttack,
@@ -187,15 +187,12 @@ export function applyBattleStart(input: BattleStartInput): BattleSnapshot {
   };
 }
 
-export function applyBattleTick(
-  state: BattleSnapshot,
-  now: number,
-): BattleSnapshot {
+export function applyBattleTick(state: BattleSnapshot): BattleSnapshot {
   if (!isFighting(state)) {
     return state;
   }
 
-  if (now - state.startedAt >= TIMEOUT_MS) {
+  if ((state.elapsedTicks ?? 0) >= TIMEOUT_TICKS) {
     return resolveByRemainingHp(cloneBattleSnapshot(state));
   }
 
