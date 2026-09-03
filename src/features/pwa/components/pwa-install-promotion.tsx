@@ -23,7 +23,7 @@ function hasShownPromotion() {
 }
 
 /** 初回バトルの記録完了後だけに置く、控えめなホーム画面追加案内。 */
-export function PwaInstallPromotion() {
+export function PwaInstallPromotion({ isFirstCompletedBattle }: { isFirstCompletedBattle: boolean }) {
   const t = useTranslations("Pwa");
   const { deferredPrompt, isInstalled, isIosSafari, requestInstall } = usePwaInstall();
   const [dismissed, setDismissed] = useState(false);
@@ -51,7 +51,7 @@ export function PwaInstallPromotion() {
     setDismissed(true);
   }
 
-  if (!kind || dismissed) return null;
+  if (!isFirstCompletedBattle || !kind || dismissed) return null;
 
   return <InstallPromotionCard kind={kind} onDismiss={dismiss} onInstall={() => void install()} t={t} />;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { installPromotionKind } from "./pwa-install";
+import { installPromotionKind, isFirstCompletedBattle } from "./pwa-install";
 
 describe("installPromotionKind", () => {
   it("初回の完了後、インストール可能な Chromium では追加ボタンを出す", () => {
@@ -50,5 +50,13 @@ describe("installPromotionKind", () => {
         hasAlreadyShown: false,
       }),
     ).toBeNull();
+  });
+});
+
+describe("isFirstCompletedBattle", () => {
+  it("確定済みバトルが1件のときだけ、初回完了として扱う", () => {
+    expect(isFirstCompletedBattle(1)).toBe(true);
+    expect(isFirstCompletedBattle(0)).toBe(false);
+    expect(isFirstCompletedBattle(2)).toBe(false);
   });
 });

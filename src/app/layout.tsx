@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import { AppHeader } from "@/components/layout/app-header";
 import { HeaderAccountSlot } from "@/features/account/components/header-account-slot";
@@ -15,18 +15,26 @@ const nunito = Nunito({
   weight: ["500", "700", "900"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Brace Up! Brule Raid!!",
-    template: "%s | Brace Up! Brule Raid!!",
-  },
-  description: "Keep meal and bowel logs through battles.",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Brace Up! Brule Raid!!",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const [common, pwa] = await Promise.all([
+    getTranslations("Common"),
+    getTranslations("Pwa"),
+  ]);
+  const appName = common("appName");
+
+  return {
+    title: {
+      default: appName,
+      template: `%s | ${appName}`,
+    },
+    description: pwa("manifestDescription"),
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: appName,
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",

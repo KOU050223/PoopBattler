@@ -71,7 +71,7 @@ export function BattleCompletionResult({ result }: { result: CompletionSuccess }
           履歴を見る
         </Link>
       </div>
-      <PwaInstallPromotion />
+      <PwaInstallPromotion isFirstCompletedBattle={result.isFirstCompletedBattle} />
     </section>
   );
 }

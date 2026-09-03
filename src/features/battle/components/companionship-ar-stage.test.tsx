@@ -20,6 +20,7 @@ const acquired: Extract<CompleteBattleResult, { success: true }> = {
   },
   completedAt: "2026-09-04T03:00:00.000Z",
   usedMealLog: true,
+  isFirstCompletedBattle: true,
 };
 
 const missed: Extract<CompleteBattleResult, { success: true }> = {

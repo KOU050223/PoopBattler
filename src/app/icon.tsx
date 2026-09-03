@@ -1,10 +1,21 @@
 import { ImageResponse } from "next/og";
 
-export const size = { width: 512, height: 512 };
-export const contentType = "image/png";
+const iconSizes = [192, 512] as const;
+
+export function generateImageMetadata() {
+  return iconSizes.map((edge) => ({
+    id: edge.toString(),
+    size: { width: edge, height: edge },
+    contentType: "image/png",
+  }));
+}
 
 /** ホーム画面でも埋もれない、アプリの配色に合わせたシンプルなアイコン。 */
-export default function Icon() {
+export default async function Icon({ id }: { id: Promise<string | number> }) {
+  const edge = Number(await id);
+  const inset = Math.round(edge * 0.117);
+  const radius = Math.round(edge * 0.203);
+
   return new ImageResponse(
     (
       <div
@@ -21,23 +32,23 @@ export default function Icon() {
           style={{
             alignItems: "center",
             background: "#ff7aac",
-            border: "20px solid #c94d7f",
-            borderRadius: 104,
+            border: `${Math.round(edge * 0.039)}px solid #c94d7f`,
+            borderRadius: radius,
             color: "white",
             display: "flex",
-            fontSize: 172,
+            fontSize: Math.round(edge * 0.336),
             fontWeight: 900,
-            height: 392,
+            height: edge - inset * 2,
             justifyContent: "center",
-            letterSpacing: -20,
+            letterSpacing: Math.round(edge * -0.039),
             paddingLeft: 2,
-            width: 392,
+            width: edge - inset * 2,
           }}
         >
           BR
         </div>
       </div>
     ),
-    size,
+    { width: edge, height: edge },
   );
 }

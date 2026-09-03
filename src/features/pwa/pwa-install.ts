@@ -2,6 +2,11 @@ export const PWA_INSTALL_PROMOTION_STORAGE_KEY = "poop-battler:pwa-install-promo
 
 export type InstallPromotionKind = "native" | "ios-instructions";
 
+/** 確定済みバトルの総数から、今回が初回の完了かを判定する。 */
+export function isFirstCompletedBattle(completedBattleCount: number) {
+  return completedBattleCount === 1;
+}
+
 type InstallPromotionConditions = {
   hasNativePrompt: boolean;
   isInstalled: boolean;
