@@ -18,7 +18,7 @@ describe("PoopmFigure", () => {
     );
 
     const body = markup.indexOf("/body/poopm_body_a.png");
-    const limbs = markup.indexOf("/legs/poopm_base_leftleg.png");
+    const limbs = markup.indexOf("/legs/poopm_base_rightleg.png");
     const head = markup.indexOf("/hat/poopm_hat_a.png");
     const mouth = markup.indexOf("/mouth/poopm_mouth_a.png");
     const eyes = markup.indexOf("/eyes/poopm_eye_a.png");
@@ -28,6 +28,19 @@ describe("PoopmFigure", () => {
     expect(limbs).toBeLessThan(head);
     expect(head).toBeLessThan(mouth);
     expect(mouth).toBeLessThan(eyes);
+  });
+
+  it("画面左には右側パーツ、画面右には左側パーツを置く", () => {
+    const markup = renderToStaticMarkup(
+      <PoopmFigure appearance={APPEARANCE} facing="front" motion="idle" />,
+    );
+
+    expect(markup.indexOf("/legs/poopm_base_rightleg.png")).toBeLessThan(
+      markup.indexOf("/legs/poopm_base_leftleg.png"),
+    );
+    expect(markup.indexOf("/hands/poopm_base_righthand.png")).toBeLessThan(
+      markup.indexOf("/hands/poopm_base_lefthand.png"),
+    );
   });
 
   it("後ろ向きは目と口を出さず、頭は残す", () => {

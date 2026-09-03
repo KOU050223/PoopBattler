@@ -86,19 +86,8 @@ export function PoopmFigure({
         alt=""
         aria-hidden="true"
         draggable={false}
-        className={partClass("left-[9%] top-[12%] z-10 w-[82%]")}
+        className={partClass("left-[9%] top-[12%] z-20 w-[82%]")}
         animate={bodyMotion[figureMotion]}
-        transition={transition}
-      />
-      <motion.img
-        src={LIMBS_PNG.leftLeg}
-        width={97}
-        height={201}
-        alt=""
-        aria-hidden="true"
-        draggable={false}
-        className={partClass("bottom-[0%] left-[22%] z-20 h-[43%] w-auto origin-top")}
-        animate={limbMotion[figureMotion]}
         transition={transition}
       />
       <motion.img
@@ -108,18 +97,18 @@ export function PoopmFigure({
         alt=""
         aria-hidden="true"
         draggable={false}
-        className={partClass("right-[22%] bottom-[0%] z-20 h-[42%] w-auto origin-top")}
+        className={partClass("bottom-[-22%] left-[25%] z-10 h-[47%] w-auto origin-top")}
         animate={limbMotion[figureMotion]}
         transition={transition}
       />
       <motion.img
-        src={LIMBS_PNG.leftHand}
-        width={143}
-        height={168}
+        src={LIMBS_PNG.leftLeg}
+        width={97}
+        height={201}
         alt=""
         aria-hidden="true"
         draggable={false}
-        className={partClass("left-[1%] top-[43%] z-20 w-[37%] origin-bottom")}
+        className={partClass("right-[25%] bottom-[-22%] z-10 h-[46%] w-auto origin-top")}
         animate={limbMotion[figureMotion]}
         transition={transition}
       />
@@ -130,7 +119,18 @@ export function PoopmFigure({
         alt=""
         aria-hidden="true"
         draggable={false}
-        className={partClass("right-[1%] top-[42%] z-20 w-[36%] origin-bottom")}
+        className={partClass("left-[-18%] top-[36%] z-10 w-[46%] origin-bottom")}
+        animate={limbMotion[figureMotion]}
+        transition={transition}
+      />
+      <motion.img
+        src={LIMBS_PNG.leftHand}
+        width={143}
+        height={168}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        className={partClass("right-[-18%] top-[36%] z-10 w-[47%] origin-bottom")}
         animate={limbMotion[figureMotion]}
         transition={transition}
       />
@@ -155,7 +155,7 @@ export function PoopmFigure({
             alt=""
             aria-hidden="true"
             draggable={false}
-            className={partClass("left-[35%] top-[57%] z-40 w-[30%] origin-center")}
+            className={partClass("left-[35%] top-[68%] z-40 w-[30%] origin-center")}
             animate={mouthMotion[figureMotion]}
             transition={transition}
           />

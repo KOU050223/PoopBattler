@@ -9,6 +9,10 @@ export type AnonymousSessionAuth = {
     data: { session: object | null };
     error: AuthError | null;
   }>;
+  getUser: () => Promise<{
+    data: { user: object | null };
+    error: AuthError | null;
+  }>;
   signInAnonymously: () => Promise<{
     data: { user: object | null };
     error: AuthError | null;
@@ -29,7 +33,10 @@ export async function ensureAnonymousSession(
   }
 
   if (sessionData.session) {
-    return { status: "ready" };
+    const { data, error } = await auth.getUser();
+    if (!error && data.user) {
+      return { status: "ready" };
+    }
   }
 
   const { data, error } = await auth.signInAnonymously();
