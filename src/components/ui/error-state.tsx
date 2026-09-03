@@ -1,3 +1,5 @@
+import { mutedTextClass, primaryButtonClass } from "@/lib/ui-classes";
+
 type ErrorStateProps = {
   title?: string;
   description?: string;
@@ -15,16 +17,12 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className="flex flex-col items-center gap-3 rounded-lg border border-zinc-300 px-6 py-12 text-center dark:border-zinc-700"
+      className="flex flex-col items-center gap-3 rounded-xl border-2 border-faded-gray px-6 py-12 text-center"
     >
-      <p className="font-medium text-zinc-900 dark:text-zinc-100">{title}</p>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">{description}</p>
+      <p className="font-bold text-charcoal">{title}</p>
+      <p className={mutedTextClass}>{description}</p>
       {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="rounded bg-zinc-900 px-4 py-2 text-sm text-white dark:bg-zinc-100 dark:text-black"
-        >
+        <button type="button" onClick={onRetry} className={primaryButtonClass}>
           {retryLabel}
         </button>
       )}

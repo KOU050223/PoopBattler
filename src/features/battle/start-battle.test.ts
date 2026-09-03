@@ -23,19 +23,24 @@ const normal: CharacterRow = {
   image_key: "characters/normal-poop.png",
 };
 
-// 既定は「認証済み・activeなし・属性一致あり・INSERT成功」の正常系。
+// 既定は「認証済み・RPCで新規開始・レンタル候補あり」の正常系。
 // 各テストは検証したい部分だけを差し替える。
 function createGateway(
   overrides: Partial<StartBattleGateway> = {},
 ): StartBattleGateway {
   return {
     getUserId: vi.fn().mockResolvedValue({ userId: "user-1", failed: false }),
-    findActiveBattle: vi.fn().mockResolvedValue({ battle: null, failed: false }),
+    startBattle: vi.fn().mockResolvedValue({
+      battle: { id: "battle-1", enemy_character_id: "curry-poop", resumed: false },
+      failed: false,
+    }),
     findCharacterById: vi.fn().mockResolvedValue({ character: curry, failed: false }),
-    findCharactersByAttribute: vi
-      .fn()
-      .mockResolvedValue({ characters: [curry], failed: false }),
-    insertBattle: vi.fn().mockResolvedValue({ battleId: "battle-1" }),
+    findCharactersByAttribute: vi.fn(async (attribute: CharacterRow["attribute"]) => {
+      if (attribute === "normal") {
+        return { characters: [normal], failed: false };
+      }
+      return { characters: [curry], failed: false };
+    }),
     ...overrides,
   };
 }
@@ -44,8 +49,11 @@ describe("startBattle", () => {
   it("食事ログが1件もなくてもバトルを開始できる", async () => {
     // 食事ログを読む口がそもそもゲートウェイに無いことが、
     // 「食事ゼロで遊べる」ことの構造的な保証になっている。
-    const insertBattle = vi.fn().mockResolvedValue({ battleId: "battle-1" });
-    const result = await startBattle(createGateway({ insertBattle }), () => 0);
+    const startBattleRpc = vi.fn().mockResolvedValue({
+      battle: { id: "battle-1", enemy_character_id: "curry-poop", resumed: false },
+      failed: false,
+    });
+    const result = await startBattle(createGateway({ startBattle: startBattleRpc }));
 
     expect(result).toEqual({
       status: "started",
@@ -58,143 +66,107 @@ describe("startBattle", () => {
         imageKey: "characters/curry-poop.png",
       },
       enemyHp: INITIAL_ENEMY_HP,
+      party: [
+        {
+          characterId: "normal-poop",
+          name: "ふつうのうんちくん",
+          attribute: "normal",
+        },
+        {
+          characterId: "normal-poop",
+          name: "ふつうのうんちくん",
+          attribute: "normal",
+        },
+        {
+          characterId: "normal-poop",
+          name: "ふつうのうんちくん",
+          attribute: "normal",
+        },
+      ],
       resumed: false,
     });
-    expect(insertBattle).toHaveBeenCalledOnce();
+    expect(startBattleRpc).toHaveBeenCalledOnce();
   });
 
   it("既存のactiveバトルがあれば再開し、新しい行を作らない", async () => {
-    const insertBattle = vi.fn();
+    const startBattleRpc = vi.fn().mockResolvedValue({
+      battle: { id: "battle-existing", enemy_character_id: "curry-poop", resumed: true },
+      failed: false,
+    });
     const result = await startBattle(
       createGateway({
-        findActiveBattle: vi.fn().mockResolvedValue({
-          battle: { id: "battle-existing", enemy_character_id: "curry-poop" },
-          failed: false,
-        }),
-        insertBattle,
+        startBattle: startBattleRpc,
       }),
-      () => 0,
     );
 
     expect(result).toMatchObject({
       status: "started",
       battleId: "battle-existing",
       resumed: true,
+      party: [
+        expect.objectContaining({ characterId: "normal-poop" }),
+        expect.objectContaining({ characterId: "normal-poop" }),
+        expect.objectContaining({ characterId: "normal-poop" }),
+      ],
     });
-    expect(insertBattle).not.toHaveBeenCalled();
+    expect(startBattleRpc).toHaveBeenCalledOnce();
   });
 
-  it("属性に一致する敵がいなければフォールバック属性から選ぶ", async () => {
-    const findCharactersByAttribute = vi
-      .fn()
-      .mockResolvedValueOnce({ characters: [], failed: false })
-      .mockResolvedValueOnce({ characters: [normal], failed: false });
-
-    const result = await startBattle(
-      createGateway({ findCharactersByAttribute }),
-      () => 0,
-    );
-
-    expect(result).toMatchObject({ status: "started", resumed: false });
-    expect(findCharactersByAttribute).toHaveBeenLastCalledWith("normal");
-  });
-
-  it("再開対象の敵の読み出しに失敗したら、新規作成せず失敗を返す", async () => {
-    // 読み出し失敗を「敵がいない」と誤読して新規作成に倒すと、
-    // 進行中のバトルを放置したまま別のバトルができてしまう。
-    const insertBattle = vi.fn();
+  it("RPCが返した敵の読み出しに失敗したら失敗を返す", async () => {
     const result = await startBattle(
       createGateway({
-        findActiveBattle: vi.fn().mockResolvedValue({
-          battle: { id: "battle-existing", enemy_character_id: "curry-poop" },
+        startBattle: vi.fn().mockResolvedValue({
+          battle: { id: "battle-existing", enemy_character_id: "curry-poop", resumed: true },
           failed: false,
         }),
         findCharacterById: vi
           .fn()
           .mockResolvedValue({ character: null, failed: true }),
-        insertBattle,
       }),
-      () => 0,
     );
 
     expect(result.status).toBe("error");
-    expect(insertBattle).not.toHaveBeenCalled();
-  });
-
-  it("再開対象の敵が本当に存在しなければ新規作成へ進む", async () => {
-    const insertBattle = vi.fn().mockResolvedValue({ battleId: "battle-new" });
-    const result = await startBattle(
-      createGateway({
-        findActiveBattle: vi.fn().mockResolvedValue({
-          battle: { id: "battle-existing", enemy_character_id: "gone" },
-          failed: false,
-        }),
-        findCharacterById: vi
-          .fn()
-          .mockResolvedValue({ character: null, failed: false }),
-        insertBattle,
-      }),
-      () => 0,
-    );
-
-    expect(result).toMatchObject({ battleId: "battle-new", resumed: false });
-    expect(insertBattle).toHaveBeenCalledOnce();
   });
 
   it("未認証ならバトルを作らずに失敗を返す", async () => {
-    const insertBattle = vi.fn();
+    const startBattleRpc = vi.fn();
     const result = await startBattle(
       createGateway({
         getUserId: vi.fn().mockResolvedValue({ userId: null, failed: false }),
-        insertBattle,
+        startBattle: startBattleRpc,
       }),
-      () => 0,
     );
 
     expect(result.status).toBe("error");
-    expect(insertBattle).not.toHaveBeenCalled();
+    expect(startBattleRpc).not.toHaveBeenCalled();
   });
 
-  it("フォールバックでも敵が見つからなければバトルを作らない", async () => {
-    const insertBattle = vi.fn();
+  it("開始RPCが失敗したら成功を返さない", async () => {
     const result = await startBattle(
       createGateway({
-        findCharactersByAttribute: vi
-          .fn()
-          .mockResolvedValue({ characters: [], failed: false }),
-        insertBattle,
+        startBattle: vi.fn().mockResolvedValue({ battle: null, failed: true }),
       }),
-      () => 0,
-    );
-
-    expect(result.status).toBe("error");
-    expect(insertBattle).not.toHaveBeenCalled();
-  });
-
-  it("INSERTに失敗したら成功を返さない", async () => {
-    const result = await startBattle(
-      createGateway({
-        insertBattle: vi.fn().mockResolvedValue({ battleId: null }),
-      }),
-      () => 0,
     );
 
     expect(result.status).toBe("error");
   });
 
-  it("マスター読み出しに失敗したら敵を作らない", async () => {
-    const insertBattle = vi.fn();
+  it("レンタル候補の読み出しに失敗しても敵を代替パーティにする", async () => {
     const result = await startBattle(
       createGateway({
         findCharactersByAttribute: vi
           .fn()
           .mockResolvedValue({ characters: [], failed: true }),
-        insertBattle,
       }),
-      () => 0,
     );
 
-    expect(result.status).toBe("error");
-    expect(insertBattle).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      status: "started",
+      party: [
+        expect.objectContaining({ characterId: "curry-poop" }),
+        expect.objectContaining({ characterId: "curry-poop" }),
+        expect.objectContaining({ characterId: "curry-poop" }),
+      ],
+    });
   });
 });

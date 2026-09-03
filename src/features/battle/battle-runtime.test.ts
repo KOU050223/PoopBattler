@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  AUTO_ATTACK_DAMAGE,
+  AUTO_ATTACK_PERIOD_TICKS,
   INITIAL_ENEMY_HP,
   INITIAL_MEMBER_HP,
   SPECIAL_GAUGE_PER_TICK,
   SWITCH_STUN_MS,
-  TIMEOUT_MS,
+  TIMEOUT_TICKS,
   computeAttackDamage,
   msToTicks,
+  shouldAutoAttack,
+  type AutoAttackSide,
 } from "./battle.constants";
 import { applySetStance } from "./battle-commands";
 import { applyBattleStart, applyBattleTick } from "./battle-runtime";
@@ -27,9 +31,51 @@ const startInput: BattleStartInput = {
 function tickTimes(state: BattleSnapshot, count: number): BattleSnapshot {
   let next = state;
   for (let index = 0; index < count; index += 1) {
-    next = applyBattleTick(next, 0);
+    next = applyBattleTick(next);
   }
   return next;
+}
+
+function battleIdWithSwingsAt(
+  tick: number,
+  playerHit: boolean,
+  enemyHit: boolean,
+): string {
+  for (let index = 0; index < 10_000; index += 1) {
+    const battleId = `roll-${index}`;
+    if (
+      shouldAutoAttack(battleId, tick, "player") === playerHit &&
+      shouldAutoAttack(battleId, tick, "enemy") === enemyHit
+    ) {
+      return battleId;
+    }
+  }
+
+  throw new Error("auto-attack battleId が見つからない");
+}
+
+function battleIdWithSwingAt(side: AutoAttackSide, tick: number, shouldHit: boolean): string {
+  for (let index = 0; index < 10_000; index += 1) {
+    const battleId = `roll-${index}`;
+    if (shouldAutoAttack(battleId, tick, side) === shouldHit) {
+      return battleId;
+    }
+  }
+
+  throw new Error("auto-attack battleId が見つからない");
+}
+
+function autoDamage(
+  attackerAttribute: "spicy" | "meat",
+  defenderAttribute: "spicy" | "meat",
+): number {
+  return computeAttackDamage({
+    attackerAttribute,
+    defenderAttribute,
+    attackerStance: "fight",
+    defenderStance: "fight",
+    baseDamage: AUTO_ATTACK_DAMAGE,
+  });
 }
 
 describe("applyBattleStart / applyBattleTick", () => {
@@ -42,28 +88,55 @@ describe("applyBattleStart / applyBattleTick", () => {
     expect(first.playerGauge).toBe(SPECIAL_GAUGE_PER_TICK * 4);
   });
 
-  it("有利タイプの無操作は40秒で敵を倒す", () => {
-    const after = tickTimes(applyBattleStart(startInput), 80);
+  it("通常攻撃は窓の外では入らず、当たる窓では大きい", () => {
+    const period = AUTO_ATTACK_PERIOD_TICKS;
+    const playerOnly = battleIdWithSwingsAt(period, true, false);
+    const enemyOnly = battleIdWithSwingsAt(period, false, true);
+    const bothMiss = battleIdWithSwingsAt(period, false, false);
 
-    expect(after.status).toBe("completing");
-    expect(after.enemy?.hp).toBe(0);
-  });
+    const beforeWindow = tickTimes(
+      applyBattleStart({ ...startInput, battleId: playerOnly }),
+      period - 1,
+    );
+    expect(beforeWindow.enemy?.hp).toBe(INITIAL_ENEMY_HP);
+    expect(beforeWindow.party?.[0].hp).toBe(INITIAL_MEMBER_HP);
 
-  it("79 tick ではまだ撃破しない", () => {
-    const after = tickTimes(applyBattleStart(startInput), 79);
-    const damage = computeAttackDamage({
-      attackerAttribute: "spicy",
-      defenderAttribute: "meat",
-      attackerStance: "fight",
-      defenderStance: "fight",
-    });
+    const missed = tickTimes(
+      applyBattleStart({ ...startInput, battleId: bothMiss }),
+      period,
+    );
+    expect(missed.enemy?.hp).toBe(INITIAL_ENEMY_HP);
+    expect(missed.party?.[0].hp).toBe(INITIAL_MEMBER_HP);
 
-    expect(after.status).toBe("active");
-    expect(after.enemy?.hp).toBe(INITIAL_ENEMY_HP - damage * 79);
+    const playerHit = tickTimes(
+      applyBattleStart({ ...startInput, battleId: playerOnly }),
+      period,
+    );
+    expect(playerHit.enemy?.hp).toBe(
+      INITIAL_ENEMY_HP - autoDamage("spicy", "meat"),
+    );
+    expect(playerHit.party?.[0].hp).toBe(INITIAL_MEMBER_HP);
+
+    const enemyHit = tickTimes(
+      applyBattleStart({ ...startInput, battleId: enemyOnly }),
+      period,
+    );
+    expect(enemyHit.enemy?.hp).toBe(INITIAL_ENEMY_HP);
+    expect(enemyHit.party?.[0].hp).toBe(
+      INITIAL_MEMBER_HP - autoDamage("meat", "spicy"),
+    );
   });
 
   it("控えは場に出るまでダメージを受けない", () => {
-    const after = tickTimes(applyBattleStart(startInput), 10);
+    const battleId = battleIdWithSwingAt(
+      "enemy",
+      AUTO_ATTACK_PERIOD_TICKS,
+      true,
+    );
+    const after = tickTimes(
+      applyBattleStart({ ...startInput, battleId }),
+      AUTO_ATTACK_PERIOD_TICKS,
+    );
 
     expect(after.party?.[0].hp).toBeLessThan(INITIAL_MEMBER_HP);
     expect(after.party?.[1].hp).toBe(INITIAL_MEMBER_HP);
@@ -71,18 +144,21 @@ describe("applyBattleStart / applyBattleTick", () => {
   });
 
   it("場の一体が倒れたらベンチ先頭が出て、3体とも倒されたら敗北する", () => {
-    const started = applyBattleStart(startInput);
-    const firstKo = applyBattleTick(
-      {
-        ...started,
-        party: [
-          { ...started.party![0], hp: 1 },
-          started.party![1],
-          started.party![2],
-        ],
-      },
-      0,
+    const battleId = battleIdWithSwingAt(
+      "enemy",
+      AUTO_ATTACK_PERIOD_TICKS,
+      true,
     );
+    const started = applyBattleStart({ ...startInput, battleId });
+    const firstKo = applyBattleTick({
+      ...started,
+      elapsedTicks: AUTO_ATTACK_PERIOD_TICKS - 1,
+      party: [
+        { ...started.party![0], hp: 1 },
+        started.party![1],
+        started.party![2],
+      ],
+    });
 
     expect(firstKo.status).toBe("active");
     expect(firstKo.activeIndex).toBe(1);
@@ -90,37 +166,42 @@ describe("applyBattleStart / applyBattleTick", () => {
     expect(firstKo.playerGauge).toBe(0);
     expect(firstKo.switchStunTicks).toBe(msToTicks(SWITCH_STUN_MS));
 
-    const wiped = applyBattleTick(
-      {
-        ...started,
-        party: [
-          { ...started.party![0], hp: 1 },
-          { ...started.party![1], hp: 0 },
-          { ...started.party![2], hp: 0 },
-        ],
-      },
-      0,
-    );
+    const wiped = applyBattleTick({
+      ...started,
+      elapsedTicks: AUTO_ATTACK_PERIOD_TICKS - 1,
+      party: [
+        { ...started.party![0], hp: 1 },
+        { ...started.party![1], hp: 0 },
+        { ...started.party![2], hp: 0 },
+      ],
+    });
     expect(wiped.status).toBe("defeated");
   });
 
   it("タイムアップは残HPが多い側が勝つ", () => {
     const started = applyBattleStart(startInput);
-    const won = applyBattleTick(started, TIMEOUT_MS);
+    const beforeTimeout = applyBattleTick({
+      ...started,
+      elapsedTicks: TIMEOUT_TICKS - 1,
+    });
+    expect(beforeTimeout.status).toBe("active");
+
+    const won = applyBattleTick({
+      ...started,
+      elapsedTicks: TIMEOUT_TICKS,
+    });
     expect(won.status).toBe("completing");
 
-    const lost = applyBattleTick(
-      {
-        ...started,
-        party: [
-          { ...started.party![0], hp: 10 },
-          { ...started.party![1], hp: 0 },
-          { ...started.party![2], hp: 0 },
-        ],
-        enemy: { ...started.enemy!, hp: 400 },
-      },
-      TIMEOUT_MS,
-    );
+    const lost = applyBattleTick({
+      ...started,
+      elapsedTicks: TIMEOUT_TICKS,
+      party: [
+        { ...started.party![0], hp: 10 },
+        { ...started.party![1], hp: 0 },
+        { ...started.party![2], hp: 0 },
+      ],
+      enemy: { ...started.enemy!, hp: 400 },
+    });
     expect(lost.status).toBe("defeated");
   });
 });

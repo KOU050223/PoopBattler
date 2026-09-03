@@ -271,7 +271,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      complete_battle: {
+        Args: {
+          p_amount: string
+          p_battle_id: string
+          p_color: string
+          p_ease: string
+          p_hardness: number
+          p_meal_log_id?: string
+        }
+        Returns: {
+          battle_id: string
+          character_id: string
+          companionship_result: boolean
+          status: Database["public"]["Enums"]["battle_status"]
+        }[]
+      }
+      start_battle: {
+        Args: never
+        Returns: {
+          battle_id: string
+          enemy_attribute: Database["public"]["Enums"]["character_attribute"]
+          enemy_character_id: string
+          resumed: boolean
+        }[]
+      }
     }
     Enums: {
       battle_status: "active" | "won" | "completed"

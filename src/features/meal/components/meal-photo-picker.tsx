@@ -4,6 +4,7 @@ import { useEffect, useId, useRef } from "react";
 
 import { useMealCamera, type MealCameraStatus } from "@/features/meal/hooks/use-meal-camera";
 import { MEAL_PHOTO_ACCEPT, validateMealPhoto } from "@/features/meal/meal-photo-storage";
+import { captionTextClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type MealPhotoPickerProps = {
   error?: string;
@@ -78,11 +79,11 @@ export function MealPhotoPicker({ error, onPhotoSelected, onValidationError }: M
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-3">
         {status !== "ready" && status !== "starting" && (
-          <button type="button" onClick={() => void start()} className="min-h-11 rounded-md border border-zinc-300 px-4 font-medium dark:border-zinc-700">
+          <button type="button" onClick={() => void start()} className={secondaryButtonClass}>
             カメラで撮影する
           </button>
         )}
-        <label htmlFor={inputId} className="flex min-h-11 cursor-pointer items-center rounded-md bg-zinc-900 px-4 font-medium text-white dark:bg-zinc-100 dark:text-black">
+        <label htmlFor={inputId} className={`flex cursor-pointer items-center ${primaryButtonClass}`}>
           ファイルを選択する
         </label>
         <input
@@ -98,25 +99,25 @@ export function MealPhotoPicker({ error, onPhotoSelected, onValidationError }: M
       </div>
 
       {(status === "starting" || status === "ready") && (
-        <div className="flex flex-col gap-3 rounded-lg border border-zinc-300 p-3 dark:border-zinc-700">
-          <video ref={videoRef} playsInline muted className="aspect-video w-full rounded-md bg-black object-cover" />
+        <div className="flex flex-col gap-3 rounded-xl border-2 border-faded-gray p-3">
+          <video ref={videoRef} playsInline muted className="aspect-video w-full rounded-xl bg-night-ink object-cover" />
           {status === "starting" ? (
             <div className="flex items-center gap-3">
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">カメラを起動しています…</p>
-              <button type="button" onClick={stop} className="min-h-11 rounded-md border border-zinc-300 px-4 dark:border-zinc-700">カメラを閉じる</button>
+              <p className={captionTextClass}>カメラを起動しています…</p>
+              <button type="button" onClick={stop} className={secondaryButtonClass}>カメラを閉じる</button>
             </div>
           ) : (
             <div className="flex gap-3">
-              <button type="button" onClick={capturePhoto} className="min-h-11 rounded-md bg-zinc-900 px-4 font-medium text-white dark:bg-zinc-100 dark:text-black">撮影する</button>
-              <button type="button" onClick={stop} className="min-h-11 rounded-md border border-zinc-300 px-4 dark:border-zinc-700">カメラを閉じる</button>
+              <button type="button" onClick={capturePhoto} className={primaryButtonClass}>撮影する</button>
+              <button type="button" onClick={stop} className={secondaryButtonClass}>カメラを閉じる</button>
             </div>
           )}
         </div>
       )}
 
-      {cameraMessage && <p role="status" className="text-sm text-zinc-600 dark:text-zinc-400">{cameraMessage} ファイルを選択して続けられます。</p>}
+      {cameraMessage && <p role="status" className={captionTextClass}>{cameraMessage} ファイルを選択して続けられます。</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <p className="text-xs text-zinc-500">JPEG・PNG・WebP、5MB以下</p>
+      <p className={captionTextClass}>JPEG・PNG・WebP、5MB以下</p>
     </div>
   );
 }

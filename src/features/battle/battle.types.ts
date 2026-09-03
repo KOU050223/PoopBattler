@@ -1,3 +1,4 @@
+import type { BowelLogDraft } from "@/features/bowel-log/bowel-log.types";
 import type { Database } from "@/types/database.types";
 
 import type {
@@ -11,6 +12,7 @@ export type BattleCombatant = {
   characterId: string;
   attribute: CharacterAttribute;
   hp: number;
+  name?: string;
 };
 
 export type BattleParty = [
@@ -22,6 +24,7 @@ export type BattleParty = [
 export type BattleStartMember = {
   characterId: string;
   attribute: CharacterAttribute;
+  name?: string;
 };
 
 export type BattleStartInput = {
@@ -32,12 +35,7 @@ export type BattleStartInput = {
 };
 
 // 未送信の排便入力。センサー値やカメラ画像はここに足さない。
-export type BowelDraft = {
-  hardness?: number;
-  amount?: string;
-  color?: string;
-  ease?: string;
-};
+export type BowelDraft = BowelLogDraft;
 
 export type BattleSnapshot = {
   status: BattleStatus;
@@ -56,6 +54,7 @@ export type BattleSnapshot = {
   enemyGuardCooldownTicks: number;
   enemySpecialTelegraphTicks: number;
   switchStunTicks: number;
+  elapsedTicks: number;
   startedAt: number | null;
   bowelDraft: BowelDraft | null;
 };
@@ -75,6 +74,7 @@ export type StartBattleSuccess = {
   battleId: string;
   enemy: BattleEnemy;
   enemyHp: number;
+  party: [BattleStartMember, BattleStartMember, BattleStartMember];
   // 既存のactiveバトルを再開したのか、新規作成したのか。
   // 表示の出し分け用で、敵の情報の形は両者で同じ。
   resumed: boolean;

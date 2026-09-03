@@ -1,12 +1,12 @@
 import type { Database } from "@/types/database.types";
 
 import { FALLBACK_ATTRIBUTE, INITIAL_ENEMY_HP } from "./battle.constants";
-import {
-  selectCharacterFrom,
-  selectEnemyAttribute,
-  type RandomSource,
-} from "./enemy-generator";
-import type { BattleEnemy, StartBattleResult } from "./battle.types";
+import { fillRentalParty, toStartMember } from "./rental-party";
+import type {
+  BattleEnemy,
+  BattleStartMember,
+  StartBattleResult,
+} from "./battle.types";
 
 // 生成された型から必要な列だけを抜き出す。手書きの形にすると、列名や
 // 型が変わってもコンパイルが通り、実行時に黙って壊れる（AGENTS.md）。
@@ -15,17 +15,18 @@ export type CharacterRow = Pick<
   "id" | "name" | "attribute" | "rarity" | "image_key"
 >;
 
-export type ActiveBattleRow = {
+export type StartedBattleRow = {
   id: string;
   enemy_character_id: string;
+  resumed: boolean;
 };
 
 // Supabaseクライアントそのものではなく、この機能が必要とする操作だけを受け取る。
 // lib/supabase/anonymous-session.ts と同じ方針で、Docker無しでも分岐を検証できる。
 export type StartBattleGateway = {
   getUserId: () => Promise<{ userId: string | null; failed: boolean }>;
-  findActiveBattle: () => Promise<{
-    battle: ActiveBattleRow | null;
+  startBattle: () => Promise<{
+    battle: StartedBattleRow | null;
     failed: boolean;
   }>;
   findCharacterById: (
@@ -34,10 +35,6 @@ export type StartBattleGateway = {
   findCharactersByAttribute: (
     attribute: CharacterRow["attribute"],
   ) => Promise<{ characters: CharacterRow[]; failed: boolean }>;
-  insertBattle: (input: {
-    userId: string;
-    character: CharacterRow;
-  }) => Promise<{ battleId: string | null }>;
 };
 
 const AUTH_ERROR = "プレイの準備ができていません。時間をおいて再試行してください。";
@@ -53,87 +50,71 @@ function toEnemy(character: CharacterRow): BattleEnemy {
   };
 }
 
+function partyFromCharacter(
+  character: CharacterRow,
+): [BattleStartMember, BattleStartMember, BattleStartMember] {
+  const member = toStartMember(character);
+  return [member, { ...member }, { ...member }];
+}
+
+async function loadRentalParty(
+  gateway: StartBattleGateway,
+  fallbackCharacter: CharacterRow | null,
+): Promise<[BattleStartMember, BattleStartMember, BattleStartMember] | null> {
+  const { characters, failed } = await gateway.findCharactersByAttribute(
+    FALLBACK_ATTRIBUTE,
+  );
+
+  if (!failed) {
+    const party = fillRentalParty(characters);
+    if (party) {
+      return party;
+    }
+  }
+
+  if (fallbackCharacter) {
+    return partyFromCharacter(fallbackCharacter);
+  }
+
+  return null;
+}
+
 /**
  * バトル開始の本体。敵はサーバーで確定し、クライアントは指定できない（Issue #21）。
  *
  * 既にactiveなバトルがある場合は新規作成せず再開する（MVPの方針）。
  * 戻り値の形は新規・再開で同じにし、クライアントに区別を強いない。
  */
-export async function startBattle(
-  gateway: StartBattleGateway,
-  random: RandomSource = Math.random,
-): Promise<StartBattleResult> {
+export async function startBattle(gateway: StartBattleGateway): Promise<StartBattleResult> {
   const { userId, failed: authFailed } = await gateway.getUserId();
 
   if (authFailed || !userId) {
     return { status: "error", message: AUTH_ERROR };
   }
 
-  // 1. 既存のactiveバトルがあれば再開する。二重に開始させない。
-  const { battle: existing, failed: existingFailed } =
-    await gateway.findActiveBattle();
-
-  if (existingFailed) {
+  // active行の検索・敵選定・INSERTは start_battle RPC だけが行う。
+  const { battle, failed: startFailed } = await gateway.startBattle();
+  if (startFailed || !battle) {
     return { status: "error", message: START_ERROR };
   }
 
-  if (existing) {
-    const { character, failed: characterFailed } =
-      await gateway.findCharacterById(existing.enemy_character_id);
-
-    // 読み出しに失敗しただけなら、進行中のバトルを捨てて新規作成してはいけない。
-    // enemy_character_id には外部キーがあるので、行が引けないのは通常
-    // 「一時的に読めなかった」であって「敵が消えた」ではない。
-    // ここで新規作成に倒すと、既存のactiveを放置したまま別のバトルを作る。
-    if (characterFailed) {
-      return { status: "error", message: START_ERROR };
-    }
-
-    // 敵が本当に存在しない場合だけ、この行を諦めて新規作成へ進む。
-    if (character) {
-      return {
-        status: "started",
-        battleId: existing.id,
-        enemy: toEnemy(character),
-        enemyHp: INITIAL_ENEMY_HP,
-        resumed: true,
-      };
-    }
-  }
-
-  // 2. 属性をサーバー側乱数で決める。食事ログは読まない。
-  const attribute = selectEnemyAttribute(random);
-  const { characters, failed: candidatesFailed } =
-    await gateway.findCharactersByAttribute(attribute);
-
-  if (candidatesFailed) {
+  const { character, failed: characterFailed } =
+    await gateway.findCharacterById(battle.enemy_character_id);
+  if (characterFailed || !character) {
     return { status: "error", message: START_ERROR };
   }
 
-  let character = selectCharacterFrom(characters, random);
-
-  // 3. 候補が無ければseed済みのフォールバック属性から選ぶ。
-  if (!character) {
-    const fallback = await gateway.findCharactersByAttribute(FALLBACK_ATTRIBUTE);
-    character = selectCharacterFrom(fallback.characters, random);
-  }
-
-  if (!character) {
-    return { status: "error", message: START_ERROR };
-  }
-
-  // 4. activeでINSERTする。meal_log_id は null が通常の状態（食事写真は任意）。
-  const { battleId } = await gateway.insertBattle({ userId, character });
-
-  if (!battleId) {
+  const party = await loadRentalParty(gateway, character);
+  if (!party) {
     return { status: "error", message: START_ERROR };
   }
 
   return {
     status: "started",
-    battleId,
+    battleId: battle.id,
     enemy: toEnemy(character),
     enemyHp: INITIAL_ENEMY_HP,
-    resumed: false,
+    party,
+    resumed: battle.resumed,
   };
 }

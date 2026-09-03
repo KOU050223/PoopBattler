@@ -54,14 +54,23 @@ describe("useBattleStore", () => {
 
   it("start と tick がストアの指定値だけを更新する", () => {
     useBattleStore.getState().start(startInput);
-    useBattleStore.getState().tick(0);
+    useBattleStore.getState().tick();
 
     const state = useBattleStore.getState();
     expect(state.status).toBe("active");
     expect(state.battleId).toBe("battle-1");
-    expect(state.enemy?.hp).toBeLessThan(INITIAL_ENEMY_HP);
+    expect(state.enemy?.hp).toBe(INITIAL_ENEMY_HP);
     expect(state).not.toHaveProperty("comboGauge");
     expect(state).not.toHaveProperty("fed");
+  });
+
+  it("markCompleting は進行中のバトルを勝利にする", () => {
+    useBattleStore.getState().start(startInput);
+    useBattleStore.getState().markCompleting();
+
+    const state = useBattleStore.getState();
+    expect(state.status).toBe("completing");
+    expect(state.enemy?.hp).toBe(0);
   });
 
   it("restore は渡したスナップショットに置き換える", () => {
@@ -76,5 +85,22 @@ describe("useBattleStore", () => {
     expect(state.playerGauge).toBe(80);
     expect(state.bowelDraft).toEqual({ amount: "normal" });
     expect(state.battleId).toBe("battle-1");
+  });
+
+  it("reset はバトルと未送信の排便下書きをまとめて破棄する", () => {
+    useBattleStore.getState().start(startInput);
+    useBattleStore.getState().setBowelDraft({
+      hardness: 4,
+      amount: "normal",
+      color: "brown",
+      ease: "easy",
+    });
+
+    useBattleStore.getState().reset();
+
+    const state = useBattleStore.getState();
+    expect(state.status).toBe("idle");
+    expect(state.battleId).toBeNull();
+    expect(state.bowelDraft).toBeNull();
   });
 });
