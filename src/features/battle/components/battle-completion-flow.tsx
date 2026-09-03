@@ -7,13 +7,15 @@ import {
   type CompleteBattleResult,
 } from "@/features/battle/actions";
 import { isBattleGoneMessage } from "@/features/battle/complete-battle-error";
+import { BattleMealSessionList } from "@/features/battle/components/battle-meal-session-list";
 import {
-  COMPANIONSHIP_MEAL_LOG_CAP,
-  companionshipChancePercent,
-} from "@/features/battle/companionship-chance";
+  mealLogIdForComplete,
+  postBattleCompleteLabel,
+  postBattleMealChanceCopy,
+} from "@/features/battle/post-battle-meal-session";
 import { BowelLogForm } from "@/features/bowel-log/components/bowel-log-form";
 import type { BowelLog } from "@/features/bowel-log/bowel-log.types";
-import { getMealLogsAction, saveMealLogAction } from "@/features/meal/actions";
+import { getMealLogsAction, saveMealLogAction, type MealLog } from "@/features/meal/actions";
 import { MealLogForm } from "@/features/meal/components/meal-log-form";
 import type { MealLogDraft, MealLogSaveResult } from "@/features/meal/meal.types";
 import { mutedTextClass, primaryButtonClass } from "@/lib/ui-classes";
@@ -24,19 +26,66 @@ type BattleCompletionFlowProps = {
   onAbandon: () => void;
 };
 
+type BattleMealStepProps = {
+  existingMealLogCount: number;
+  sessionLogs: MealLog[];
+  error: string | null;
+  onSave: (draft: MealLogDraft) => Promise<MealLogSaveResult>;
+  onComplete: () => void | Promise<void>;
+  onAbandon: () => void;
+};
+
+/** 1枚保存してもフォームを残し、完了で次へ進む。 */
+export function BattleMealStep({
+  existingMealLogCount,
+  sessionLogs,
+  error,
+  onSave,
+  onComplete,
+  onAbandon,
+}: BattleMealStepProps) {
+  return (
+    <section className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1 text-center">
+        <p className="text-xl font-bold">食事の記録</p>
+        <p className={`text-sm ${mutedTextClass}`}>
+          {postBattleMealChanceCopy(existingMealLogCount, sessionLogs.length)}
+        </p>
+      </div>
+      <MealLogForm
+        autoOpenPicker
+        refreshOnSuccess={false}
+        onSave={onSave}
+        onSkip={onComplete}
+        skipLabel={postBattleCompleteLabel(sessionLogs.length)}
+      >
+        <BattleMealSessionList logs={sessionLogs} />
+      </MealLogForm>
+      {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
+      {error && isBattleGoneMessage(error) ? (
+        <button type="button" className={primaryButtonClass} onClick={onAbandon}>
+          新しく始める
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
 /**
  * 排便の次に、食事タブと同じ記録フォームを出す。
  * 記録しなくてもバトルは完了できる。仲間化確率は食事ログの件数で決まる。
+ * 食事は1枚保存しても画面に止まり、完了を押すまで次へ進まない。
  */
 export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: BattleCompletionFlowProps) {
   const submittingRef = useRef(false);
-  const savedMealLogIdRef = useRef<string | null>(null);
+  const sessionMealLogIdsRef = useRef<string[]>([]);
   const [bowelLog, setBowelLog] = useState<BowelLog | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [mealLogCount, setMealLogCount] = useState(0);
+  const [existingMealLogCount, setExistingMealLogCount] = useState(0);
+  const [sessionLogs, setSessionLogs] = useState<MealLog[]>([]);
 
   useEffect(() => {
-    void getMealLogsAction().then((logs) => setMealLogCount(logs.length));
+    void getMealLogsAction().then((logs) => setExistingMealLogCount(logs.length));
   }, []);
 
   async function finish(mealLogId: string | null) {
@@ -64,49 +113,33 @@ export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: Battl
     }
   }
 
-  async function saveMealAndComplete(draft: MealLogDraft): Promise<MealLogSaveResult> {
-    let mealLogId = savedMealLogIdRef.current;
-    if (!mealLogId) {
-      const saved = await saveMealLogAction(draft);
-      if (!saved.success) return saved;
-      mealLogId = saved.mealLogId;
-      savedMealLogIdRef.current = mealLogId;
-    }
+  async function saveMeal(draft: MealLogDraft): Promise<MealLogSaveResult> {
+    const saved = await saveMealLogAction(draft);
+    if (!saved.success) return saved;
 
-    const completed = await finish(mealLogId);
-    if (!completed.success) {
-      return { success: false, message: completed.message };
-    }
-    return { success: true, mealLogId };
+    sessionMealLogIdsRef.current = [...sessionMealLogIdsRef.current, saved.mealLogId];
+    setSessionLogs((current) => [
+      ...current,
+      {
+        id: saved.mealLogId,
+        eatenAt: draft.eatenAt,
+        photoId: draft.photoId,
+        tag: draft.tag,
+        note: draft.note ?? null,
+      },
+    ]);
+    return saved;
   }
 
-  const skipChance = companionshipChancePercent(mealLogCount);
-  const saveChance = companionshipChancePercent(mealLogCount + 1);
-
   return bowelLog ? (
-    <section className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1 text-center">
-        <p className="text-xl font-bold">食事の記録</p>
-        <p className={`text-sm ${mutedTextClass}`}>
-          {mealLogCount === 0
-            ? `食事ログがないと仲間になりません。今回記録すると25%、${COMPANIONSHIP_MEAL_LOG_CAP}件で100%です。記録しなくてもバトルは完了できます。`
-            : `いま食事ログは${mealLogCount}件です。記録せずに完了すると${skipChance}%、今回記録すると${saveChance}%です。`}
-        </p>
-      </div>
-      <MealLogForm
-        autoOpenPicker
-        refreshOnSuccess={false}
-        onSave={saveMealAndComplete}
-        onSkip={() => void finish(null)}
-        skipLabel="記録せずに完了する"
-      />
-      {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
-      {error && isBattleGoneMessage(error) ? (
-        <button type="button" className={primaryButtonClass} onClick={onAbandon}>
-          新しく始める
-        </button>
-      ) : null}
-    </section>
+    <BattleMealStep
+      existingMealLogCount={existingMealLogCount}
+      sessionLogs={sessionLogs}
+      error={error}
+      onSave={saveMeal}
+      onComplete={() => void finish(mealLogIdForComplete(sessionMealLogIdsRef.current))}
+      onAbandon={onAbandon}
+    />
   ) : (
     <section className="flex flex-col gap-5">
       <div className="flex flex-col gap-1 text-center">

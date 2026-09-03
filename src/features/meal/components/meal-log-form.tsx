@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { CalendarClock, CheckCircle2, ChevronDown, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -24,6 +24,8 @@ type MealLogFormProps = {
   skipLabel?: string;
   autoOpenPicker?: boolean;
   refreshOnSuccess?: boolean;
+  /** 保存ボタンと完了ボタンのあいだ。戦闘後の今回ログなど。 */
+  children?: ReactNode;
 };
 
 function currentLocalDateTime() {
@@ -42,6 +44,7 @@ export function MealLogForm({
   skipLabel = "記録せずに完了する",
   autoOpenPicker = false,
   refreshOnSuccess = true,
+  children,
 }: MealLogFormProps) {
   const router = useRouter();
   const tagGroupId = useId();
@@ -193,6 +196,7 @@ export function MealLogForm({
         <button type="submit" disabled={busy} className="meal-save-button"><Sparkles aria-hidden="true" className="size-[18px]" />この食事を記録する</button>
         <p>この食事が、次のモンスターにつながります。</p>
       </div>
+      {children}
       {onSkip ? (
         <button
           type="button"

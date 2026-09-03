@@ -27,4 +27,22 @@ describe("MealLogForm", () => {
     expect(markup).toContain("食事タグ");
     expect(markup).toContain("記録せずに完了する");
   });
+
+  it("保存と完了のあいだに今回のログを挟める", () => {
+    const markup = renderToStaticMarkup(
+      <MealLogForm
+        onSave={async () => ({ success: false, message: "unused" })}
+        onSkip={() => undefined}
+        skipLabel="完了する"
+      >
+        <p>今回の食事</p>
+      </MealLogForm>,
+    );
+    const saveIndex = markup.indexOf("この食事を記録する");
+    const sessionIndex = markup.indexOf("今回の食事");
+    const completeIndex = markup.indexOf("完了する");
+    expect(saveIndex).toBeGreaterThan(-1);
+    expect(sessionIndex).toBeGreaterThan(saveIndex);
+    expect(completeIndex).toBeGreaterThan(sessionIndex);
+  });
 });
