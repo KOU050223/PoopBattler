@@ -1,23 +1,23 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { getBattleHistoryAction } from "@/features/bowel-log/actions";
+import { BattleHistoryList } from "@/features/bowel-log/components/battle-history-list";
 
 export const metadata: Metadata = {
   title: "排便の記録",
 };
 
-export default function LogsPage() {
+export default async function LogsPage() {
+  const logs = await getBattleHistoryAction();
+
   return (
-    <>
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <PageHeader
         title="排便の記録"
         description="バトルの結果と一緒に残した記録を振り返れます。"
       />
-      <EmptyState
-        title="まだ記録がありません"
-        description="バトルに勝つと、そのときの記録がここに残ります。"
-      />
-    </>
+      <BattleHistoryList logs={logs} />
+    </div>
   );
 }
