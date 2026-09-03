@@ -204,4 +204,19 @@ describe("レンタルと所持個体の区別", () => {
   it("所持個体もレンタル候補も無ければ選出できない", () => {
     expect(fillParty([], [])).toBeNull();
   });
+
+  it("枠が埋まらずレンタル候補も無ければ選出できない", () => {
+    // 仲間が1〜2体しかいない状態でレンタルの読み出しに失敗した場合の経路。
+    // 埋めようとして無限ループにならず、null を返して呼び出し側に失敗させる。
+    expect(fillParty([member({ userCharacterId: "uc-1" })], [])).toBeNull();
+    expect(
+      fillParty(
+        [
+          member({ userCharacterId: "uc-1" }),
+          member({ userCharacterId: "uc-2" }),
+        ],
+        [],
+      ),
+    ).toBeNull();
+  });
 });

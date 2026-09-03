@@ -452,6 +452,25 @@ begin
     started.enemy_hp > 0 and started.enemy_power > 0 and started.enemy_speed > 0,
     true);
 
+  -- 再開では、渡された選出を無視して保存済みのパーティを返す ----------------
+  -- ここを見ないと、劣勢になったところで開始を呼び直し、無傷の別個体へ
+  -- 差し替えられる。uc2 を渡しても uc1 のままであることを見る。
+  declare
+    resumed_started record;
+  begin
+    select * into resumed_started from public.start_battle(array[uc2]);
+    perform pg_temp.expect(
+      'start_battle 再開は渡された選出を無視して同じバトルを返す',
+      resumed_started.resumed = true
+        and resumed_started.battle_id = battle_id,
+      true);
+    perform pg_temp.expect(
+      'start_battle 再開でパーティを別個体へ差し替えられない',
+      resumed_started.party_snapshot = snapshot
+        and (resumed_started.party_snapshot -> 0 ->> 'user_character_id')::uuid = uc1,
+      true);
+  end;
+
   -- 勝利確定で、出していた所持個体だけが伸びる ------------------------------
   perform public.complete_battle(battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
 
