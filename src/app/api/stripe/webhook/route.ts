@@ -51,18 +51,25 @@ export async function POST(request: Request) {
   // 支払った直後の利用者が締め出される。後続イベント頼みにはできない
   // （Stripe はイベントの順序を保証しない）。
   let expandedSubscription: Stripe.Subscription | null = null;
-  if (event.type === "checkout.session.completed") {
+  if (
+    event.type === "checkout.session.completed"
+    || event.type === "checkout.session.async_payment_succeeded"
+  ) {
     const session = event.data.object as Stripe.Checkout.Session;
     const subscriptionId =
       typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
 
-    if (subscriptionId) {
+    // 未払いのセッションは resolveStripeEvent 側で無視されるため、
+    // ここで購読を取りに行く必要もない。
+    if (subscriptionId && session.payment_status !== "unpaid") {
       try {
         expandedSubscription = await stripe.subscriptions.retrieve(subscriptionId);
       } catch {
-        // 取得できなくても購読の行自体は作る。期限は後続イベントが埋める。
-        // ここで 500 にすると、行が無いまま再送を待つことになる。
-        expandedSubscription = null;
+        // 取得に失敗したまま進めると、期限が null の行を書いて 200 を返すことになる。
+        // その行は hasActiveEntitlement が権利なしと判定するため、支払った利用者が
+        // 締め出されたまま復旧の当てが無い（次の更新は更新期まで来ない）。
+        // 500 を返して Stripe に再送させる。
+        return new Response("Failed to retrieve subscription", { status: 500 });
       }
     }
   }
@@ -86,6 +93,7 @@ export async function POST(request: Request) {
         stripeSubscriptionId: outcome.stripeSubscriptionId,
         status: outcome.status,
         currentPeriodEnd: outcome.currentPeriodEnd,
+        eventCreatedAt: outcome.eventCreatedAt,
       });
 
   if (result.status === "error") {

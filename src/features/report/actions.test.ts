@@ -134,7 +134,11 @@ describe("getWeeklyReportAction（権利なし）", () => {
 
     const result = await getWeeklyReportAction(now);
 
-    expect(result).toEqual({ entitled: false, teaser: { bowelCount: 1, recordedDays: 1 } });
+    expect(result).toEqual({
+      entitled: false,
+      teaser: { bowelCount: 1, recordedDays: 1 },
+      hasSubscription: false,
+    });
     expect(result && "report" in result).toBe(false);
   });
 
@@ -149,6 +153,21 @@ describe("getWeeklyReportAction（権利なし）", () => {
     const result = await getWeeklyReportAction(now);
     expect(result).toMatchObject({ entitled: false });
     expect(result && "report" in result).toBe(false);
+  });
+
+  // 支払いに失敗した人へ購入ボタンだけを出すと、直す手段が画面から消える。
+  it("購読はあるが権利が無い場合はその旨を返す", async () => {
+    mocks.createClient.mockResolvedValue(
+      createSupabase({
+        subscription: { status: "past_due", current_period_end: "2026-10-01T00:00:00.000Z" },
+        bowelRows: [bowelRow],
+      }),
+    );
+
+    await expect(getWeeklyReportAction(now)).resolves.toMatchObject({
+      entitled: false,
+      hasSubscription: true,
+    });
   });
 
   it("解約済みの購読では件数だけを返す", async () => {

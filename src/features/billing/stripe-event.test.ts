@@ -5,15 +5,28 @@ import { resolveStripeEvent } from "./stripe-event";
 
 const userId = "00000000-0000-4000-8000-000000000001";
 
-function checkoutEvent(session: Record<string, unknown>): Stripe.Event {
-  return { type: "checkout.session.completed", data: { object: session } } as unknown as Stripe.Event;
+function checkoutEvent(
+  session: Record<string, unknown>,
+  type:
+    | "checkout.session.completed"
+    | "checkout.session.async_payment_succeeded"
+    | "checkout.session.async_payment_failed" = "checkout.session.completed",
+): Stripe.Event {
+  return {
+    type,
+    created: 1790000500,
+    data: { object: { payment_status: "paid", ...session } },
+  } as unknown as Stripe.Event;
 }
+
+const EVENT_CREATED = 1790000500;
 
 function subscriptionEvent(
   type: "customer.subscription.updated" | "customer.subscription.deleted",
   subscription: Record<string, unknown>,
+  created = EVENT_CREATED,
 ): Stripe.Event {
-  return { type, data: { object: subscription } } as unknown as Stripe.Event;
+  return { type, created, data: { object: subscription } } as unknown as Stripe.Event;
 }
 
 /** Route Handler が Stripe から取得して渡す購読。 */
@@ -104,8 +117,10 @@ describe("resolveStripeEvent（購読の更新）", () => {
     expect(outcome).toEqual({
       kind: "update-by-customer",
       stripeCustomerId: "cus_1",
+      stripeSubscriptionId: undefined,
       status: "active",
       currentPeriodEnd: new Date(1790000000 * 1000).toISOString(),
+      eventCreatedAt: new Date(EVENT_CREATED * 1000).toISOString(),
     });
   });
 
@@ -180,6 +195,64 @@ describe("resolveStripeEvent（購読の更新）", () => {
     );
 
     expect(outcome).toMatchObject({ currentPeriodEnd: null });
+  });
+});
+
+describe("resolveStripeEvent（支払いの確定を待つ）", () => {
+  const ids = { client_reference_id: userId, customer: "cus_1", subscription: "sub_1" };
+
+  // 遅延通知型の支払い方法（コンビニ払い等）では、completed が未払いのまま
+  // 先に届く。ここで権利を付けると、後で失敗する支払いに権利を与えてしまう。
+  it("未払いのままの完了イベントでは権利を付けない", () => {
+    const outcome = resolveStripeEvent(
+      checkoutEvent({ ...ids, payment_status: "unpaid" }),
+      retrievedSubscription(),
+    );
+
+    expect(outcome).toEqual({ kind: "ignore" });
+  });
+
+  it("支払い済みの完了イベントでは権利を付ける", () => {
+    const outcome = resolveStripeEvent(
+      checkoutEvent({ ...ids, payment_status: "paid" }),
+      retrievedSubscription(),
+    );
+
+    expect(outcome).toMatchObject({ kind: "upsert" });
+  });
+
+  // 後から支払いが成功した場合。これを無視すると、正しく支払った利用者に
+  // 永久に権利が付かない。
+  it("遅れて支払いが成功したら権利を付ける", () => {
+    const outcome = resolveStripeEvent(
+      checkoutEvent({ ...ids, payment_status: "paid" }, "checkout.session.async_payment_succeeded"),
+      retrievedSubscription(),
+    );
+
+    expect(outcome).toMatchObject({ kind: "upsert" });
+  });
+
+  it("遅れて支払いが失敗しても何も書かない", () => {
+    const outcome = resolveStripeEvent(
+      checkoutEvent({ ...ids, payment_status: "unpaid" }, "checkout.session.async_payment_failed"),
+      null,
+    );
+
+    expect(outcome).toEqual({ kind: "ignore" });
+  });
+});
+
+describe("resolveStripeEvent（発生順）", () => {
+  // 到着順ではなく発生順を正とするため、イベントの created を持ち回る。
+  it("イベントの発生時刻を持ち回る", () => {
+    const outcome = resolveStripeEvent(
+      subscriptionEvent("customer.subscription.updated",
+        { id: "sub_1", customer: "cus_1", status: "active" }, 1700000000),
+    );
+
+    expect(outcome).toMatchObject({
+      eventCreatedAt: new Date(1700000000 * 1000).toISOString(),
+    });
   });
 });
 

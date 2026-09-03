@@ -21,10 +21,14 @@ const anonymousAccount: AccountStatus = {
   email: null,
 };
 
-function render(teaser: { bowelCount: number; recordedDays: number }, account: AccountStatus) {
+function render(
+  teaser: { bowelCount: number; recordedDays: number },
+  account: AccountStatus,
+  hasSubscription = false,
+) {
   return renderToStaticMarkup(
     <NextIntlClientProvider locale="ja" messages={messages}>
-      <TeaserReport teaser={teaser} account={account} />
+      <TeaserReport teaser={teaser} account={account} hasSubscription={hasSubscription} />
     </NextIntlClientProvider>,
   );
 }
@@ -68,6 +72,20 @@ describe("TeaserReport", () => {
 
     expect(markup).toContain("Googleアカウントを連携する");
     expect(markup).not.toContain("プレミアムを購入する");
+  });
+
+  // 支払いに失敗して past_due になった人は、購入し直すのではなく
+  // 支払い方法を直す必要がある。導線が無いとStripeへ辿り着けない。
+  it("購読はあるが権利が無い人には支払い方法の管理へ導線を出す", () => {
+    const markup = render({ bowelCount: 3, recordedDays: 2 }, linkedAccount, true);
+
+    expect(markup).toContain("購読を管理する");
+  });
+
+  it("購読が無い人には管理の導線を出さない", () => {
+    const markup = render({ bowelCount: 3, recordedDays: 2 }, linkedAccount, false);
+
+    expect(markup).not.toContain("購読を管理する");
   });
 
   it("記録が0件でもレポートの形を見せる", () => {

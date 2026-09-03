@@ -237,6 +237,7 @@ export type Database = {
           created_at: string
           current_period_end: string | null
           id: string
+          last_event_at: string | null
           status: string
           stripe_customer_id: string
           stripe_subscription_id: string
@@ -247,6 +248,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           id?: string
+          last_event_at?: string | null
           status: string
           stripe_customer_id: string
           stripe_subscription_id: string
@@ -257,6 +259,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           id?: string
+          last_event_at?: string | null
           status?: string
           stripe_customer_id?: string
           stripe_subscription_id?: string

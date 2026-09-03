@@ -6,11 +6,14 @@ import type { AccountStatus } from "@/features/account/account.types";
 import type { ReportTeaser } from "../actions";
 import { createTeaserPlaceholder } from "../teaser-placeholder";
 
+import { ManageSubscriptionLink } from "./manage-subscription-link";
 import { PurchaseCallToAction } from "./purchase-call-to-action";
 
 type Props = {
   teaser: ReportTeaser;
   account: AccountStatus;
+  /** 購読の行はあるが権利が無い（支払い失敗など）。管理画面への導線を出す。 */
+  hasSubscription?: boolean;
 };
 
 const CARD = "rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6";
@@ -24,7 +27,7 @@ const HEADING = "text-lg font-black tracking-[-0.025em] text-charcoal";
  * そもそもRSCペイロードに実値が載る。件数と記録日数だけは無料枠として
  * ぼかしの外に置く。
  */
-export function TeaserReport({ teaser, account }: Props) {
+export function TeaserReport({ teaser, account, hasSubscription = false }: Props) {
   const t = useTranslations("Report");
   const placeholder = createTeaserPlaceholder(teaser.bowelCount);
 
@@ -73,6 +76,11 @@ export function TeaserReport({ teaser, account }: Props) {
           {t("lockedDescription")}
         </p>
         <PurchaseCallToAction account={account} />
+        {/*
+          支払いに失敗した人は購入し直すのではなく、支払い方法を直す必要がある。
+          その導線がここに無いと、Stripeへ辿り着く手段が画面から消える。
+        */}
+        {hasSubscription ? <ManageSubscriptionLink /> : null}
       </section>
     </div>
   );

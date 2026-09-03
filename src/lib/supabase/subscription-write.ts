@@ -71,34 +71,62 @@ export async function upsertSubscription(record: SubscriptionRecord): Promise<Su
  * 顧客IDと購読IDの両方で絞る。顧客IDだけで絞ると、同じ顧客の古い購読に対して
  * 遅れて届いた deleted が、新しい有効な購読まで取り消してしまう。
  *
- * 対象の行が無い場合はエラーを返す。Stripe はイベントの順序を保証しないため、
- * Checkout より先に購読イベントが着くと更新対象がまだ存在しない。そこで 200 を
- * 返すと Stripe は再送せず、その更新は永久に失われる。エラーにして再送させる。
+ * さらに last_event_at より古いイベントは無視する。Stripe は配信順を保証せず、
+ * 到着順で無条件に上書きすると「解約済みの行を古い updated が active へ戻す」
+ * ことが起きる。権利が復活したまま残るため、失敗として気づけない。
+ *
+ * 対象の行が無い場合はエラーを返す。Checkout より先に購読イベントが着くと
+ * 更新対象がまだ存在しないため、200 を返すと Stripe は再送せず更新が失われる。
  */
 export async function updateSubscriptionStatusByCustomer({
   stripeCustomerId,
   stripeSubscriptionId,
   status,
   currentPeriodEnd,
+  eventCreatedAt,
 }: {
   stripeCustomerId: string;
   stripeSubscriptionId: string;
   status: string;
   currentPeriodEnd: string | null;
+  eventCreatedAt: string;
 }): Promise<SubscriptionWriteResult> {
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from("subscriptions")
-    .update({ status, current_period_end: currentPeriodEnd, updated_at: new Date().toISOString() })
+    .update({
+      status,
+      current_period_end: currentPeriodEnd,
+      last_event_at: eventCreatedAt,
+      updated_at: new Date().toISOString(),
+    })
     .eq("stripe_customer_id", stripeCustomerId)
     .eq("stripe_subscription_id", stripeSubscriptionId)
+    // last_event_at が未設定の行（この機能より前に書かれた行）は必ず受け入れる。
+    .or(`last_event_at.is.null,last_event_at.lt.${eventCreatedAt}`)
     .select("id");
 
   if (error) {
     return { status: "error", reason: error.code ?? "update_failed" };
   }
 
+  // 0行は2つの意味を持つ: 対象が無い（再送させたい）か、
+  // より新しいイベントで既に更新済み（再送は無意味）か。
+  // 後者を再送させると永久に失敗し続けるため、行の有無で切り分ける。
   if (!data || data.length === 0) {
+    const { data: existing } = await supabase
+      .from("subscriptions")
+      .select("id")
+      .eq("stripe_customer_id", stripeCustomerId)
+      .eq("stripe_subscription_id", stripeSubscriptionId)
+      .maybeSingle();
+
+    if (existing) {
+      // 行はあるが更新されなかった＝より新しいイベントが先に適用済み。
+      // 期待どおりの動作なので成功として返す。
+      return { status: "ok" };
+    }
+
     return { status: "error", reason: "subscription_not_found" };
   }
 

@@ -47,6 +47,8 @@ VARS=(
   "STRIPE_WEBHOOK_SECRET|Webhook署名シークレット（whsec_...）。Dashboardでエンドポイント登録後に発行される"
 )
 
+FAILED=()
+
 echo "対象環境: ${TARGET}"
 echo "登録する変数: ${#VARS[@]} 個"
 echo
@@ -66,6 +68,7 @@ for entry in "${VARS[@]}"; do
   # プロセス一覧から見えてしまう。
   if ! $VERCEL env add "$name" "$TARGET"; then
     echo "  ※ ${name} の登録をスキップまたは失敗しました" >&2
+    FAILED+=("$name")
   fi
   echo
 done
@@ -77,6 +80,16 @@ echo
 echo "Webhook のエンドポイント登録がまだなら、Stripe Dashboard で:"
 echo "  URL    : <NEXT_PUBLIC_APP_URL>/api/stripe/webhook"
 echo "  イベント: checkout.session.completed"
+echo "            checkout.session.async_payment_succeeded"
+echo "            checkout.session.async_payment_failed"
 echo "            customer.subscription.updated"
 echo "            customer.subscription.deleted"
 echo "登録すると whsec_... が発行されるので、STRIPE_WEBHOOK_SECRET に入れ直す。"
+
+# 1つでも失敗したまま成功として終わらせない。設定が欠けたまま
+# 「終わった」と見なすと、決済は通るのに権利が付かない状態で公開されうる。
+if [ ${#FAILED[@]} -gt 0 ]; then
+  echo >&2
+  echo "登録できなかった変数があります: ${FAILED[*]}" >&2
+  exit 1
+fi

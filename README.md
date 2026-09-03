@@ -103,8 +103,14 @@ STRIPE_SECRET_KEY=sk_live_xxx ./scripts/create-stripe-price.sh
 - URL: `https://<本番ドメイン>/api/stripe/webhook`
 - 購読するイベント:
   - `checkout.session.completed`
+  - `checkout.session.async_payment_succeeded`
+  - `checkout.session.async_payment_failed`
   - `customer.subscription.updated`
   - `customer.subscription.deleted`
+
+  遅延通知型の支払い方法（コンビニ払い等）では `completed` が未払いのまま先に
+  届き、実際の成否は `async_payment_*` で後から知らされる。この2つを購読しないと、
+  正しく支払った利用者に権利が付かない。
 
 ### 4. 環境変数を登録
 

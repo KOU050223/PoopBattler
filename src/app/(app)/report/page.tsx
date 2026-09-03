@@ -43,7 +43,11 @@ export default async function ReportPage({ searchParams }: Props) {
       <div className="mx-auto w-full max-w-2xl pb-3">
         <ReportPageHeader />
         {notice ? <PurchaseNotice message={notice} /> : null}
-        <TeaserReport teaser={result.teaser} account={account} />
+        <TeaserReport
+          teaser={result.teaser}
+          account={account}
+          hasSubscription={result.hasSubscription}
+        />
       </div>
     );
   }

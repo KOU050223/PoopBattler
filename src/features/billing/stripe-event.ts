@@ -18,6 +18,8 @@ export type StripeEventOutcome =
       stripeSubscriptionId: string;
       status: string;
       currentPeriodEnd: string | null;
+      /** このイベントの発生時刻。これより新しい行は上書きしない。 */
+      eventCreatedAt: string;
     }
   /** 購読に関係しないイベント。200 を返して受け取りだけ済ませる。 */
   | { kind: "ignore" }
@@ -69,8 +71,22 @@ export function resolveStripeEvent(
    */
   expandedSubscription?: Stripe.Subscription | null,
 ): StripeEventOutcome {
-  if (event.type === "checkout.session.completed") {
+  // 支払いが確定した Checkout。遅延通知型の支払い方法（コンビニ払い等）では
+  // completed が payment_status: "unpaid" のまま先に届き、実際の成否は
+  // async_payment_succeeded / async_payment_failed で後から知らされる。
+  // completed だけで権利を付けると、後で失敗する支払いに権利を与え、
+  // かつ後から成功したものには権利を与えないことになる。
+  if (
+    event.type === "checkout.session.completed"
+    || event.type === "checkout.session.async_payment_succeeded"
+  ) {
     const session = event.data.object as Stripe.Checkout.Session;
+
+    // 未払いのまま届いた completed では権利を付けない。
+    // 後続の async_payment_succeeded を待つ（失敗すればそれも届かない）。
+    if (session.payment_status === "unpaid") {
+      return { kind: "ignore" };
+    }
 
     // 購入者の対応付けはメールではなく ID で行う。
     // client_reference_id は Checkout 作成時にこちらが入れた auth.users.id。
@@ -104,6 +120,12 @@ export function resolveStripeEvent(
     };
   }
 
+  // 遅延通知型の支払いが失敗した。completed の時点で権利を付けていないため、
+  // 取り消すべき行は無い。受け取りだけ済ませる。
+  if (event.type === "checkout.session.async_payment_failed") {
+    return { kind: "ignore" };
+  }
+
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
     const subscription = event.data.object as Stripe.Subscription;
     const stripeCustomerId = idOf(subscription.customer);
@@ -122,6 +144,8 @@ export function resolveStripeEvent(
       // 「有効なまま」へ倒さないよう canceled を明示する。
       status: event.type === "customer.subscription.deleted" ? "canceled" : subscription.status,
       currentPeriodEnd: periodEndOf(subscription),
+      // Stripe は配信順を保証しないため、到着順ではなく発生順を正とする。
+      eventCreatedAt: new Date(event.created * 1000).toISOString(),
     };
   }
 
