@@ -64,6 +64,69 @@ cp .env.local.example .env.local
 - 秘密情報に `NEXT_PUBLIC_` を付けない。付けるとクライアントバンドルへ埋め込まれる。
 - 秘密鍵を要する処理は Server Action または Route Handler に置く。
 - Vercel へは Dashboard の Environment Variables から設定する。
+  CLI でまとめて登録する場合は `./scripts/setup-vercel-env.sh production`。
+
+## 本番デプロイ（課金機能）
+
+レポート分析の課金を本番で動かすには、環境変数の設定だけでは足りない。
+以下を上から順に行う。
+
+### 1. 本番Supabaseへマイグレーションを適用
+
+`subscriptions` テーブルが無いと、デプロイ後にレポート画面が落ちる。
+
+```bash
+supabase link --project-ref <本番のproject-ref>
+supabase db push
+```
+
+### 2. 本番モードのStripe価格を作る
+
+**テストモードの価格IDは本番モードには存在しない。** 作り直しが要る。
+
+```bash
+STRIPE_SECRET_KEY=sk_live_xxx ./scripts/create-stripe-price.sh
+```
+
+金額を変えるなら `AMOUNT=980` のように渡す（単位は円）。
+
+前提として、Stripe Dashboard で事業者情報の登録・審査を済ませ、本番の鍵
+（`sk_live_...`）が発行されている必要がある。サンドボックスのままでは
+`charges_enabled` が false で、本番の課金はできない。
+
+### 3. Webhookのエンドポイントを登録
+
+ローカルは `stripe listen` が転送するが、**本番は Dashboard での手動登録が要る。**
+登録して初めて `whsec_...` が発行される。これを忘れると
+「決済は通るのに権利が付かない」状態になる。
+
+- URL: `https://<本番ドメイン>/api/stripe/webhook`
+- 購読するイベント:
+  - `checkout.session.completed`
+  - `customer.subscription.updated`
+  - `customer.subscription.deleted`
+
+### 4. 環境変数を登録
+
+```bash
+npx vercel login
+npx vercel link
+./scripts/setup-vercel-env.sh production
+```
+
+**値はローカルの `.env.local` からコピーしないこと。** 5変数すべて本番用の
+別の値になる。
+
+| 変数 | 本番で入れる値 |
+| --- | --- |
+| `STRIPE_SECRET_KEY` | `sk_live_...`（テストの鍵は使えない） |
+| `STRIPE_PRICE_ID` | 手順2で作った `price_...` |
+| `STRIPE_WEBHOOK_SECRET` | 手順3で発行された `whsec_...` |
+| `NEXT_PUBLIC_APP_URL` | `https://<本番ドメイン>`（末尾スラッシュ無し） |
+| `SUPABASE_SERVICE_ROLE_KEY` | 本番Supabaseプロジェクトの Service Role キー |
+
+Preview 環境にはテストモードの鍵（`sk_test_`）を入れる。本番の鍵を入れると、
+PRのプレビュー環境から本物の決済ができてしまう。
 
 ## 開発
 
