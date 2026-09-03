@@ -6,11 +6,13 @@ import { motion, useReducedMotion } from "framer-motion";
 import type { CompleteBattleResult } from "@/features/battle/actions";
 import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
 import {
-  canAdvanceFromStaging,
+  canStartGachaBySwipe,
+  clientPointFromPercent,
   companionshipRevealCopy,
   gachaCameraStatusMessage,
-  isCameraFallback,
+  GACHA_SWIPE_MIN_DISTANCE_PX,
   isLiveCameraOverlay,
+  isThrowSwipe,
   nextCompanionshipArPhase,
   shouldCrawlOut,
   shouldPlayThrow,
@@ -22,7 +24,6 @@ import {
   DEFAULT_THROW_TARGET,
   percentPointFromClient,
   resolveThrowTarget,
-  stagingAdvanceDelayMs,
   toiletDebugCopy,
   type PercentPoint,
   type ToiletModelStatus,
@@ -49,14 +50,15 @@ export type CompanionshipArFrameProps = {
   throwTarget?: PercentPoint;
   aimPoint?: PercentPoint | null;
   onAim?: (point: PercentPoint) => void;
+  onThrowStart?: () => void;
 };
 
-function phaseLabel(phase: CompanionshipArPhase, acquired: boolean) {
+function phaseLabel(phase: CompanionshipArPhase, acquired: boolean, canSwipe: boolean) {
   if (phase === "throw") return "食事を便器へ投げ入れています";
   if (phase === "reveal") {
     return acquired ? "うんちくんが這い出てきます" : "仲間化の結果です";
   }
-  return "便器にカメラを向けてください";
+  return canSwipe ? "スワイプして食事を投げ入れてください" : "便器にカメラを向けてください";
 }
 
 function ToiletDebugOverlay({ sight }: { sight: ToiletSight }) {
@@ -93,26 +95,65 @@ export function CompanionshipArFrame({
   throwTarget = DEFAULT_THROW_TARGET,
   aimPoint = null,
   onAim,
+  onThrowStart,
 }: CompanionshipArFrameProps) {
   const character = result.acquiredCharacter;
   const acquired = shouldCrawlOut(character);
   const showCamera = phase !== "summary";
   const live = showCamera && isLiveCameraOverlay(status);
   const statusMessage = gachaCameraStatusMessage(status);
-  const detectionMessage = showCamera ? toiletDebugCopy(detectionStatus, toiletSight) : null;
+  const detectionMessage = showCamera ? toiletDebugCopy(detectionStatus, toiletSight, phase === "staging") : null;
+  const canSwipe = canStartGachaBySwipe({
+    phase,
+    cameraStatus: status,
+    modelStatus: detectionStatus,
+    sight: toiletSight,
+    hasAimPoint: aimPoint != null,
+  });
   const revealCopy = companionshipRevealCopy({
     acquired,
     usedMealLog: result.usedMealLog,
   });
+  const pointerStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
 
-  function handleAim(event: PointerEvent<HTMLDivElement>) {
-    if (phase !== "staging" || !onAim) return;
-    const point = percentPointFromClient(
-      event.clientX,
-      event.clientY,
-      event.currentTarget.getBoundingClientRect(),
-    );
-    if (point) onAim(point);
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (phase !== "staging" || !event.isPrimary) return;
+    pointerStartRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
+    if (phase !== "staging" || !event.isPrimary) return;
+    const start = pointerStartRef.current;
+    pointerStartRef.current = null;
+    if (!start || start.id !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const end = { x: event.clientX, y: event.clientY };
+    const distance = Math.hypot(end.x - start.x, end.y - start.y);
+
+    if (distance < GACHA_SWIPE_MIN_DISTANCE_PX) {
+      if (onAim && toiletSight.kind !== "hit") {
+        const point = percentPointFromClient(end.x, end.y, rect);
+        if (point) onAim(point);
+      }
+      return;
+    }
+
+    if (!canSwipe || !onThrowStart) return;
+    const target = clientPointFromPercent(throwTarget, rect);
+    if (!isThrowSwipe({ x: start.x, y: start.y }, end, target)) return;
+    onThrowStart();
+  }
+
+  function handlePointerCancel(event: PointerEvent<HTMLDivElement>) {
+    pointerStartRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   }
 
   if (phase === "summary") {
@@ -122,15 +163,19 @@ export function CompanionshipArFrame({
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-1 text-center">
-        <p className="text-xl font-bold text-charcoal">{phaseLabel(phase, acquired)}</p>
+        <p className="text-xl font-bold text-charcoal">{phaseLabel(phase, acquired, canSwipe)}</p>
         <p className={`text-sm ${mutedTextClass}`}>
           仲間化の抽選はすでに確定しています。この画面ではやり直しません。
         </p>
       </div>
 
       <div
-        className="relative min-h-[22rem] overflow-hidden rounded-2xl border-2 border-faded-gray bg-night-ink shadow-raised-gray aspect-[3/4]"
-        onPointerDown={handleAim}
+        className="relative min-h-[22rem] touch-none select-none overflow-hidden rounded-2xl border-2 border-faded-gray bg-night-ink shadow-raised-gray aspect-[3/4]"
+        data-gacha-swipe={canSwipe ? "ready" : "blocked"}
+        aria-label={canSwipe ? "便器へ投げ入れる。スワイプで開始" : "便器が写ったらスワイプできます"}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
       >
         {live ? (
           <video
@@ -291,30 +336,18 @@ export function CompanionshipArStage({
   }, [phase, stop]);
 
   useEffect(() => {
-    if (phase === "summary") return;
-    if (phase === "staging" && !canAdvanceFromStaging(status)) return;
-
-    const delay = phase === "staging"
-      ? stagingAdvanceDelayMs({
-          cameraReady: status === "ready",
-          cameraFallback: isCameraFallback(status),
-          modelStatus: detectEnabled ? detectionStatus : "failed",
-          reduceMotion: Boolean(reduceMotion),
-        })
-      : reduceMotion
-        ? 0
-        : phase === "throw"
-          ? 900
-          : 1500;
-
-    if (delay == null) return;
-
+    if (phase === "summary" || phase === "staging") return;
+    const delay = reduceMotion ? 0 : phase === "throw" ? 900 : 1500;
     const timer = window.setTimeout(() => {
-      setHeldTarget(liveTargetRef.current);
       setPhase((current) => nextCompanionshipArPhase(current, hasPhoto));
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [detectEnabled, detectionStatus, hasPhoto, phase, reduceMotion, status]);
+  }, [hasPhoto, phase, reduceMotion]);
+
+  function startThrowFromSwipe() {
+    setHeldTarget(liveTargetRef.current);
+    setPhase((current) => nextCompanionshipArPhase(current, hasPhoto));
+  }
 
   return (
     <CompanionshipArFrame
@@ -333,6 +366,7 @@ export function CompanionshipArStage({
       throwTarget={throwTarget}
       aimPoint={aimPoint}
       onAim={setAimPoint}
+      onThrowStart={startThrowFromSwipe}
     />
   );
 }

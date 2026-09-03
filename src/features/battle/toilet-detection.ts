@@ -2,7 +2,6 @@ export const TOILET_CLASS = "toilet";
 export const TOILET_ACCEPT_SCORE = 0.5;
 export const TOILET_DEBUG_SCORE = 0.15;
 export const TOILET_INFER_INTERVAL_MS = 450;
-export const TOILET_STAGING_WAIT_MS = 2400;
 export const TOILET_SEAT_BIAS = 0.68;
 
 export type CocoDetection = {
@@ -140,31 +139,24 @@ export function resolveThrowTarget(input: {
 export function toiletDebugCopy(
   modelStatus: ToiletModelStatus,
   sight: ToiletSight,
+  swipePrompt = false,
 ): string | null {
   if (modelStatus === "loading") return "便器を探しています";
   if (modelStatus === "failed") {
-    return "便器の自動検出が使えません。画面をタップして投げ入れ先を決められます。";
+    return swipePrompt
+      ? "便器の自動検出が使えません。画面をタップして投げ入れ先を決め、スワイプしてください。"
+      : "便器の自動検出が使えません。画面をタップして投げ入れ先を決められます。";
   }
   if (modelStatus !== "ready") return null;
   if (sight.kind === "hit") {
-    return `便器を検出 ${Math.round(sight.box.score * 100)}%`;
+    const detected = `便器を検出 ${Math.round(sight.box.score * 100)}%`;
+    return swipePrompt ? `${detected}。スワイプして投げ入れてください` : detected;
   }
   if (sight.kind === "low") {
-    return `便器かも… ${Math.round(sight.box.score * 100)}%`;
+    const maybe = `便器かも… ${Math.round(sight.box.score * 100)}%`;
+    return swipePrompt ? `${maybe}。タップで投げ入れ先を決めて、スワイプしてください` : maybe;
   }
-  return "便器が見つかりません。画面をタップして投げ入れ先を決められます。";
-}
-
-export function stagingAdvanceDelayMs(input: {
-  cameraReady: boolean;
-  cameraFallback: boolean;
-  modelStatus: ToiletModelStatus;
-  reduceMotion: boolean;
-}): number | null {
-  if (!input.cameraReady && !input.cameraFallback) return null;
-  if (input.cameraFallback) return input.reduceMotion ? 0 : 700;
-  if (input.modelStatus === "loading") {
-    return input.reduceMotion ? 800 : TOILET_STAGING_WAIT_MS;
-  }
-  return input.reduceMotion ? 0 : 700;
+  return swipePrompt
+    ? "便器が見つかりません。画面をタップして投げ入れ先を決め、スワイプしてください。"
+    : "便器が見つかりません。画面をタップして投げ入れ先を決められます。";
 }

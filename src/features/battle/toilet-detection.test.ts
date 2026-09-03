@@ -8,13 +8,11 @@ import {
   pickToiletDetection,
   resolveThrowTarget,
   seatBiasedTarget,
-  stagingAdvanceDelayMs,
   toiletDebugCopy,
   toiletSightFromDetection,
   TOILET_ACCEPT_SCORE,
   TOILET_DEBUG_SCORE,
   TOILET_SEAT_BIAS,
-  TOILET_STAGING_WAIT_MS,
 } from "./toilet-detection";
 
 const toiletHit = {
@@ -162,49 +160,23 @@ describe("toiletDebugCopy", () => {
     const none = toiletDebugCopy("ready", { kind: "none" });
     expect(hit).toContain("便器を検出");
     expect(hit).toContain("74%");
+    expect(hit).not.toContain("スワイプ");
     expect(low).toContain("便器かも");
     expect(low).toContain("31%");
     expect(none).toContain("見つかりません");
+    expect(none).not.toContain("スワイプ");
     expect(toiletDebugCopy("loading", { kind: "none" })).toBe("便器を探しています");
     expect(toiletDebugCopy("failed", { kind: "none" })).toContain("自動検出が使えません");
+    expect(toiletDebugCopy("failed", { kind: "none" })).not.toContain("スワイプ");
+    expect(toiletDebugCopy("ready", { kind: "none" }, true)).toContain("スワイプしてください");
+    expect(
+      toiletDebugCopy("ready", {
+        kind: "hit",
+        box: { x: 0, y: 0, width: 1, height: 1, score: 0.74 },
+        target: DEFAULT_THROW_TARGET,
+      }, true),
+    ).toContain("スワイプして投げ入れてください");
     expect(hit).not.toBe(low);
     expect(low).not.toBe(none);
-  });
-});
-
-describe("stagingAdvanceDelayMs", () => {
-  it("カメラ未準備では進めない。フォールバックは待たず、読込中だけ上限待ち", () => {
-    expect(
-      stagingAdvanceDelayMs({
-        cameraReady: false,
-        cameraFallback: false,
-        modelStatus: "loading",
-        reduceMotion: false,
-      }),
-    ).toBeNull();
-    expect(
-      stagingAdvanceDelayMs({
-        cameraReady: false,
-        cameraFallback: true,
-        modelStatus: "idle",
-        reduceMotion: false,
-      }),
-    ).toBe(700);
-    expect(
-      stagingAdvanceDelayMs({
-        cameraReady: true,
-        cameraFallback: false,
-        modelStatus: "loading",
-        reduceMotion: false,
-      }),
-    ).toBe(TOILET_STAGING_WAIT_MS);
-    expect(
-      stagingAdvanceDelayMs({
-        cameraReady: true,
-        cameraFallback: false,
-        modelStatus: "ready",
-        reduceMotion: false,
-      }),
-    ).toBe(700);
   });
 });
