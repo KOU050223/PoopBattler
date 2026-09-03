@@ -33,6 +33,8 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.local.example
+# Supabase CLI 用の雛形。実値は supabase/.env に置き、これは追跡する。
+!supabase/.env.example
 
 # vercel
 .vercel
