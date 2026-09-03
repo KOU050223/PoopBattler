@@ -2,6 +2,7 @@ import { CalendarDays, ChartNoAxesCombined, LockKeyhole, Sparkles, Utensils } fr
 
 import { MEAL_TAGS } from "@/features/meal/meal.types";
 
+import { weekdayLabel } from "../report-labels";
 import type { WeeklyReport } from "../weekly-report";
 
 type Props = {
@@ -100,7 +101,7 @@ function PremiumReport({ report }: { report: WeeklyReport }) {
         <h2 id="trend-title" className="text-lg font-black tracking-[-0.025em] text-charcoal">日別の記録</h2>
         <div className="mt-4 grid grid-cols-5 gap-2">{analysis.dailyCounts.map((day) => <div key={day.date} className="rounded-lg bg-blush-wash/45 p-2 text-center"><p className="text-[11px] text-pencil-gray">{day.date.slice(5).replace("-", "/")}</p><p className="mt-1 text-lg font-black text-charcoal">{day.count}</p><p className="text-[11px] text-pencil-gray">件</p></div>)}</div>
         <h3 className="mt-5 text-sm font-black text-charcoal">曜日・時間帯</h3>
-        <p className="mt-2 text-sm text-pencil-gray">もっとも記録が多い曜日: {Object.entries(analysis.weekdayCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "-"}。朝 {analysis.timeOfDayCounts.morning}件、昼 {analysis.timeOfDayCounts.afternoon}件、夜 {analysis.timeOfDayCounts.evening + analysis.timeOfDayCounts.night}件。</p>
+        <p className="mt-2 text-sm text-pencil-gray">もっとも記録が多い曜日: {weekdayLabel(Object.entries(analysis.weekdayCounts).sort((a, b) => b[1] - a[1])[0]![0] as keyof typeof analysis.weekdayCounts)}。朝 {analysis.timeOfDayCounts.morning}件、昼 {analysis.timeOfDayCounts.afternoon}件、夜 {analysis.timeOfDayCounts.evening + analysis.timeOfDayCounts.night}件。</p>
       </section>
 
       <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="four-week-title">
