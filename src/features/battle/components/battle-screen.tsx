@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "framer-motion";
 import { readBattleSpeed, subscribeBattleSpeed, writeBattleSpeed } from "@/features/battle/battle-speed";
 import {
@@ -142,6 +143,7 @@ function StrainGauge({ progress }: { progress: number }) {
 }
 
 export function BattleScreen() {
+  const t = useTranslations("Battle");
   const hydrated = useSyncExternalStore(
     subscribeHydration,
     () => useBattleStore.persist.hasHydrated(),
@@ -446,14 +448,14 @@ export function BattleScreen() {
           onRetry={() => void startBattle()}
         />
       ) : null}
-      {starting ? <LoadingState label="敵を呼び出しています…" /> : null}
+      {starting ? <LoadingState label={t("loading")} /> : null}
       {showStart ? (
         <button
           type="button"
           className={primaryButtonClass}
           onClick={() => void startBattle()}
         >
-          バトルを始める
+          {t("start")}
         </button>
       ) : null}
     </section>

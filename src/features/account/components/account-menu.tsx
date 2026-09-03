@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
@@ -23,6 +24,7 @@ type Props = {
  * 「元の記録に戻れる」と誤解したまま押させないよう、確認文言で明示する。
  */
 export function AccountMenu({ email }: Props) {
+  const t = useTranslations("AccountMenu");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -89,7 +91,7 @@ export function AccountMenu({ email }: Props) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        aria-label={email ? `アカウントメニュー（${email}）` : "アカウントメニュー"}
+        aria-label={email ? t("menuWithEmail", { email }) : t("menu")}
         onClick={() => (open ? close() : setOpen(true))}
         className="flex min-h-11 items-center"
       >
@@ -111,8 +113,7 @@ export function AccountMenu({ email }: Props) {
           {confirming ? (
             <div className="flex flex-col gap-2">
               <p className="text-[13px] leading-[1.4] font-medium text-charcoal">
-                ログアウトすると新しい匿名アカウントになります。
-                いまの記録に戻るには、同じGoogleアカウントでログインしてください。
+                {t("signOutWarning")}
               </p>
               <div className="flex gap-2">
                 <button
@@ -122,7 +123,7 @@ export function AccountMenu({ email }: Props) {
                   onClick={() => void runSignOut()}
                   className="min-h-11 flex-1 rounded-xl border-2 border-red-300 bg-paper-white px-4 text-sm font-bold text-red-700 shadow-raised-danger disabled:opacity-50"
                 >
-                  {pending ? "処理中…" : "ログアウト"}
+                  {pending ? t("pending") : t("signOut")}
                 </button>
                 <button
                   type="button"
@@ -131,7 +132,7 @@ export function AccountMenu({ email }: Props) {
                   onClick={() => setConfirming(false)}
                   className="min-h-11 flex-1 rounded-xl border-2 border-faded-gray bg-paper-white px-4 text-sm font-bold text-spark-blue shadow-raised-gray disabled:opacity-50"
                 >
-                  やめる
+                  {t("cancel")}
                 </button>
               </div>
             </div>
@@ -143,7 +144,7 @@ export function AccountMenu({ email }: Props) {
                 onClick={close}
                 className="flex min-h-11 items-center rounded-xl px-2 text-sm font-bold text-charcoal"
               >
-                アカウント設定
+                {t("settings")}
               </Link>
               <button
                 type="button"
@@ -151,7 +152,7 @@ export function AccountMenu({ email }: Props) {
                 onClick={() => setConfirming(true)}
                 className="flex min-h-11 items-center rounded-xl px-2 text-left text-sm font-bold text-red-700"
               >
-                ログアウト
+                {t("signOut")}
               </button>
             </>
           )}

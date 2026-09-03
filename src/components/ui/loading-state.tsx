@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
 import { captionTextClass } from "@/lib/ui-classes";
 
 type LoadingStateProps = {
@@ -5,7 +9,9 @@ type LoadingStateProps = {
 };
 
 /** 読み込み中の共通表示。スクリーンリーダーへも状態を通知する。 */
-export function LoadingState({ label = "読み込んでいます…" }: LoadingStateProps) {
+export function LoadingState({ label }: LoadingStateProps) {
+  const t = useTranslations("Common");
+
   return (
     <div
       role="status"
@@ -16,7 +22,7 @@ export function LoadingState({ label = "読み込んでいます…" }: LoadingS
         aria-hidden="true"
         className="size-6 animate-spin rounded-full border-2 border-blush-wash border-t-flush-pink"
       />
-      <p className={captionTextClass}>{label}</p>
+      <p className={captionTextClass}>{label ?? t("loading")}</p>
     </div>
   );
 }

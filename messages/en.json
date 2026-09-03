@@ -1,0 +1,60 @@
+{
+  "Common": {
+    "appName": "Poop Battler",
+    "headerAppName": "Poop Battler",
+    "language": "Language",
+    "loading": "Loading…",
+    "errorTitle": "Something went wrong",
+    "errorDescription": "Please try again in a little while.",
+    "retry": "Try again"
+  },
+  "Navigation": {
+    "label": "Main navigation",
+    "meals": "Meals",
+    "battle": "Battle",
+    "logs": "Logs",
+    "collection": "Collection"
+  },
+  "Pages": {
+    "meals": {
+      "title": "What did you eat today?",
+      "description": "What you eat becomes the next poop monster.",
+      "entryTitle": "Today's meal"
+    },
+    "battle": {
+      "title": "Battle",
+      "description": "Normal attacks are automatic. Brace yourself and fire only while charging your special move."
+    },
+    "logs": {
+      "title": "Battle log",
+      "description": "Look back on the results of your battles and how you felt that day."
+    },
+    "collection": {
+      "title": "Collection",
+      "description": "Collect the poop monsters that have become your friends."
+    },
+    "account": {
+      "title": "Account",
+      "description": "Link a Google account to continue with the same records on another device."
+    }
+  },
+  "Home": {
+    "description": "Log what you eat, then take on poop monsters in battle.",
+    "start": "Start"
+  },
+  "AccountMenu": {
+    "login": "Log in",
+    "retry": "Try again",
+    "menu": "Account menu",
+    "menuWithEmail": "Account menu ({email})",
+    "settings": "Account settings",
+    "signOut": "Log out",
+    "pending": "Working…",
+    "cancel": "Cancel",
+    "signOutWarning": "Logging out creates a new anonymous account. To return to your current records, log in with the same Google account."
+  },
+  "Battle": {
+    "start": "Start battle",
+    "loading": "Calling an enemy…"
+  }
+}
