@@ -9,7 +9,12 @@ import {
   type CompleteBattleResult,
 } from "@/features/battle/actions";
 import { parsePartyLineup, readPartyLineup } from "@/features/collection/party-lineup";
-import { BattleCompletionFlow } from "@/features/battle/components/battle-completion-flow";
+import {
+  BattleCompletionFlow,
+  type BattleCompletedPayload,
+} from "@/features/battle/components/battle-completion-flow";
+import { CompanionshipArStage } from "@/features/battle/components/companionship-ar-stage";
+import { usesCompanionshipAr } from "@/features/battle/companionship-ar";
 import {
   ATTRIBUTE_LABELS,
   DEFAULT_BATTLE_SPEED,
@@ -158,6 +163,7 @@ export function BattleScreen() {
     CompleteBattleResult,
     { success: true }
   > | null>(null);
+  const [mealPhotoId, setMealPhotoId] = useState<string | null>(null);
   const [playerMotion, setPlayerMotion] = useState<"idle" | "hit" | "attack">(
     "idle",
   );
@@ -267,11 +273,10 @@ export function BattleScreen() {
     setAcceptedRestore(true);
   }
 
-  function handleBattleCompleted(
-    result: Extract<CompleteBattleResult, { success: true }>,
-  ) {
+  function handleBattleCompleted({ result, mealPhotoId: nextMealPhotoId }: BattleCompletedPayload) {
     // DB確定に成功したときだけ、復元用のバトル・排便下書きを破棄する。
     setCompletionResult(result);
+    setMealPhotoId(nextMealPhotoId);
     useBattleStore.getState().reset();
     setAcceptedRestore(false);
   }
@@ -281,6 +286,14 @@ export function BattleScreen() {
   }
 
   if (completionResult) {
+    if (usesCompanionshipAr(completionResult)) {
+      return (
+        <CompanionshipArStage
+          result={completionResult}
+          mealPhotoId={mealPhotoId}
+        />
+      );
+    }
     return <BattleCompletionResult result={completionResult} />;
   }
 
@@ -394,6 +407,7 @@ export function BattleScreen() {
               label={member.name ?? "味方"}
               depth="near"
               speed={speed}
+              charging={snapshot.playerStance === "special"}
             />
             <HpBar
               current={member.hp}
@@ -431,7 +445,6 @@ export function BattleScreen() {
           playerGauge={snapshot.playerGauge}
           playerGuardCooldownTicks={snapshot.playerGuardCooldownTicks}
           switchStunTicks={snapshot.switchStunTicks}
-          benchGauges={snapshot.benchGauges}
           onGuard={() => useBattleStore.getState().setStance("guard")}
           onSpecial={activateSpecial}
           onSwitch={(index) => useBattleStore.getState().switchMember(index)}

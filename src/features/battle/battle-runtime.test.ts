@@ -4,7 +4,6 @@ import {
   AUTO_ATTACK_DAMAGE,
   AUTO_ATTACK_PERIOD_TICKS,
   BASE_SPEED,
-  BENCH_GAUGE_RECOVERY_PER_TICK,
   BENCH_HP_RECOVERY_RATE,
   GUARD_DURATION_MS,
   INITIAL_ENEMY_HP,
@@ -14,6 +13,7 @@ import {
   SWITCH_STUN_MS,
   TIMEOUT_TICKS,
   computeAttackDamage,
+  guardCooldownTicks,
   msToTicks,
   shouldAutoAttack,
   type AutoAttackSide,
@@ -196,9 +196,29 @@ describe("applyBattleStart / applyBattleTick", () => {
     const guardExpired = tickTimes(guardStarted, msToTicks(GUARD_DURATION_MS));
     expect(guardExpired.playerStance).toBe("fight");
     expect(guardExpired.enemy?.hp).toBe(INITIAL_ENEMY_HP);
+    expect(guardExpired.playerGuardCooldownTicks).toBe(
+      guardCooldownTicks(BASE_SPEED),
+    );
 
     const returnedToAuto = tickTimes(guardExpired, AUTO_ATTACK_PERIOD_TICKS);
     expect(returnedToAuto.enemy?.hp).toBe(INITIAL_ENEMY_HP - damage);
+  });
+
+  it("敵のガードも5秒で解け、敵の Speed でクールに入る", () => {
+    const started = applyBattleStart({
+      ...startInput,
+      enemy: { ...startInput.enemy, speed: 40 },
+    });
+    const guardingEnemy: BattleSnapshot = {
+      ...started,
+      enemyStance: "guard",
+      enemyGuardRemainingTicks: msToTicks(GUARD_DURATION_MS),
+    };
+
+    const expired = tickTimes(guardingEnemy, msToTicks(GUARD_DURATION_MS));
+    expect(expired.enemyStance).toBe("fight");
+    expect(expired.enemyGuardRemainingTicks).toBe(0);
+    expect(expired.enemyGuardCooldownTicks).toBe(guardCooldownTicks(40));
   });
 
   it("控えは場に出るまでダメージを受けない", () => {
@@ -351,37 +371,56 @@ describe("applyBattleStart / applyBattleTick", () => {
       expect(afterOneTick.party![2].hp).toBe(started.party![2].maxHp);
     });
 
-    it("ベンチの必殺ゲージが毎ティック回復し、上限を超えない", () => {
+    it("ベンチの必殺ゲージは時間経過で増えず、場の味方と敵のゲージだけ増える", () => {
       const started = applyBattleStart(startInput);
       const after10 = tickTimes(started, 10);
 
-      // ベンチのゲージが溜まっている
-      expect(after10.benchGauges[1]).toBe(BENCH_GAUGE_RECOVERY_PER_TICK * 10);
-      expect(after10.benchGauges[2]).toBe(BENCH_GAUGE_RECOVERY_PER_TICK * 10);
-      // 場のスロットはベンチ回復の対象外
+      expect(after10.playerGauge).toBe(SPECIAL_GAUGE_PER_TICK * 10);
+      expect(after10.enemyGauge).toBe(SPECIAL_GAUGE_PER_TICK * 10);
       expect(after10.benchGauges[0]).toBe(0);
+      expect(after10.benchGauges[1]).toBe(0);
+      expect(after10.benchGauges[2]).toBe(0);
     });
 
-    it("ベンチゲージはSPECIAL_GAUGE_MAXを超えない", () => {
+    it("交代で退場した味方とベンチから出た味方の必殺ゲージは0になる", () => {
       const started = applyBattleStart(startInput);
-      const manyTicks = Math.ceil(SPECIAL_GAUGE_MAX / BENCH_GAUGE_RECOVERY_PER_TICK) + 10;
-      const afterMany = tickTimes(started, manyTicks);
+      const charged: BattleSnapshot = {
+        ...tickTimes(started, 10),
+        benchGauges: [0, SPECIAL_GAUGE_MAX, 40],
+      };
 
-      expect(afterMany.benchGauges[1]).toBe(SPECIAL_GAUGE_MAX);
-      expect(afterMany.benchGauges[2]).toBe(SPECIAL_GAUGE_MAX);
-    });
-
-    it("交代時にベンチで溜まったゲージを引き継ぐ", () => {
-      const started = applyBattleStart(startInput);
-      // 10ティック進めてベンチゲージを溜める
-      const after10 = tickTimes(started, 10);
-      const expectedBenchGauge = BENCH_GAUGE_RECOVERY_PER_TICK * 10;
-      expect(after10.benchGauges[1]).toBe(expectedBenchGauge);
-
-      // メンバー1に交代
-      const switched = applySwitchMember(after10, 1);
-      expect(switched.playerGauge).toBe(expectedBenchGauge);
+      const switched = applySwitchMember(charged, 1);
+      expect(charged.playerGauge).toBe(SPECIAL_GAUGE_PER_TICK * 10);
+      expect(switched.activeIndex).toBe(1);
+      expect(switched.playerGauge).toBe(0);
+      expect(switched.benchGauges[0]).toBe(0);
       expect(switched.benchGauges[1]).toBe(0);
+      expect(switched.benchGauges[2]).toBe(0);
+    });
+
+    it("戦闘不能による自動交代でもベンチから出た味方の必殺ゲージは0になる", () => {
+      const battleId = battleIdWithSwingAt(
+        "enemy",
+        AUTO_ATTACK_PERIOD_TICKS,
+        true,
+      );
+      const started = applyBattleStart({ ...startInput, battleId });
+      const knockedOut = applyBattleTick({
+        ...started,
+        elapsedTicks: AUTO_ATTACK_PERIOD_TICKS - 1,
+        playerGauge: SPECIAL_GAUGE_MAX,
+        benchGauges: [0, SPECIAL_GAUGE_MAX, 40],
+        party: [
+          { ...started.party![0], hp: 1 },
+          started.party![1],
+          started.party![2],
+        ],
+      });
+
+      expect(knockedOut.status).toBe("active");
+      expect(knockedOut.activeIndex).toBe(1);
+      expect(knockedOut.playerGauge).toBe(0);
+      expect(knockedOut.benchGauges).toEqual([0, 0, 0]);
     });
   });
 });

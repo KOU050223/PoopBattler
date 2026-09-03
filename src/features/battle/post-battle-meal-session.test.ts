@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  lastSessionPhotoId,
   mealLogIdForComplete,
   postBattleCompleteLabel,
   postBattleMealChanceCopy,
@@ -19,6 +20,19 @@ describe("mealLogIdForComplete", () => {
   });
 });
 
+describe("lastSessionPhotoId", () => {
+  it("今回の記録が無ければ投げ入れ写真も無い", () => {
+    expect(lastSessionPhotoId([])).toBeNull();
+  });
+
+  it("複数枚あっても最後の写真だけを投げ入れに使う", () => {
+    expect(lastSessionPhotoId([
+      { photoId: "00000000-0000-4000-8000-000000000021" },
+      { photoId: "00000000-0000-4000-8000-000000000022" },
+    ])).toBe("00000000-0000-4000-8000-000000000022");
+  });
+});
+
 describe("postBattleCompleteLabel", () => {
   it("未記録のときはスキップ文言のままにする", () => {
     expect(postBattleCompleteLabel(0)).toBe("記録せずに完了する");
@@ -33,18 +47,31 @@ describe("postBattleCompleteLabel", () => {
 describe("postBattleMealChanceCopy", () => {
   it("既存も今回も0件なら仲間化できない旨を出す", () => {
     expect(postBattleMealChanceCopy(0, 0)).toContain("食事ログがないと仲間になりません");
-    expect(postBattleMealChanceCopy(0, 0)).toContain("今回記録すると25%");
+    expect(postBattleMealChanceCopy(0, 0)).toContain("今回記録すると50%");
+    expect(postBattleMealChanceCopy(0, 0)).toContain("4件以上で90%");
+  });
+
+  it("1件なら完了時50%、もう1件で75%と出す", () => {
+    expect(postBattleMealChanceCopy(1, 0)).toBe(
+      "いま食事ログは1件です。完了すると50%、もう1件記録すると75%です。",
+    );
   });
 
   it("今回の記録も件数に含めて完了時の確率を出す", () => {
     expect(postBattleMealChanceCopy(1, 1)).toBe(
-      "いま食事ログは2件です。完了すると50%、もう1件記録すると75%です。",
+      "いま食事ログは2件です。完了すると75%、もう1件記録すると85%です。",
     );
   });
 
   it("既存ログだけでは今回0件でも完了確率を出せる", () => {
     expect(postBattleMealChanceCopy(2, 0)).toBe(
-      "いま食事ログは2件です。完了すると50%、もう1件記録すると75%です。",
+      "いま食事ログは2件です。完了すると75%、もう1件記録すると85%です。",
+    );
+  });
+
+  it("4件以上は90%で頭打ちになる", () => {
+    expect(postBattleMealChanceCopy(4, 0)).toBe(
+      "いま食事ログは4件です。完了すると90%、もう1件記録すると90%です。",
     );
   });
 });

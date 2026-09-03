@@ -12,6 +12,21 @@ const APPEARANCE: PoopmAppearance = {
 };
 
 describe("PoopmFigure", () => {
+  it("外枠内に収まる表示領域を持つ", () => {
+    const markup = renderToStaticMarkup(
+      <PoopmFigure
+        appearance={APPEARANCE}
+        facing="front"
+        motion="eat"
+        className="h-16 w-16"
+      />,
+    );
+
+    expect(markup).toContain("overflow-hidden");
+    expect(markup).toContain("scale-");
+    expect(markup).toContain("translate-y-");
+  });
+
   it("前向きは胴体、手足、頭、口、目の順で重ねる", () => {
     const markup = renderToStaticMarkup(
       <PoopmFigure appearance={APPEARANCE} facing="front" motion="idle" />,

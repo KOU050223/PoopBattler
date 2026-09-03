@@ -4,8 +4,11 @@ import { STRAIN_REQUIRED_MS } from "@/lib/motion";
 import {
   AUTO_ATTACK_DAMAGE,
   AUTO_ATTACK_PERIOD_TICKS,
+  BASE_GUARD_COOLDOWN_TICKS,
   BATTLE_SPEEDS,
   GUARD_INCOMING_MULTIPLIER,
+  MAX_GUARD_COOLDOWN_TICKS,
+  MIN_GUARD_COOLDOWN_TICKS,
   SPECIAL_BASE_DAMAGE,
   SPECIAL_DAMAGE_MULTIPLIER,
   TYPE_ADVANTAGE,
@@ -13,6 +16,7 @@ import {
   TYPE_NEUTRAL,
   TYPE_WHEEL,
   computeAttackDamage,
+  guardCooldownTicks,
   matchupTone,
   shouldAutoAttack,
   specialChargeTicks,
@@ -174,8 +178,19 @@ describe("shouldAutoAttack", () => {
   });
 });
 
+describe("guardCooldownTicks", () => {
+  it("Speed 20 を基準に反比例し、10〜60 tick に丸める", () => {
+    expect(guardCooldownTicks(20)).toBe(BASE_GUARD_COOLDOWN_TICKS);
+    expect(guardCooldownTicks(40)).toBe(15);
+    expect(guardCooldownTicks(10)).toBe(60);
+    expect(guardCooldownTicks(1000)).toBe(MIN_GUARD_COOLDOWN_TICKS);
+    expect(guardCooldownTicks(1)).toBe(MAX_GUARD_COOLDOWN_TICKS);
+    expect(guardCooldownTicks(0)).toBe(MAX_GUARD_COOLDOWN_TICKS);
+  });
+});
+
 describe("必殺の準備ウィンドウ", () => {
-  it("等倍でも倍速でも10秒振り切る前に時間切れしない", () => {
+  it("等倍でも倍速でも3秒振り切る前に時間切れしない", () => {
     for (const speed of BATTLE_SPEEDS) {
       expect(specialChargeTicks(speed) * tickIntervalMs(speed)).toBeGreaterThan(
         STRAIN_REQUIRED_MS,

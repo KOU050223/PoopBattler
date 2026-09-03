@@ -228,16 +228,24 @@ begin
     private.companionship_chance(0) = 0,
     true);
   perform pg_temp.expect(
-    'companionship_chance 1件は25%',
-    private.companionship_chance(1) = 0.25,
+    'companionship_chance 1件は50%',
+    private.companionship_chance(1) = 0.5,
     true);
   perform pg_temp.expect(
-    'companionship_chance 4件は100%',
-    private.companionship_chance(4) = 1,
+    'companionship_chance 2件は75%',
+    private.companionship_chance(2) = 0.75,
     true);
   perform pg_temp.expect(
-    'companionship_chance 5件も100%',
-    private.companionship_chance(5) = 1,
+    'companionship_chance 3件は85%',
+    private.companionship_chance(3) = 0.85,
+    true);
+  perform pg_temp.expect(
+    'companionship_chance 4件は90%',
+    private.companionship_chance(4) = 0.9,
+    true);
+  perform pg_temp.expect(
+    'companionship_chance 5件も90%',
+    private.companionship_chance(5) = 0.9,
     true);
 
   perform pg_temp.become(empty_user);

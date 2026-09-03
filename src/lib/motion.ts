@@ -33,7 +33,7 @@ export type StrainListenerHost = {
 };
 
 export const STRAIN_ACCELERATION_THRESHOLD = 12;
-export const STRAIN_REQUIRED_MS = 10_000;
+export const STRAIN_REQUIRED_MS = 3_000;
 export const STRAIN_IDLE_DECAY_RATE = 2;
 export const STRAIN_MAX_SAMPLE_DT_MS = 80;
 const LINEAR_ACCEL_MIN = 1;

@@ -62,10 +62,9 @@ export const BATTLE_SPEED_STORAGE_KEY = "poop-battler.battle-speed";
 export const HIT_MOTION_MS = 350;
 
 export const TIMEOUT_MS = 90_000;
-export const GUARD_DURATION_MS = 10_000;
-export const GUARD_COOLDOWN_MS = 15_000;
+export const GUARD_DURATION_MS = 5_000;
 export const SWITCH_STUN_MS = 1_000;
-// 踏ん張り積算（約10秒）より長くし、振り切る前に時間切れしない（Issue #94）。
+// 踏ん張り積算（約3秒）より長くし、振り切る前に時間切れしない（Issue #94 / #116）。
 export const PLAYER_SPECIAL_CHARGE_MS = 15_000;
 export const ENEMY_SPECIAL_TELEGRAPH_MS = 2_000;
 
@@ -81,16 +80,18 @@ export const AUTO_ATTACK_PERIOD_TICKS = 5;
 export const BASE_SPEED = 20;
 export const MIN_AUTO_ATTACK_PERIOD_TICKS = 2;
 export const MAX_AUTO_ATTACK_PERIOD_TICKS = 10;
+export const BASE_GUARD_COOLDOWN_TICKS = 30;
+export const MIN_GUARD_COOLDOWN_TICKS = 10;
+export const MAX_GUARD_COOLDOWN_TICKS = 60;
 export const AUTO_ATTACK_CHANCE = 0.5;
 export const SPECIAL_BASE_DAMAGE = 4;
 export const SPECIAL_DAMAGE_MULTIPLIER = 10;
 export const SPECIAL_GAUGE_MAX = 100;
 export const SPECIAL_GAUGE_PER_TICK = 2;
 
-// ベンチ回復: 場に出ていない味方のHP・必殺ゲージを毎ティック少しずつ回復する。
+// ベンチ回復: 場に出ていない味方のHPを毎ティック少しずつ回復する。
 // 戦闘不能（HP 0）のキャラは回復しない。
 export const BENCH_HP_RECOVERY_RATE = 0.01; // maxHp の 1% / tick
-export const BENCH_GAUGE_RECOVERY_PER_TICK = 1; // 場の半分のペースでゲージ回復
 
 // 通常攻撃は双方とも 5 tick ごとの窓で半々。1発 20。
 // 必殺は従来の基礎 4 に倍率を掛ける。タイムアップは 180 tick（等倍で 90秒）。
@@ -225,6 +226,25 @@ export function autoAttackPeriodTicks(speed: number): number {
   return Math.min(
     MAX_AUTO_ATTACK_PERIOD_TICKS,
     Math.max(MIN_AUTO_ATTACK_PERIOD_TICKS, period),
+  );
+}
+
+/**
+ * Speed からまもれ後のクールティックを求める（Issue #120）。
+ *
+ * BASE_SPEED (20) が従来相当の 30 ティック。通常攻撃と同じく反比例で、
+ * 速い個体ほど短く、遅い個体ほど長くする。
+ */
+export function guardCooldownTicks(speed: number): number {
+  if (!Number.isFinite(speed) || speed <= 0) {
+    return MAX_GUARD_COOLDOWN_TICKS;
+  }
+
+  const cooldown = Math.round((BASE_GUARD_COOLDOWN_TICKS * BASE_SPEED) / speed);
+
+  return Math.min(
+    MAX_GUARD_COOLDOWN_TICKS,
+    Math.max(MIN_GUARD_COOLDOWN_TICKS, cooldown),
   );
 }
 
