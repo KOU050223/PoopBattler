@@ -198,7 +198,7 @@ export function MealLogForm({
         <button
           type="button"
           disabled={busy}
-          className={secondaryButtonClass}
+          className={`w-full ${secondaryButtonClass}`}
           onClick={() => {
             setIsSkipping(true);
             setErrors({});

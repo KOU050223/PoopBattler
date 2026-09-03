@@ -23,9 +23,11 @@ export async function AppHeader({ action }: Props) {
       <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-2 pt-[calc(0.5rem+env(safe-area-inset-top))]">
         <Link
           href="/"
-          className="min-h-11 items-center text-[19px] leading-[1.4] font-bold text-charcoal flex"
+          aria-label={t("headerAppName")}
+          className="flex min-h-11 min-w-0 flex-1 items-center text-[13px] leading-tight font-bold text-charcoal sm:text-[19px] sm:leading-[1.4]"
         >
-          {t("headerAppName")}
+          <span className="sm:hidden">{t("headerAppNameShort")}</span>
+          <span className="hidden sm:inline">{t("headerAppName")}</span>
         </Link>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />

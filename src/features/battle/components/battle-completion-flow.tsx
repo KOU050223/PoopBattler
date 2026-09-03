@@ -18,7 +18,7 @@ import type { BowelLog } from "@/features/bowel-log/bowel-log.types";
 import { getMealLogsAction, saveMealLogAction, type MealLog } from "@/features/meal/actions";
 import { MealLogForm } from "@/features/meal/components/meal-log-form";
 import type { MealLogDraft, MealLogSaveResult } from "@/features/meal/meal.types";
-import { mutedTextClass, primaryButtonClass } from "@/lib/ui-classes";
+import { primaryButtonClass } from "@/lib/ui-classes";
 
 export type BattleCompletedPayload = {
   result: Extract<CompleteBattleResult, { success: true }>;
@@ -50,21 +50,24 @@ export function BattleMealStep({
   onAbandon,
 }: BattleMealStepProps) {
   return (
-    <section className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1 text-center">
-        <p className="text-xl font-bold">食事の記録</p>
-        <p className={`text-sm ${mutedTextClass}`}>
+    <section className="flex w-full min-w-0 flex-col gap-4">
+      <header className="rounded-xl bg-paper-white/70 px-3.5 py-3">
+        <p className="text-[15px] font-black tracking-[-0.02em] text-charcoal">食事を記録すると、仲間になりやすくなる</p>
+        <p className="mt-0.5 text-xs font-medium leading-relaxed text-pencil-gray">
           {postBattleMealChanceCopy(existingMealLogCount, sessionLogs.length)}
         </p>
-      </div>
-      <MealLogForm
-        refreshOnSuccess={false}
-        onSave={onSave}
-        onSkip={onComplete}
-        skipLabel={postBattleCompleteLabel(sessionLogs.length)}
-      >
-        <BattleMealSessionList logs={sessionLogs} />
-      </MealLogForm>
+      </header>
+      <section aria-labelledby="post-battle-meal-entry-title" className="meal-form-section w-full min-w-0">
+        <h2 id="post-battle-meal-entry-title">食事の記録</h2>
+        <MealLogForm
+          refreshOnSuccess={false}
+          onSave={onSave}
+          onSkip={onComplete}
+          skipLabel={postBattleCompleteLabel(sessionLogs.length)}
+        >
+          <BattleMealSessionList logs={sessionLogs} />
+        </MealLogForm>
+      </section>
       {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
       {error && isBattleGoneMessage(error) ? (
         <button type="button" className={primaryButtonClass} onClick={onAbandon}>
@@ -150,13 +153,7 @@ export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: Battl
       onAbandon={onAbandon}
     />
   ) : (
-    <section className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1 text-center">
-        <p className="text-xl font-bold">勝利！</p>
-        <p className={`text-sm ${mutedTextClass}`}>
-          排便の状態を記録したあと、食事の記録が開きます。食事は任意です。
-        </p>
-      </div>
+    <section className="flex flex-col gap-4">
       <BowelLogForm onSubmit={(log) => {
         setBowelLog(log);
         setError(null);
