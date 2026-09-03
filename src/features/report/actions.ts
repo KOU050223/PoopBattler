@@ -1,5 +1,3 @@
-"use server";
-
 import { createClient } from "@/lib/supabase/server";
 
 import { createWeeklyReport, getWeeklyReportRange, type WeeklyReport } from "./weekly-report";
@@ -15,7 +13,7 @@ export async function getWeeklyReportAction(now = new Date().toISOString()): Pro
   const [bowelResult, mealResult] = await Promise.all([
     supabase
       .from("bowel_logs")
-      .select("logged_at, hardness, amount, color, ease")
+      .select("id, logged_at, hardness, amount, color, ease")
       .eq("user_id", user.id)
       .gte("logged_at", fourWeekStartsAt.toISOString())
       .order("logged_at", { ascending: false }),
@@ -34,6 +32,7 @@ export async function getWeeklyReportAction(now = new Date().toISOString()): Pro
   return createWeeklyReport({
     now,
     bowelLogs: bowelResult.data.map((log) => ({
+      id: log.id,
       loggedAt: log.logged_at,
       hardness: log.hardness,
       amount: log.amount as "small" | "normal" | "large",

@@ -8,6 +8,8 @@ const WEEKDAY_LABELS = {
   sun: "日曜日",
 } as const;
 
-export function weekdayLabel(value: keyof typeof WEEKDAY_LABELS) {
+export type Weekday = keyof typeof WEEKDAY_LABELS;
+
+export function weekdayLabel(value: Weekday) {
   return WEEKDAY_LABELS[value];
 }

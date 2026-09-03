@@ -56,4 +56,14 @@ describe("createReportAnalysis", () => {
       { tag: "vegetable", mealCount: 5, relatedWithin24Hours: 5, relatedWithin48Hours: 5, averageHardnessWithin24Hours: 4.8, averageHardnessWithin48Hours: 4.8 },
     ]);
   });
+
+  it("同じ排便が複数の食事と関連しても、分析の根拠件数には一度だけ数える", () => {
+    const analysis = createReportAnalysis({
+      now: "2026-09-04T12:00:00.000Z",
+      mealLogs: Array.from({ length: 5 }, (_, index) => ({ eatenAt: `2026-09-01T0${index}:00:00.000Z`, tag: "vegetable" })),
+      bowelLogs: [{ id: "one-bowel", loggedAt: "2026-09-01T06:00:00.000Z", hardness: 4 }],
+    });
+
+    expect(analysis.mealTagAnalyses).toEqual([]);
+  });
 });

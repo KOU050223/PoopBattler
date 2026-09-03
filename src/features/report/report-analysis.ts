@@ -1,4 +1,5 @@
 export type AnalysisBowelLog = {
+  id?: string;
   loggedAt: string;
   hardness: number;
 };
@@ -45,11 +46,16 @@ function inRange(value: string, startsAt: Date, endsAt: Date) {
 
 function findRelatedBowelLogs(meals: AnalysisMealLog[], bowelLogs: AnalysisBowelLog[], windowMs: number) {
   const related: AnalysisBowelLog[] = [];
+  const relatedIds = new Set<string>();
   for (const meal of meals) {
     const mealTime = new Date(meal.eatenAt).getTime();
     for (const bowel of bowelLogs) {
       const elapsed = new Date(bowel.loggedAt).getTime() - mealTime;
-      if (elapsed >= 0 && elapsed <= windowMs) related.push(bowel);
+      const bowelId = bowel.id ?? bowel.loggedAt;
+      if (elapsed >= 0 && elapsed <= windowMs && !relatedIds.has(bowelId)) {
+        related.push(bowel);
+        relatedIds.add(bowelId);
+      }
     }
   }
   return related;
