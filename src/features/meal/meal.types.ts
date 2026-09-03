@@ -23,7 +23,7 @@ export type MealLogDraft = {
 };
 
 export type MealLogSaveResult =
-  | { success: true }
+  | { success: true; mealLogId: string }
   | { success: false; message: string };
 
 export function getMealAttribute(tag: MealTag): MealAttribute {

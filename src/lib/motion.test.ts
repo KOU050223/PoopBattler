@@ -156,6 +156,16 @@ describe("揺れ判定", () => {
       }),
     ).toEqual(axis(0, 0, 8));
   });
+
+  it("静止の重力では撃たない", () => {
+    expect(
+      shouldFireStrain({
+        magnitude: accelerationMagnitude(axis(0, 9.8, 0)),
+        now: 1_000,
+        lastFireAt: null,
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("createStrainListener", () => {

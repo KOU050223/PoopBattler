@@ -59,16 +59,22 @@ export async function saveMealLogAction(draft: MealLogDraft): Promise<MealLogSav
   }
   const { supabase, user } = currentUser;
 
-  const { error } = await supabase.from("meal_logs").insert({
-    user_id: user.id,
-    eaten_at: draft.eatenAt,
-    image_path: draft.photoId,
-    tag: draft.tag,
-    note: draft.note,
-  });
-  if (error) return { success: false, message: "食事ログの保存に失敗しました。もう一度お試しください。" };
+  const { data, error } = await supabase
+    .from("meal_logs")
+    .insert({
+      user_id: user.id,
+      eaten_at: draft.eatenAt,
+      image_path: draft.photoId,
+      tag: draft.tag,
+      note: draft.note,
+    })
+    .select("id")
+    .single();
+  if (error || typeof data?.id !== "string") {
+    return { success: false, message: "食事ログの保存に失敗しました。もう一度お試しください。" };
+  }
   revalidatePath("/meals");
-  return { success: true };
+  return { success: true, mealLogId: data.id };
 }
 
 /** 本人の食事ログだけを新しい順に返す。画像本体はIndexedDBからクライアントで取得する。 */
