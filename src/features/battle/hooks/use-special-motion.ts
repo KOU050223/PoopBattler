@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { planSpecialMotion } from "@/features/battle/special-motion";
+import { readBattleSpeed } from "@/features/battle/battle-speed";
 import {
   createStrainListener,
   inspectMotionPermission,
@@ -52,7 +53,7 @@ export function useSpecialMotion() {
     const apply = (next: MotionPermission) => {
       setPermission(next);
       setReason(motionSkipReason(next, env));
-      useBattleStore.getState().beginSpecial();
+      useBattleStore.getState().beginSpecial(readBattleSpeed(window.localStorage));
       const plan = planSpecialMotion({
         permission: next,
         enteredSpecial: useBattleStore.getState().playerStance === "special",

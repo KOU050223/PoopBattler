@@ -24,7 +24,7 @@ import {
   IDLE_BATTLE_SNAPSHOT,
   partializeBattleStore,
 } from "@/features/battle/battle-snapshot";
-import type { BattleStance } from "@/features/battle/battle.constants";
+import type { BattleSpeed, BattleStance } from "@/features/battle/battle.constants";
 import type {
   BattleSnapshot,
   BattleStartInput,
@@ -56,7 +56,7 @@ export type BattleStore = BattleSnapshot & {
   tick: () => void;
   setStance: (stance: Exclude<BattleStance, "special">) => void;
   switchMember: (partyIndex: number) => void;
-  beginSpecial: () => void;
+  beginSpecial: (speed?: BattleSpeed) => void;
   fireSpecial: () => void;
   restore: (snapshot: BattleSnapshot) => void;
   markDefeated: () => void;
@@ -74,7 +74,7 @@ export const useBattleStore = create<BattleStore>()(
       setStance: (stance) => set((state) => applySetStance(state, stance)),
       switchMember: (partyIndex) =>
         set((state) => applySwitchMember(state, partyIndex)),
-      beginSpecial: () => set((state) => applyBeginSpecial(state)),
+      beginSpecial: (speed) => set((state) => applyBeginSpecial(state, speed)),
       fireSpecial: () => set((state) => applyFireSpecial(state)),
       restore: (snapshot) => set(partializeBattleStore(snapshot)),
       markDefeated: () => set((state) => applyMarkDefeated(state)),

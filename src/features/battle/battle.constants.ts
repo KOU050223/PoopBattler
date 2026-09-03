@@ -123,6 +123,10 @@ export function msToTicks(ms: number): number {
 
 export const TIMEOUT_TICKS = msToTicks(TIMEOUT_MS);
 
+export function specialChargeTicks(speed: BattleSpeed): number {
+  return msToTicks(PLAYER_SPECIAL_CHARGE_MS * speed);
+}
+
 export function isBattleSpeed(value: unknown): value is BattleSpeed {
   return value === 1 || value === 2;
 }

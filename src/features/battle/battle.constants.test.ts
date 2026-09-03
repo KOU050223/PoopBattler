@@ -4,19 +4,19 @@ import { STRAIN_REQUIRED_MS } from "@/lib/motion";
 import {
   AUTO_ATTACK_DAMAGE,
   AUTO_ATTACK_PERIOD_TICKS,
+  BATTLE_SPEEDS,
   GUARD_INCOMING_MULTIPLIER,
-  PLAYER_SPECIAL_CHARGE_MS,
   SPECIAL_BASE_DAMAGE,
   SPECIAL_DAMAGE_MULTIPLIER,
-  TICK_INTERVAL_MS,
   TYPE_ADVANTAGE,
   TYPE_DISADVANTAGE,
   TYPE_NEUTRAL,
   TYPE_WHEEL,
   computeAttackDamage,
   matchupTone,
-  msToTicks,
   shouldAutoAttack,
+  specialChargeTicks,
+  tickIntervalMs,
   typeMultiplier,
 } from "./battle.constants";
 
@@ -175,9 +175,11 @@ describe("shouldAutoAttack", () => {
 });
 
 describe("必殺の準備ウィンドウ", () => {
-  it("10秒振り切る前に時間切れしない", () => {
-    expect(
-      msToTicks(PLAYER_SPECIAL_CHARGE_MS) * TICK_INTERVAL_MS,
-    ).toBeGreaterThan(STRAIN_REQUIRED_MS);
+  it("等倍でも倍速でも10秒振り切る前に時間切れしない", () => {
+    for (const speed of BATTLE_SPEEDS) {
+      expect(specialChargeTicks(speed) * tickIntervalMs(speed)).toBeGreaterThan(
+        STRAIN_REQUIRED_MS,
+      );
+    }
   });
 });
