@@ -1,5 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { NextIntlClientProvider } from "next-intl";
+
+import messages from "../../../../messages/ja.json";
 
 import { WeeklyReportView } from "./weekly-report-view";
 import type { WeeklyReport } from "../weekly-report";
@@ -26,7 +29,11 @@ const report: WeeklyReport = {
 
 describe("WeeklyReportView", () => {
   it("無料ユーザーには記録進捗とプレミアム導線だけを表示する", () => {
-    const markup = renderToStaticMarkup(<WeeklyReportView report={report} isPremium={false} />);
+    const markup = renderToStaticMarkup(
+      <NextIntlClientProvider locale="ja" messages={messages}>
+        <WeeklyReportView report={report} isPremium={false} />
+      </NextIntlClientProvider>,
+    );
 
     expect(markup).toContain("今週は3件記録しました");
     expect(markup).toContain("プレミアムで見る");
@@ -35,7 +42,11 @@ describe("WeeklyReportView", () => {
   });
 
   it("プレミアムユーザーには今週の詳細レポートを表示する", () => {
-    const markup = renderToStaticMarkup(<WeeklyReportView report={report} isPremium />);
+    const markup = renderToStaticMarkup(
+      <NextIntlClientProvider locale="ja" messages={messages}>
+        <WeeklyReportView report={report} isPremium />
+      </NextIntlClientProvider>,
+    );
 
     expect(markup).toContain("今週のうんちレポート");
     expect(markup).toContain("硬さの分布");
