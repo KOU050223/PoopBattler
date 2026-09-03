@@ -97,6 +97,8 @@ export function BattleScreen() {
   const [enemyMotion, setEnemyMotion] = useState<"idle" | "hit" | "attack">(
     "idle",
   );
+  const [playerHitFlashKey, setPlayerHitFlashKey] = useState(0);
+  const [enemyHitFlashKey, setEnemyHitFlashKey] = useState(0);
   const speed = useSyncExternalStore(
     subscribeBattleSpeed,
     () => readBattleSpeed(window.localStorage),
@@ -136,9 +138,11 @@ export function BattleScreen() {
       return;
     }
     if (enemyHp < previous.enemy) {
+      setEnemyHitFlashKey((key) => key + 1);
       setEnemyMotion("hit");
       setPlayerMotion("attack");
     } else if (playerHp < previous.player) {
+      setPlayerHitFlashKey((key) => key + 1);
       setPlayerMotion("hit");
       setEnemyMotion("attack");
     } else {
@@ -307,6 +311,7 @@ export function BattleScreen() {
               label={snapshot.enemy.name ?? "てき"}
               depth="far"
               speed={speed}
+              hitFlashKey={enemyHitFlashKey}
             />
           </div>
           <div className="flex flex-col items-start gap-2 pr-16">
@@ -318,6 +323,7 @@ export function BattleScreen() {
               label={member.name ?? "味方"}
               depth="near"
               speed={speed}
+              hitFlashKey={playerHitFlashKey}
             />
             <HpBar
               current={member.hp}
