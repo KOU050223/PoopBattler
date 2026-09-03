@@ -63,17 +63,12 @@ function HpBar({
   const reduceMotion = useReducedMotion();
   const ratio = Math.max(0, Math.min(1, current / max));
   const fillClass = side === "enemy" ? "bg-night-ink" : "bg-flush-pink";
-  const fillColor = side === "enemy"
-    ? "var(--color-night-ink)"
-    : "var(--color-flush-pink)";
   const flashColor = "var(--color-danger-edge)";
   const textColor = "var(--color-pencil-gray)";
   const textFlash = reduceMotion
     ? [textColor, flashColor, textColor]
     : [textColor, flashColor, flashColor, textColor];
-  const fillFlash = reduceMotion
-    ? [fillColor, flashColor, fillColor]
-    : [fillColor, flashColor, flashColor, fillColor];
+  const barFlashOpacity = reduceMotion ? [0, 1, 0] : [0, 1, 1, 0];
   const flashTransition = {
     duration: scaleByBattleSpeed(reduceMotion ? 0.45 : 0.95, speed),
     ease: "easeInOut" as const,
@@ -84,30 +79,33 @@ function HpBar({
       <motion.div
         key={`hp-text-${hitFlashKey}`}
         className={`flex justify-between ${captionTextClass}`}
-        initial={false}
-        animate={{
-          color: hitFlashKey > 0 ? textFlash : textColor,
-        }}
-        transition={flashTransition}
+        initial={{ color: textColor }}
+        animate={hitFlashKey > 0 ? { color: textFlash } : undefined}
+        transition={hitFlashKey > 0 ? flashTransition : undefined}
+        style={{ color: textColor }}
       >
         <span>{label}</span>
         <span>
           {current} / {max}
         </span>
       </motion.div>
-      <div className="h-2 overflow-hidden rounded-full bg-blush-wash">
+      <div className="relative h-2 overflow-hidden rounded-full bg-blush-wash">
         <motion.div
           className={`h-full ${fillClass}`}
           initial={false}
-          animate={{
-            width: `${ratio * 100}%`,
-            backgroundColor: hitFlashKey > 0 ? fillFlash : fillColor,
-          }}
-          transition={{
-            width: { duration: 0.2 },
-            backgroundColor: flashTransition,
-          }}
+          animate={{ width: `${ratio * 100}%` }}
+          transition={{ duration: 0.2 }}
         />
+        {hitFlashKey > 0 ? (
+          <motion.div
+            key={`hp-bar-flash-${hitFlashKey}`}
+            aria-hidden="true"
+            className="absolute left-0 top-0 h-full bg-danger-edge"
+            initial={{ opacity: 0, width: `${ratio * 100}%` }}
+            animate={{ opacity: barFlashOpacity }}
+            transition={flashTransition}
+          />
+        ) : null}
       </div>
     </div>
   );
