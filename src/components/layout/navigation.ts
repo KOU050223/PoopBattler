@@ -1,4 +1,4 @@
-import { Camera, Swords, NotebookPen, Backpack } from "lucide-react";
+import { Camera, Swords, NotebookPen, BookMarked } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavigationItem = {
