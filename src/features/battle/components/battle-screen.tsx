@@ -232,6 +232,10 @@ export function BattleScreen() {
       <BattleCompletionFlow
         battleId={snapshot.battleId}
         onCompleted={handleBattleCompleted}
+        onAbandon={() => {
+          useBattleStore.getState().reset();
+          setAcceptedRestore(false);
+        }}
       />
     );
   }

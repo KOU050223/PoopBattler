@@ -6,6 +6,7 @@ import type { Database } from "@/types/database.types";
 import { revalidatePath } from "next/cache";
 
 import type { StartBattleResult } from "./battle.types";
+import { messageForCompleteBattleError } from "./complete-battle-error";
 import {
   startBattle,
   type StartBattleGateway,
@@ -159,7 +160,12 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     || (result.character_id !== null && typeof result.character_id !== "string")
     || (result.companionship_result !== Boolean(result.character_id))
   ) {
-    return { success: false, message: "バトルの完了に失敗しました。もう一度お試しください。" };
+    console.error("[complete_battle rpc]", error?.message ?? error, {
+      battleId: input.battleId,
+      code: error?.code,
+      rowCount: Array.isArray(data) ? data.length : data == null ? 0 : "non-array",
+    });
+    return { success: false, message: messageForCompleteBattleError(error) };
   }
 
   const { data: battle, error: battleError } = await supabase

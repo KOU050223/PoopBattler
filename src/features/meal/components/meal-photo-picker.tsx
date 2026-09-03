@@ -8,6 +8,7 @@ import { captionTextClass, primaryButtonClass, secondaryButtonClass } from "@/li
 
 type MealPhotoPickerProps = {
   error?: string;
+  autoOpen?: boolean;
   onPhotoSelected: (photo: File) => void;
   onValidationError: (message: string) => void;
 };
@@ -26,11 +27,22 @@ function getCameraMessage(status: MealCameraStatus) {
 }
 
 /** 端末カメラ撮影とファイル選択を同じ検証ルールでフォームへ渡す。 */
-export function MealPhotoPicker({ error, onPhotoSelected, onValidationError }: MealPhotoPickerProps) {
+export function MealPhotoPicker({
+  error,
+  autoOpen = false,
+  onPhotoSelected,
+  onValidationError,
+}: MealPhotoPickerProps) {
   const inputId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { stream, status, start, stop } = useMealCamera();
   const cameraMessage = getCameraMessage(status);
+
+  useEffect(() => {
+    if (!autoOpen) return;
+    inputRef.current?.click();
+  }, [autoOpen]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -87,12 +99,14 @@ export function MealPhotoPicker({ error, onPhotoSelected, onValidationError }: M
           ファイルを選択する
         </label>
         <input
+          ref={inputRef}
           id={inputId}
           type="file"
           accept={MEAL_PHOTO_ACCEPT}
           className="sr-only"
           onChange={(event) => {
             const photo = event.currentTarget.files?.[0];
+            event.currentTarget.value = "";
             if (photo) selectPhoto(photo);
           }}
         />
