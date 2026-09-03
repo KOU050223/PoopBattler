@@ -92,7 +92,7 @@ export const INITIAL_ENEMY_HP = 480;
 export const INITIAL_MEMBER_HP = 240;
 
 // レンタル個体の3値。所有行が無いので、DBではなくここが出所になる（Issue #73）。
-// 成長も無いため、この値は常に一定。
+// 抽選もされないため、この値は常に一定。
 export const RENTAL_HP = INITIAL_MEMBER_HP;
 export const RENTAL_POWER = AUTO_ATTACK_DAMAGE;
 export const RENTAL_SPEED = BASE_SPEED;

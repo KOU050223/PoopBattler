@@ -27,7 +27,7 @@ export type BattleParty = [
 
 export type BattleStartMember = {
   // 所持個体なら user_characters の行ID、レンタルなら null。
-  // null であることが「育たない」の判定そのもの（Issue #73）。
+  // null であることが「所有していない＝レンタル」の判定そのもの（Issue #73）。
   userCharacterId: string | null;
   characterId: string;
   attribute: CharacterAttribute;

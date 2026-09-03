@@ -158,7 +158,7 @@ describe("レンタルと所持個体の区別", () => {
       attribute: "normal",
     });
 
-    // null であることが「育たない」の判定そのもの。
+    // null であることが「所有していない＝レンタル」の判定そのもの。
     expect(rental.userCharacterId).toBeNull();
     expect(rental.hp).toBe(RENTAL_HP);
     expect(rental.power).toBe(RENTAL_POWER);

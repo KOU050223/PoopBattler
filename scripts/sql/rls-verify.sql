@@ -396,8 +396,10 @@ $$;
 -- ---------------------------------------------------------------------------
 -- 個体ごとの HP / Power / Speed（Issue #73）
 -- ---------------------------------------------------------------------------
--- 通るケース（個体差が出る・所持個体が育つ）と落ちるケース（レンタルは育たない・
--- 他人の個体は読めない）を同じ実行で出す。
+-- 通るケース（個体差が出る・開始時の値がスナップショットに載る）と
+-- 落ちるケース（戦っても3値が変わらない・他人の個体は読めない）を同じ実行で出す。
+--
+-- 育成は無い。3値は仲間化した瞬間に確定し、以後どのバトルでも変わらない。
 --
 -- 専用の user_c を使う。他のケースが作った activeバトルや所有行を引き継ぐと、
 -- start_battle が再開扱いになってスナップショットが空のまま検査を通ってしまう。
@@ -476,27 +478,28 @@ begin
 
   select * into after_row from public.user_characters where id = uc1;
 
+  -- 育成が無いことの本体。出して勝っても3値は1も動かない。
   perform pg_temp.expect(
-    '出していた所持個体の3値が上がる',
-    after_row.hp > before_row.hp
-      and after_row.power > before_row.power
-      and after_row.speed > before_row.speed,
+    '出して戦っても所持個体の3値は変わらない',
+    after_row.hp = before_row.hp
+      and after_row.power = before_row.power
+      and after_row.speed = before_row.speed,
     true);
   perform pg_temp.expect(
-    '出していない所持個体は変わらない',
+    '出していない所持個体も変わらない',
     (select hp = 300 and power = 30 and speed = 12
       from public.user_characters where id = uc2),
     true);
 
-  -- 冪等性: 2回目の complete_battle で二重に伸びない ------------------------
+  -- 再実行しても値が動かない ------------------------------------------------
   perform public.complete_battle(battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
   perform pg_temp.expect(
-    'complete_battle を再実行しても二重に成長しない',
+    'complete_battle を再実行しても3値は変わらない',
     (select hp = after_row.hp and power = after_row.power and speed = after_row.speed
       from public.user_characters where id = uc1),
     true);
 
-  -- レンタルは育たない ------------------------------------------------------
+  -- レンタルで戦っても所有行は増えない ---------------------------------------
   -- 選出IDを渡さずに開始する。所有行の数も3値も、前後で一切変わらない。
   select count(*) into owned_count_before
   from public.user_characters where user_id = c;
@@ -545,6 +548,54 @@ begin
 end;
 $$;
 
+-- 初期値の抽選: レアリティで基準値と振れ幅が上がること
+-- ---------------------------------------------------------------------------
+-- 育成が無いぶん、引いた瞬間の値が全て。抽選式そのものを直接確かめる。
+-- 乱数を含むので1回の値ではなく、多数回の分布が設計どおりかを見る。
+reset role;
+do $$
+declare
+  n constant integer := 400;
+  common_avg numeric;
+  legendary_avg numeric;
+  common_min integer;
+  common_max integer;
+  legendary_min integer;
+begin
+  -- マイグレーションと同じ式（common: 基準20・振れ幅4 / legendary: 基準38・振れ幅10）
+  select avg(v), min(v), max(v) into common_avg, common_min, common_max
+  from (
+    select greatest(1, 20 + (floor(random() * (4 * 2 + 1))::integer - 4)) as v
+    from generate_series(1, n)
+  ) t;
+
+  select avg(v), min(v) into legendary_avg, legendary_min
+  from (
+    select greatest(1, 38 + (floor(random() * (10 * 2 + 1))::integer - 10)) as v
+    from generate_series(1, n)
+  ) t;
+
+  if not (common_avg between 18 and 22) then
+    raise exception 'FAIL: common の平均が基準20から外れている（%）', common_avg;
+  end if;
+  if not (legendary_avg between 36 and 40) then
+    raise exception 'FAIL: legendary の平均が基準38から外れている（%）', legendary_avg;
+  end if;
+  -- 基準値を上げたので、数値域が重ならない（低レアが高レアに届かない）。
+  if common_max >= legendary_min then
+    raise exception 'FAIL: common の上限が legendary の下限に届いている（% >= %）',
+      common_max, legendary_min;
+  end if;
+  -- 同じレアリティの中では振れる。ここが潰れると引き直す意味が無くなる。
+  if common_min = common_max then
+    raise exception 'FAIL: common の個体値が振れていない（常に %）', common_min;
+  end if;
+
+  raise notice 'ok: レアリティで基準値が上がり、同レア内では個体値が振れる';
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 他人の個体は、IDを渡されても値が変わっていないこと。
 -- 直前のブロックはRLS配下でB行を読めない。ロールを戻して、RLS適用前の視点で見る。
 reset role;

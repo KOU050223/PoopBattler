@@ -3,9 +3,12 @@
 -- ステータスは種族（characters）ではなく個体に付く。同じ character_id でも、
 -- ユーザーが違えば・取得タイミングが違えば別の値になりうる。
 --
--- クライアントは値を一切指定できない。初期値は仲間化時に definer RPC が振り、
--- 成長も勝利確定の definer RPC だけが書く。UPDATE ポリシーも UPDATE 権限も
--- 足さないため、PostgREST 経由の直接更新は権限レベルで届かない。
+-- 育成は行わない。3値は仲間化した瞬間に乱数で確定し、以後変わらない。
+-- 強い個体は「育てる」のではなく「引き直して当てる」（ハクスラの方針）。
+--
+-- クライアントは値を一切指定できない。初期値は仲間化時に definer RPC だけが
+-- 振る。UPDATE ポリシーも UPDATE 権限も足さないため、PostgREST 経由の
+-- 直接更新は権限レベルで届かない。
 
 -- ---------------------------------------------------------------------------
 -- user_characters に3列を足す
@@ -16,7 +19,7 @@ alter table public.user_characters
   add column speed integer not null default 20 check (speed > 0);
 
 comment on column public.user_characters.hp is
-  '個体の最大HP。バトル開幕のHPになる。仲間化時に振り、勝利で少し伸びる。';
+  '個体の最大HP。バトル開幕のHPになる。仲間化時に振り、以後変わらない。';
 comment on column public.user_characters.power is
   '個体の通常攻撃の基礎ダメージ。タイプ補正とガードはこの値に掛かる。';
 comment on column public.user_characters.speed is
@@ -238,7 +241,7 @@ grant execute on function private.start_battle(uuid[]) to authenticated;
 grant execute on function public.start_battle(uuid[]) to authenticated;
 
 -- ---------------------------------------------------------------------------
--- complete_battle: 仲間化時に初期3値を振り、勝利した所持個体を少し伸ばす
+-- complete_battle: 仲間化時に初期3値を振る（成長はしない）
 -- ---------------------------------------------------------------------------
 -- 戻り値は変えないが、内部関数の本体を差し替える。public 側は据え置き。
 create or replace function private.complete_battle(
@@ -266,15 +269,10 @@ declare
   v_character_id text := null;
   v_rarity public.character_rarity;
   v_spread integer;
+  v_base_hp integer;
+  v_base_power integer;
+  v_base_speed integer;
   companionship_chance constant double precision := 0.25;
-  -- 初期値の基準。レアリティで振れ幅だけを変え、基準は種族で変えない。
-  base_hp constant integer := 240;
-  base_power constant integer := 20;
-  base_speed constant integer := 20;
-  -- 勝利1回あたりの上昇。レベルやXPは持たず、確定した値を直接足す。
-  growth_hp constant integer := 6;
-  growth_power constant integer := 1;
-  growth_speed constant integer := 1;
 begin
   if v_user_id is null then
     raise exception 'authentication is required' using errcode = '28000';
@@ -292,7 +290,7 @@ begin
   end if;
 
   -- 既に確定済みなら、入力値や乱数を再評価せず同じ結果を返す。
-  -- 成長もここより後ろにしかないため、2回目の呼び出しで二重に伸びない。
+  -- 初期値の抽選もここより後ろにしかないため、2回目の呼び出しで振り直さない。
   if v_battle.status <> 'active' then
     select uc.character_id
     into v_character_id
@@ -368,14 +366,25 @@ begin
     from public.characters as c
     where c.id = v_battle.enemy_character_id;
 
-    -- レアリティが高いほど振れ幅が大きい。基準は共通なので、common でも
-    -- legendary に届きうるし、legendary が基準を下回ることもある。
+    -- レアリティは基準値と振れ幅の両方を上げる。高レアほど地力が高く、
+    -- かつ当たり外れも大きい。同レアの中で強い個体を狙って引き直す。
+    v_base_power := case v_rarity
+      when 'common' then 20
+      when 'rare' then 26
+      when 'epic' then 32
+      when 'legendary' then 38
+      else 20
+    end;
+    v_base_speed := v_base_power;
+    -- HP は他の2値の12倍の桁で扱う（240 : 20）。基準もその比で揃える。
+    v_base_hp := v_base_power * 12;
+
     v_spread := case v_rarity
-      when 'common' then 10
-      when 'rare' then 20
-      when 'epic' then 30
-      when 'legendary' then 40
-      else 10
+      when 'common' then 4
+      when 'rare' then 6
+      when 'epic' then 8
+      when 'legendary' then 10
+      else 4
     end;
 
     insert into public.user_characters as uc (
@@ -389,30 +398,17 @@ begin
       v_user_id,
       v_battle.enemy_character_id,
       v_battle.id,
-      -- HP は振れ幅を4倍して、他の2値と体感の重みを揃える。
-      greatest(1, base_hp + (floor(random() * (v_spread * 8 + 1))::integer - v_spread * 4)),
-      greatest(1, base_power + (floor(random() * (v_spread + 1))::integer - v_spread / 2)),
-      greatest(1, base_speed + (floor(random() * (v_spread + 1))::integer - v_spread / 2))
+      -- HP は振れ幅も12倍にして、他の2値と体感の重みを揃える。
+      -- 3値は独立に振る。HPだけ高い個体・Speedだけ高い個体が出る。
+      greatest(1, v_base_hp + (floor(random() * (v_spread * 24 + 1))::integer - v_spread * 12)),
+      greatest(1, v_base_power + (floor(random() * (v_spread * 2 + 1))::integer - v_spread)),
+      greatest(1, v_base_speed + (floor(random() * (v_spread * 2 + 1))::integer - v_spread))
     )
     returning uc.character_id into v_character_id;
   end if;
 
-  -- 出していた所持個体だけを伸ばす。party_snapshot は開始時にサーバーが
-  -- 確定させた値なので、クライアントの tick 結果は一切参照しない。
-  -- user_character_id が null の要素はレンタルで、所有行が無いため育たない。
-  -- distinct を挟む。同じ個体が2枠に入っていても上昇は1回で、
-  -- 枠を重複させて伸び幅を稼げないようにする。
-  update public.user_characters as uc
-  set
-    hp = uc.hp + growth_hp,
-    power = uc.power + growth_power,
-    speed = uc.speed + growth_speed
-  where uc.user_id = v_user_id
-    and uc.id in (
-      select distinct (member ->> 'user_character_id')::uuid
-      from jsonb_array_elements(v_battle.party_snapshot) as member
-      where member ->> 'user_character_id' is not null
-    );
+  -- 育成は行わない。個体の3値は仲間化した瞬間に確定し、以後変わらない。
+  -- 強い個体は「育てる」のではなく「引き直して当てる」もの（ハクスラの方針）。
 
   return query
   select v_battle.id, 'completed'::public.battle_status, v_companionship_result, v_character_id;

@@ -16,8 +16,8 @@ export type RentalCandidate = {
 /**
  * レンタル個体を選出用の1体にする。
  *
- * 所有行が無いので userCharacterId は null。3値はコード定数の初期値で、
- * 勝っても伸びない（Issue #73）。
+ * 所有行が無いので userCharacterId は null。3値はコード定数の固定値
+ * （Issue #73）。
  */
 export function toStartMember(character: RentalCandidate): BattleStartMember {
   return {
