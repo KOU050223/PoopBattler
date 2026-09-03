@@ -302,6 +302,7 @@ export function BattleScreen() {
               side="enemy"
             />
             <BattleFigure
+              characterId={snapshot.enemy.characterId}
               attribute={snapshot.enemy.attribute}
               facing="front"
               motion={enemyMotion}
@@ -312,6 +313,7 @@ export function BattleScreen() {
           </div>
           <div className="flex flex-col items-start gap-2 pr-16">
             <BattleFigure
+              characterId={member.characterId}
               attribute={member.attribute}
               facing="back"
               motion={playerMotion}

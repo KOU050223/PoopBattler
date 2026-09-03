@@ -1,28 +1,49 @@
-export const HEAD_IDS = [
-  "silk-hat",
-  "fruit",
-  "chef",
-  "ahoge",
-  "sprout",
-  "wave",
-] as const;
+export const HEAD_IDS = ["hat-a", "hat-b", "hat-c", "hat-d", "hat-e", "hat-f"] as const;
 export type HeadId = (typeof HEAD_IDS)[number];
 
-export const EYE_IDS = ["kiriri", "nikkori", "lashes"] as const;
+export const EYE_IDS = [
+  "eye-a",
+  "eye-b",
+  "eye-c",
+  "eye-d",
+  "eye-e",
+  "eye-f",
+  "eye-g",
+  "eye-h",
+  "eye-i",
+  "eye-j",
+] as const;
 export type EyeId = (typeof EYE_IDS)[number];
 
-export const MOUTH_IDS = ["tongue", "he", "teeth"] as const;
+export const MOUTH_IDS = [
+  "mouth-a",
+  "mouth-b",
+  "mouth-c",
+  "mouth-d",
+  "mouth-e",
+  "mouth-f",
+  "mouth-g",
+  "mouth-h",
+  "mouth-i",
+  "mouth-j",
+  "mouth-k",
+] as const;
 export type MouthId = (typeof MOUTH_IDS)[number];
 
 export const BODY_COLOR_IDS = [
-  "normal",
+  "a",
+  "blue",
+  "charcoal",
+  "cyan",
   "gold",
-  "curry",
-  "vegetable",
-  "spicy",
-  "meat",
-  "banana",
-  "yogurt",
+  "green",
+  "mint",
+  "orange",
+  "pink",
+  "purple",
+  "red",
+  "white",
+  "yellow",
 ] as const;
 export type BodyColorId = (typeof BODY_COLOR_IDS)[number];
 
