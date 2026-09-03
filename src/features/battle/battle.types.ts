@@ -11,6 +11,7 @@ export type BattleCombatant = {
   characterId: string;
   attribute: CharacterAttribute;
   hp: number;
+  name?: string;
 };
 
 export type BattleParty = [
@@ -22,6 +23,7 @@ export type BattleParty = [
 export type BattleStartMember = {
   characterId: string;
   attribute: CharacterAttribute;
+  name?: string;
 };
 
 export type BattleStartInput = {
@@ -75,6 +77,7 @@ export type StartBattleSuccess = {
   battleId: string;
   enemy: BattleEnemy;
   enemyHp: number;
+  party: [BattleStartMember, BattleStartMember, BattleStartMember];
   // 既存のactiveバトルを再開したのか、新規作成したのか。
   // 表示の出し分け用で、敵の情報の形は両者で同じ。
   resumed: boolean;

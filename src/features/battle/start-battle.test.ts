@@ -32,9 +32,12 @@ function createGateway(
     getUserId: vi.fn().mockResolvedValue({ userId: "user-1", failed: false }),
     findActiveBattle: vi.fn().mockResolvedValue({ battle: null, failed: false }),
     findCharacterById: vi.fn().mockResolvedValue({ character: curry, failed: false }),
-    findCharactersByAttribute: vi
-      .fn()
-      .mockResolvedValue({ characters: [curry], failed: false }),
+    findCharactersByAttribute: vi.fn(async (attribute: CharacterRow["attribute"]) => {
+      if (attribute === "normal") {
+        return { characters: [normal], failed: false };
+      }
+      return { characters: [curry], failed: false };
+    }),
     insertBattle: vi.fn().mockResolvedValue({ battleId: "battle-1" }),
     ...overrides,
   };
@@ -58,6 +61,23 @@ describe("startBattle", () => {
         imageKey: "characters/curry-poop.png",
       },
       enemyHp: INITIAL_ENEMY_HP,
+      party: [
+        {
+          characterId: "normal-poop",
+          name: "ふつうのうんちくん",
+          attribute: "normal",
+        },
+        {
+          characterId: "normal-poop",
+          name: "ふつうのうんちくん",
+          attribute: "normal",
+        },
+        {
+          characterId: "normal-poop",
+          name: "ふつうのうんちくん",
+          attribute: "normal",
+        },
+      ],
       resumed: false,
     });
     expect(insertBattle).toHaveBeenCalledOnce();
@@ -80,15 +100,22 @@ describe("startBattle", () => {
       status: "started",
       battleId: "battle-existing",
       resumed: true,
+      party: [
+        expect.objectContaining({ characterId: "normal-poop" }),
+        expect.objectContaining({ characterId: "normal-poop" }),
+        expect.objectContaining({ characterId: "normal-poop" }),
+      ],
     });
     expect(insertBattle).not.toHaveBeenCalled();
   });
 
   it("属性に一致する敵がいなければフォールバック属性から選ぶ", async () => {
-    const findCharactersByAttribute = vi
-      .fn()
-      .mockResolvedValueOnce({ characters: [], failed: false })
-      .mockResolvedValueOnce({ characters: [normal], failed: false });
+    const findCharactersByAttribute = vi.fn(async (attribute: CharacterRow["attribute"]) => {
+      if (attribute === "normal") {
+        return { characters: [normal], failed: false };
+      }
+      return { characters: [], failed: false };
+    });
 
     const result = await startBattle(
       createGateway({ findCharactersByAttribute }),

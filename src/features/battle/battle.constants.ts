@@ -25,6 +25,32 @@ export const ENEMY_ATTRIBUTES: readonly CharacterAttribute[] = [
 // seed.sql が投入する "normal" 属性のキャラクターを指す。
 export const FALLBACK_ATTRIBUTE: CharacterAttribute = "normal";
 
+export const ATTRIBUTE_LABELS: Record<CharacterAttribute, string> = {
+  spicy: "激辛",
+  meat: "肉",
+  vegetable: "野菜",
+  dairy: "乳",
+  sweet: "甘",
+  curry: "カレー",
+  normal: "無",
+};
+
+export type MatchupTone = "advantage" | "neutral" | "disadvantage";
+
+export function matchupTone(
+  attacker: CharacterAttribute,
+  defender: CharacterAttribute,
+): MatchupTone {
+  const multiplier = typeMultiplier(attacker, defender);
+  if (multiplier > TYPE_NEUTRAL) {
+    return "advantage";
+  }
+  if (multiplier < TYPE_NEUTRAL) {
+    return "disadvantage";
+  }
+  return "neutral";
+}
+
 export const PARTY_SIZE = 3;
 
 // 1 tick = 500ms。UI の間隔もこれに合わせる。ダメージは tick 回数だけで決まる。

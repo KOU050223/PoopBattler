@@ -6,7 +6,12 @@ import {
   selectEnemyAttribute,
   type RandomSource,
 } from "./enemy-generator";
-import type { BattleEnemy, StartBattleResult } from "./battle.types";
+import { fillRentalParty, toStartMember } from "./rental-party";
+import type {
+  BattleEnemy,
+  BattleStartMember,
+  StartBattleResult,
+} from "./battle.types";
 
 // 生成された型から必要な列だけを抜き出す。手書きの形にすると、列名や
 // 型が変わってもコンパイルが通り、実行時に黙って壊れる（AGENTS.md）。
@@ -53,6 +58,35 @@ function toEnemy(character: CharacterRow): BattleEnemy {
   };
 }
 
+function partyFromCharacter(
+  character: CharacterRow,
+): [BattleStartMember, BattleStartMember, BattleStartMember] {
+  const member = toStartMember(character);
+  return [member, { ...member }, { ...member }];
+}
+
+async function loadRentalParty(
+  gateway: StartBattleGateway,
+  fallbackCharacter: CharacterRow | null,
+): Promise<[BattleStartMember, BattleStartMember, BattleStartMember] | null> {
+  const { characters, failed } = await gateway.findCharactersByAttribute(
+    FALLBACK_ATTRIBUTE,
+  );
+
+  if (!failed) {
+    const party = fillRentalParty(characters);
+    if (party) {
+      return party;
+    }
+  }
+
+  if (fallbackCharacter) {
+    return partyFromCharacter(fallbackCharacter);
+  }
+
+  return null;
+}
+
 /**
  * バトル開始の本体。敵はサーバーで確定し、クライアントは指定できない（Issue #21）。
  *
@@ -91,11 +125,17 @@ export async function startBattle(
 
     // 敵が本当に存在しない場合だけ、この行を諦めて新規作成へ進む。
     if (character) {
+      const party = await loadRentalParty(gateway, character);
+      if (!party) {
+        return { status: "error", message: START_ERROR };
+      }
+
       return {
         status: "started",
         battleId: existing.id,
         enemy: toEnemy(character),
         enemyHp: INITIAL_ENEMY_HP,
+        party,
         resumed: true,
       };
     }
@@ -122,6 +162,11 @@ export async function startBattle(
     return { status: "error", message: START_ERROR };
   }
 
+  const party = await loadRentalParty(gateway, character);
+  if (!party) {
+    return { status: "error", message: START_ERROR };
+  }
+
   // 4. activeでINSERTする。meal_log_id は null が通常の状態（食事写真は任意）。
   const { battleId } = await gateway.insertBattle({ userId, character });
 
@@ -134,6 +179,7 @@ export async function startBattle(
     battleId,
     enemy: toEnemy(character),
     enemyHp: INITIAL_ENEMY_HP,
+    party,
     resumed: false,
   };
 }

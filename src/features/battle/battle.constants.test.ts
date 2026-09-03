@@ -11,6 +11,7 @@ import {
   TYPE_NEUTRAL,
   TYPE_WHEEL,
   computeAttackDamage,
+  matchupTone,
   typeMultiplier,
 } from "./battle.constants";
 
@@ -49,6 +50,15 @@ describe("typeMultiplier", () => {
       expect(typeMultiplier("normal", attribute)).toBe(TYPE_NEUTRAL);
       expect(typeMultiplier(attribute, "normal")).toBe(TYPE_NEUTRAL);
     }
+  });
+});
+
+describe("matchupTone", () => {
+  it("有利・等倍・不利を3値だけ返す", () => {
+    expect(matchupTone("spicy", "meat")).toBe("advantage");
+    expect(matchupTone("spicy", "spicy")).toBe("neutral");
+    expect(matchupTone("spicy", "sweet")).toBe("disadvantage");
+    expect(matchupTone("normal", "meat")).toBe("neutral");
   });
 });
 

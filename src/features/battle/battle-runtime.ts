@@ -173,6 +173,7 @@ export function applyBattleStart(input: BattleStartInput): BattleSnapshot {
     enemy: {
       characterId: input.enemy.characterId,
       attribute: input.enemy.attribute,
+      name: input.enemy.name,
       hp: INITIAL_ENEMY_HP,
     },
     party: [
