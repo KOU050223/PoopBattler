@@ -150,13 +150,7 @@ export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: Battl
       onAbandon={onAbandon}
     />
   ) : (
-    <section className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1 text-center">
-        <p className="text-xl font-bold">勝利！</p>
-        <p className={`text-sm ${mutedTextClass}`}>
-          排便の状態を記録したあと、食事の記録が開きます。食事は任意です。
-        </p>
-      </div>
+    <section className="flex flex-col gap-4">
       <BowelLogForm onSubmit={(log) => {
         setBowelLog(log);
         setError(null);

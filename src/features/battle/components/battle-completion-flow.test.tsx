@@ -31,8 +31,13 @@ describe("BattleCompletionFlow", () => {
         onAbandon={() => undefined}
       />,
     );
-    expect(markup).toContain("勝利！");
+    expect(markup).toContain("Battle Clear");
+    expect(markup).toContain("最後に今日の状態を4タップで残そう");
+    expect(markup).toContain("0 / 4");
+    expect(markup).toContain("あと4つ選んでね");
     expect(markup).toContain("硬さ");
+    expect(markup).toContain("硬い ← → ゆるい");
+    expect(markup).toContain("茶色");
     expect(markup).not.toContain("この食事を記録する");
     expect(markup).not.toContain("今回の食事");
   });
