@@ -111,7 +111,76 @@ describe("CompanionshipArFrame", () => {
       />,
     );
     expect(withPhoto).toContain("便器へ投げ入れる食事の写真");
+    expect(withPhoto).toContain('data-throw-x="50.0"');
+    expect(withPhoto).toContain('data-throw-y="72.0"');
     expect(withoutPhoto).not.toContain("便器へ投げ入れる食事の写真");
+  });
+
+  it("便器 hit では bbox と score を出し、写真は座面寄りの投げ入れ先へ向かう", () => {
+    const markup = renderToStaticMarkup(
+      <CompanionshipArFrame
+        result={acquired}
+        mealPhotoUrl="blob:meal-photo"
+        phase="throw"
+        status="ready"
+        reduceMotion
+        onSkip={() => undefined}
+        detectionStatus="ready"
+        toiletSight={{
+          kind: "hit",
+          box: { x: 10, y: 20, width: 80, height: 100, score: 0.74 },
+          target: { x: 41.2, y: 68.5 },
+        }}
+        throwTarget={{ x: 41.2, y: 68.5 }}
+      />,
+    );
+    expect(markup).toContain('data-toilet-box="hit"');
+    expect(markup).toContain('data-toilet-score="0.74"');
+    expect(markup).toContain("便器を検出 74%");
+    expect(markup).not.toContain("もう一度抽選");
+    expect(markup).toContain('data-throw-x="41.2"');
+    expect(markup).toContain('data-throw-y="68.5"');
+  });
+
+  it("未検出でも投げ入れでき、低scoreは採用枠と別表示になる", () => {
+    const noneMarkup = renderToStaticMarkup(
+      <CompanionshipArFrame
+        result={acquired}
+        mealPhotoUrl="blob:meal-photo"
+        phase="throw"
+        status="ready"
+        reduceMotion
+        onSkip={() => undefined}
+        detectionStatus="ready"
+        toiletSight={{ kind: "none" }}
+        throwTarget={{ x: 12, y: 18 }}
+        aimPoint={{ x: 12, y: 18 }}
+      />,
+    );
+    const lowMarkup = renderToStaticMarkup(
+      <CompanionshipArFrame
+        result={acquired}
+        mealPhotoUrl="blob:meal-photo"
+        phase="staging"
+        status="ready"
+        reduceMotion
+        onSkip={() => undefined}
+        detectionStatus="ready"
+        toiletSight={{
+          kind: "low",
+          box: { x: 8, y: 8, width: 40, height: 40, score: 0.31 },
+          target: { x: 20, y: 30 },
+        }}
+      />,
+    );
+    expect(noneMarkup).toContain("便器へ投げ入れる食事の写真");
+    expect(noneMarkup).toContain("便器が見つかりません");
+    expect(noneMarkup).toContain('data-throw-x="12.0"');
+    expect(noneMarkup).toContain('data-aim-point="true"');
+    expect(noneMarkup).not.toContain("data-toilet-box");
+    expect(lowMarkup).toContain('data-toilet-box="low"');
+    expect(lowMarkup).toContain("便器かも… 31%");
+    expect(lowMarkup).not.toContain("便器を検出");
   });
 
   it("結果フェーズでは確定済みのカードを出し、抽選をやり直す文言は出さない", () => {
