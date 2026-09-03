@@ -12,6 +12,10 @@ export type BattleCombatant = {
   characterId: string;
   attribute: CharacterAttribute;
   hp: number;
+  // 開幕のHP。HPバーの分母に使う。個体ごとに違うので定数では出せない。
+  maxHp: number;
+  power: number;
+  speed: number;
   name?: string;
 };
 
@@ -22,14 +26,29 @@ export type BattleParty = [
 ];
 
 export type BattleStartMember = {
+  // 所持個体なら user_characters の行ID、レンタルなら null。
+  // null であることが「育たない」の判定そのもの（Issue #73）。
+  userCharacterId: string | null;
   characterId: string;
   attribute: CharacterAttribute;
+  hp: number;
+  power: number;
+  speed: number;
+  name?: string;
+};
+
+export type BattleEnemyStats = {
+  characterId: string;
+  attribute: CharacterAttribute;
+  hp: number;
+  power: number;
+  speed: number;
   name?: string;
 };
 
 export type BattleStartInput = {
   battleId: string;
-  enemy: BattleStartMember;
+  enemy: BattleEnemyStats;
   party: readonly [BattleStartMember, BattleStartMember, BattleStartMember];
   now?: number;
 };
@@ -74,6 +93,8 @@ export type StartBattleSuccess = {
   battleId: string;
   enemy: BattleEnemy;
   enemyHp: number;
+  enemyPower: number;
+  enemySpeed: number;
   party: [BattleStartMember, BattleStartMember, BattleStartMember];
   // 既存のactiveバトルを再開したのか、新規作成したのか。
   // 表示の出し分け用で、敵の情報の形は両者で同じ。

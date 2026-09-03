@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUTO_ATTACK_DAMAGE,
   AUTO_ATTACK_PERIOD_TICKS,
+  BASE_SPEED,
   GUARD_COOLDOWN_MS,
   GUARD_DURATION_MS,
   INITIAL_ENEMY_HP,
@@ -28,11 +29,38 @@ import type { BattleSnapshot, BattleStartInput } from "./battle.types";
 
 const startInput: BattleStartInput = {
   battleId: "battle-1",
-  enemy: { characterId: "meat-1", attribute: "meat" },
+  enemy: {
+    characterId: "meat-1",
+    attribute: "meat",
+    hp: INITIAL_ENEMY_HP,
+    power: AUTO_ATTACK_DAMAGE,
+    speed: BASE_SPEED,
+  },
   party: [
-    { characterId: "spicy-1", attribute: "spicy" },
-    { characterId: "normal-1", attribute: "normal" },
-    { characterId: "normal-2", attribute: "normal" },
+    {
+      userCharacterId: null,
+      characterId: "spicy-1",
+      attribute: "spicy",
+      hp: INITIAL_MEMBER_HP,
+      power: AUTO_ATTACK_DAMAGE,
+      speed: BASE_SPEED,
+    },
+    {
+      userCharacterId: null,
+      characterId: "normal-1",
+      attribute: "normal",
+      hp: INITIAL_MEMBER_HP,
+      power: AUTO_ATTACK_DAMAGE,
+      speed: BASE_SPEED,
+    },
+    {
+      userCharacterId: null,
+      characterId: "normal-2",
+      attribute: "normal",
+      hp: INITIAL_MEMBER_HP,
+      power: AUTO_ATTACK_DAMAGE,
+      speed: BASE_SPEED,
+    },
   ],
   now: 0,
 };

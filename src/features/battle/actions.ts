@@ -5,9 +5,11 @@ import { isBowelLog, type BowelLog } from "@/features/bowel-log/bowel-log.types"
 import type { Database } from "@/types/database.types";
 import { revalidatePath } from "next/cache";
 
+import { PARTY_SIZE } from "./battle.constants";
 import type { StartBattleResult } from "./battle.types";
 import {
   startBattle,
+  type PartySnapshotMember,
   type StartBattleGateway,
 } from "./start-battle";
 
@@ -15,6 +17,26 @@ import {
 const CHARACTER_COLUMNS = "id, name, attribute, rarity, image_key";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
+// party_snapshot は jsonb で、生成される型は Json。開始のたびに形を確かめる。
+// ここを素通しにすると、列の形が変わっても型検査は通り、実行時に黙って壊れる。
+function isPartySnapshot(value: unknown): value is PartySnapshotMember[] {
+  return (
+    Array.isArray(value)
+    && value.every((member) => {
+      if (!member || typeof member !== "object") return false;
+      const row = member as Record<string, unknown>;
+      return (
+        (row.user_character_id === null || typeof row.user_character_id === "string")
+        && typeof row.character_id === "string"
+        && typeof row.attribute === "string"
+        && typeof row.hp === "number"
+        && typeof row.power === "number"
+        && typeof row.speed === "number"
+      );
+    })
+  );
+}
 
 // Supabaseの呼び出しをここに閉じ込める。分岐の検証は start-battle.ts 側で行う。
 function createGateway(supabase: SupabaseClient): StartBattleGateway {
@@ -28,14 +50,31 @@ function createGateway(supabase: SupabaseClient): StartBattleGateway {
       return { userId: user?.id ?? null, failed: Boolean(error) };
     },
 
-    async startBattle() {
-      const { data, error } = await supabase.rpc("start_battle");
+    async findOwnedCharacters() {
+      // 選出に使うのは行IDだけ。3値はサーバーが読むので、ここでは取らない。
+      const { data, error } = await supabase
+        .from("user_characters")
+        .select("id")
+        .order("acquired_at", { ascending: false })
+        .limit(PARTY_SIZE);
+
+      return { owned: data ?? [], failed: Boolean(error) };
+    },
+
+    async startBattle(userCharacterIds) {
+      const { data, error } = await supabase.rpc("start_battle", {
+        p_user_character_ids: userCharacterIds,
+      });
       const battle = data?.[0];
       if (
         !battle
         || typeof battle.battle_id !== "string"
         || typeof battle.enemy_character_id !== "string"
+        || typeof battle.enemy_hp !== "number"
+        || typeof battle.enemy_power !== "number"
+        || typeof battle.enemy_speed !== "number"
         || typeof battle.resumed !== "boolean"
+        || !isPartySnapshot(battle.party_snapshot)
       ) {
         return { battle: null, failed: true };
       }
@@ -44,6 +83,10 @@ function createGateway(supabase: SupabaseClient): StartBattleGateway {
         battle: {
           id: battle.battle_id,
           enemy_character_id: battle.enemy_character_id,
+          enemy_hp: battle.enemy_hp,
+          enemy_power: battle.enemy_power,
+          enemy_speed: battle.enemy_speed,
+          party_snapshot: battle.party_snapshot,
           resumed: battle.resumed,
         },
         failed: Boolean(error),

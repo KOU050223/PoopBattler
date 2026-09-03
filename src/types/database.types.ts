@@ -40,8 +40,12 @@ export type Database = {
           completed_at: string | null
           enemy_attribute: Database["public"]["Enums"]["character_attribute"]
           enemy_character_id: string
+          enemy_hp: number
+          enemy_power: number
+          enemy_speed: number
           id: string
           meal_log_id: string | null
+          party_snapshot: Json
           started_at: string
           status: Database["public"]["Enums"]["battle_status"]
           user_id: string
@@ -51,8 +55,12 @@ export type Database = {
           completed_at?: string | null
           enemy_attribute: Database["public"]["Enums"]["character_attribute"]
           enemy_character_id: string
+          enemy_hp?: number
+          enemy_power?: number
+          enemy_speed?: number
           id?: string
           meal_log_id?: string | null
+          party_snapshot?: Json
           started_at?: string
           status?: Database["public"]["Enums"]["battle_status"]
           user_id: string
@@ -62,8 +70,12 @@ export type Database = {
           completed_at?: string | null
           enemy_attribute?: Database["public"]["Enums"]["character_attribute"]
           enemy_character_id?: string
+          enemy_hp?: number
+          enemy_power?: number
+          enemy_speed?: number
           id?: string
           meal_log_id?: string | null
+          party_snapshot?: Json
           started_at?: string
           status?: Database["public"]["Enums"]["battle_status"]
           user_id?: string
@@ -225,21 +237,30 @@ export type Database = {
           acquired_at: string
           acquired_from_battle_id: string | null
           character_id: string
+          hp: number
           id: string
+          power: number
+          speed: number
           user_id: string
         }
         Insert: {
           acquired_at?: string
           acquired_from_battle_id?: string | null
           character_id: string
+          hp: number
           id?: string
+          power: number
+          speed: number
           user_id: string
         }
         Update: {
           acquired_at?: string
           acquired_from_battle_id?: string | null
           character_id?: string
+          hp?: number
           id?: string
+          power?: number
+          speed?: number
           user_id?: string
         }
         Relationships: [
@@ -288,11 +309,15 @@ export type Database = {
         }[]
       }
       start_battle: {
-        Args: never
+        Args: { p_user_character_ids?: string[] }
         Returns: {
           battle_id: string
           enemy_attribute: Database["public"]["Enums"]["character_attribute"]
           enemy_character_id: string
+          enemy_hp: number
+          enemy_power: number
+          enemy_speed: number
+          party_snapshot: Json
           resumed: boolean
         }[]
       }

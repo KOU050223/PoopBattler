@@ -210,8 +210,16 @@ type PoopmFigureProps = {
 | `meal_logs` | `user_id → profiles.id`、食事日時、画像パス、料理タグ、任意メモ |
 | `bowel_logs` | `user_id → profiles.id`、`battle_result_id → battle_results.id`（一意）、硬さ、量、色、出しやすさ、記録日時 |
 | `characters` | マスター。`id` / `name` / `attribute` / `rarity`。見た目はコードのマップ（上記 poopm）。`image_key` は使わない |
-| `user_characters` | `user_id → profiles.id`、`character_id → characters.id`、`acquired_from_battle_id → battle_results.id` |
-| `battle_results` | `user_id → profiles.id`、`meal_log_id → meal_logs.id`（nullable。ガチャで写真を投げ入れた場合のみ入る）、敵キャラクター・属性、勝敗、抽選状態、開始・完了日時 |
+| `user_characters` | `user_id → profiles.id`、`character_id → characters.id`、`acquired_from_battle_id → battle_results.id`、`hp` / `power` / `speed`（個体ごとの数値。詳細は [`battle.md`](./battle.md)） |
+| `battle_results` | `user_id → profiles.id`、`meal_log_id → meal_logs.id`（nullable。ガチャで写真を投げ入れた場合のみ入る）、敵キャラクター・属性・敵の3値、`party_snapshot`（開始時に出した個体と3値）、勝敗、抽選状態、開始・完了日時 |
+
+ステータスはマスターの `characters` ではなく `user_characters` に置く。同じ
+`character_id` でも所有者や取得タイミングが違えば別の値になる。装備やスキルが
+増えるまで別テーブルは作らない。
+
+`battle_results.party_snapshot` は開始時点の確定値。完了時に「誰が出ていたか」を
+サーバーが自分で知るために持つ。クライアントの申告で成長対象を決めると、
+他人の個体やレンタルを指定できてしまうため。
 
 すべてのユーザー固有テーブルでRLSを有効にし、本人の行だけを `auth.uid() = user_id` で読み書き可能にする。食事画像は端末内のIndexedDBへ保存し、`meal_logs` には画像データではなくローカル画像IDを保存する。画像はサーバーへ送信しないため、Storageの公開URL・署名URL・Storageポリシーは使わない。
 
