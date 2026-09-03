@@ -1,6 +1,64 @@
 import type { Database } from "@/types/database.types";
 
-import type { CharacterAttribute } from "./battle.constants";
+import type {
+  BattleStance,
+  CharacterAttribute,
+} from "./battle.constants";
+
+export type BattleStatus = "idle" | "active" | "defeated" | "completing";
+
+export type BattleCombatant = {
+  characterId: string;
+  attribute: CharacterAttribute;
+  hp: number;
+};
+
+export type BattleParty = [
+  BattleCombatant,
+  BattleCombatant,
+  BattleCombatant,
+];
+
+export type BattleStartMember = {
+  characterId: string;
+  attribute: CharacterAttribute;
+};
+
+export type BattleStartInput = {
+  battleId: string;
+  enemy: BattleStartMember;
+  party: readonly [BattleStartMember, BattleStartMember, BattleStartMember];
+  now?: number;
+};
+
+// 未送信の排便入力。センサー値やカメラ画像はここに足さない。
+export type BowelDraft = {
+  hardness?: number;
+  amount?: string;
+  color?: string;
+  ease?: string;
+};
+
+export type BattleSnapshot = {
+  status: BattleStatus;
+  battleId: string | null;
+  enemy: BattleCombatant | null;
+  party: BattleParty | null;
+  activeIndex: number;
+  playerStance: BattleStance;
+  enemyStance: BattleStance;
+  playerGauge: number;
+  enemyGauge: number;
+  playerGuardRemainingTicks: number;
+  playerGuardCooldownTicks: number;
+  playerSpecialChargeTicks: number;
+  enemyGuardRemainingTicks: number;
+  enemyGuardCooldownTicks: number;
+  enemySpecialTelegraphTicks: number;
+  switchStunTicks: number;
+  startedAt: number | null;
+  bowelDraft: BowelDraft | null;
+};
 
 // クライアントへ返す敵の表示用情報。
 // マスターの行をそのまま返さず、画面が使う項目だけに絞る（Issue #21 実装計画4）。
