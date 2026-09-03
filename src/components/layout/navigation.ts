@@ -3,14 +3,14 @@ import type { LucideIcon } from "lucide-react";
 
 export type NavigationItem = {
   href: "/meals" | "/battle" | "/logs" | "/collection";
-  label: string;
+  labelKey: "meals" | "battle" | "logs" | "collection";
   icon: LucideIcon;
 };
 
 /** ボトムナビゲーションに並べる経路。表示順がそのままナビの並び順になる。 */
 export const navigationItems: readonly NavigationItem[] = [
-  { href: "/meals", label: "食事", icon: Camera },
-  { href: "/battle", label: "バトル", icon: Swords },
-  { href: "/logs", label: "記録", icon: NotebookPen },
-  { href: "/collection", label: "図鑑", icon: BookMarked },
+  { href: "/meals", labelKey: "meals", icon: Camera },
+  { href: "/battle", labelKey: "battle", icon: Swords },
+  { href: "/logs", labelKey: "logs", icon: NotebookPen },
+  { href: "/collection", labelKey: "collection", icon: BookMarked },
 ];

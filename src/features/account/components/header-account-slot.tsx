@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { watchAccountStatusFromBrowser } from "@/lib/supabase/account-watch";
 import { signInAnonymouslyFromBrowser } from "@/lib/supabase/anonymous-session";
@@ -20,6 +21,7 @@ import { HeaderAccountStatus } from "./header-account-status";
  * 行われる以上、初回訪問では必ず未サインインで返るため。
  */
 export function HeaderAccountSlot() {
+  const t = useTranslations("AccountMenu");
   const [status, setStatus] = useState<AccountStatus | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -67,7 +69,7 @@ export function HeaderAccountSlot() {
         onClick={() => void initialize()}
         className="flex min-h-11 items-center rounded-xl border-2 border-faded-gray bg-paper-white px-4 text-sm font-bold text-spark-blue shadow-raised-gray"
       >
-        再試行する
+        {t("retry")}
       </button>
     );
   }
@@ -75,6 +77,7 @@ export function HeaderAccountSlot() {
   return (
     <HeaderAccountStatus
       status={status}
+      loginLabel={t("login")}
       menu={<AccountMenu email={status?.email ?? null} />}
     />
   );

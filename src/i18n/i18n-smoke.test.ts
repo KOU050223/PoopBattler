@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createTranslator } from "next-intl";
 
+import englishMessages from "../../messages/en.json";
 import messages from "../../messages/ja.json";
 import { defaultLocale, isSupportedLocale, locales } from "./config";
 import { resolveLocale } from "./resolve-locale";
@@ -33,6 +34,8 @@ describe("ロケール決定（request.ts が使う実装）", () => {
 // その前提をテストで明示しておく。
 describe("ロケール許可リスト", () => {
   it("locales に含まれる値だけを受け入れる", () => {
+    expect(locales).toEqual(["ja", "en"]);
+
     for (const locale of locales) {
       expect(isSupportedLocale(locale)).toBe(true);
     }
@@ -51,5 +54,11 @@ describe("メッセージカタログ", () => {
   it("存在しないキーは空文字ではなくキー名を返す", () => {
     // @ts-expect-error 存在しないキーを意図的に指定している
     expect(t("Common.doesNotExist")).toBe("Common.doesNotExist");
+  });
+
+  it("英語カタログはナビゲーションを翻訳する", () => {
+    const english = createTranslator({ locale: "en", messages: englishMessages, onError: () => {} });
+
+    expect(english("Navigation.meals")).toBe("Meals");
   });
 });

@@ -6,6 +6,8 @@ import type { AccountStatus } from "../account.types";
 type Props = {
   /** 読み込み中は null。状態が確定するまでは何も断定しない。 */
   status: AccountStatus | null;
+  /** 親のクライアント部品で解決した文言。単体描画時は既存の日本語を保つ。 */
+  loginLabel?: string;
   /**
    * Google連携済みのときに出す操作部（プルダウン）。
    *
@@ -31,7 +33,7 @@ type Props = {
  * 別端末での「ログイン」は既存の匿名データを捨てる破壊的な操作になり得るため、
  * その確認手順は GoogleAccountLink 側に一本化する。
  */
-export function HeaderAccountStatus({ status, menu }: Props) {
+export function HeaderAccountStatus({ status, menu, loginLabel = "ログイン" }: Props) {
   if (!status) {
     return <span aria-hidden="true" className="size-9 shrink-0 rounded-full bg-blush-wash" />;
   }
@@ -45,7 +47,7 @@ export function HeaderAccountStatus({ status, menu }: Props) {
       href="/account"
       className="flex min-h-11 items-center rounded-xl border-2 border-faded-gray bg-paper-white px-4 text-sm font-bold text-spark-blue shadow-raised-gray"
     >
-      ログイン
+      {loginLabel}
     </Link>
   );
 }

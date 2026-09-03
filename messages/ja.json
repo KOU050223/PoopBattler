@@ -1,5 +1,60 @@
 {
   "Common": {
-    "appName": "踏ん張れ！ブリュレイド！！"
+    "appName": "踏ん張れ！ブリュレイド！！",
+    "headerAppName": "Poop Battler",
+    "language": "言語",
+    "loading": "読み込んでいます…",
+    "errorTitle": "問題が発生しました",
+    "errorDescription": "時間をおいて再試行してください。",
+    "retry": "再試行する"
+  },
+  "Navigation": {
+    "label": "メインナビゲーション",
+    "meals": "食事",
+    "battle": "バトル",
+    "logs": "記録",
+    "collection": "図鑑"
+  },
+  "Pages": {
+    "meals": {
+      "title": "今日、何食べた？",
+      "description": "食べたものが、次のうんちモンスターになる。",
+      "entryTitle": "今日のごはん"
+    },
+    "battle": {
+      "title": "バトル",
+      "description": "通常攻撃は自動です。必殺の準備中だけ、踏ん張りで発射します。"
+    },
+    "logs": {
+      "title": "バトルの記録",
+      "description": "戦いの結果と、その日のコンディションを振り返ろう。"
+    },
+    "collection": {
+      "title": "図鑑",
+      "description": "仲間になったうんちモンスターを集めます。"
+    },
+    "account": {
+      "title": "アカウント",
+      "description": "Googleアカウントと連携すると、別の端末でも同じ記録を続けられます。"
+    }
+  },
+  "Home": {
+    "description": "食べたものを記録して、うんちモンスターとのバトルに挑みましょう。",
+    "start": "はじめる"
+  },
+  "AccountMenu": {
+    "login": "ログイン",
+    "retry": "再試行する",
+    "menu": "アカウントメニュー",
+    "menuWithEmail": "アカウントメニュー（{email}）",
+    "settings": "アカウント設定",
+    "signOut": "ログアウト",
+    "pending": "処理中…",
+    "cancel": "やめる",
+    "signOutWarning": "ログアウトすると新しい匿名アカウントになります。いまの記録に戻るには、同じGoogleアカウントでログインしてください。"
+  },
+  "Battle": {
+    "start": "バトルを始める",
+    "loading": "敵を呼び出しています…"
   }
 }

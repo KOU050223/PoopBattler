@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 import { readAuthErrorCode } from "@/features/account/callback-params";
 import { AuthCallbackNotice } from "@/features/account/components/auth-callback-notice";
@@ -10,6 +11,7 @@ export default async function Home({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const params = await searchParams;
+  const t = await getTranslations("Home");
 
   return (
     <div className="flex flex-1 flex-col items-center bg-blush-wash font-sans">
@@ -28,12 +30,12 @@ export default async function Home({
             Poop Battler
           </h1>
           <p className="text-[17px] leading-[1.18] font-medium text-pencil-gray">
-            食べたものを記録して、うんちモンスターとのバトルに挑みましょう。
+            {t("description")}
           </p>
         </div>
 
         <Link href="/battle" className={`flex items-center ${primaryButtonClass}`}>
-          はじめる
+          {t("start")}
         </Link>
       </main>
     </div>
