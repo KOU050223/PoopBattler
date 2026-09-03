@@ -4,7 +4,7 @@ import type { NextConfig } from "next";
 const withNextIntl = createNextIntlPlugin();
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  allowedDevOrigins: ["172.27.117.99"],
 };
 
 export default withNextIntl(nextConfig);

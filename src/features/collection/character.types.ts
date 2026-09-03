@@ -8,6 +8,9 @@ export type CollectionCharacter = Pick<
 > & {
   ownershipId: string;
   acquiredAt: string;
+  hp: number;
+  power: number;
+  speed: number;
 };
 
 export const COLLECTION_RARITY_LABELS: Record<

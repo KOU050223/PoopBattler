@@ -20,6 +20,9 @@ function createSupabase({
   rows?: Array<{
     id: string;
     acquired_at: string;
+    hp: number;
+    power: number;
+    speed: number;
     characters: { id: string; name: string; attribute: "curry"; rarity: "rare" } | null;
   }>;
 } = {}) {
@@ -43,6 +46,9 @@ describe("getCollectionCharactersAction", () => {
     const rows = [{
       id: "00000000-0000-4000-8000-000000000002",
       acquired_at: "2026-09-03T07:00:00.000Z",
+      hp: 252,
+      power: 21,
+      speed: 18,
       characters: { id: "spicy-poop", name: "激辛うんちくん", attribute: "curry" as const, rarity: "rare" as const },
     }];
     const supabase = createSupabase({ rows });
@@ -51,9 +57,12 @@ describe("getCollectionCharactersAction", () => {
     await expect(getCollectionCharactersAction()).resolves.toEqual([{
       ownershipId: rows[0].id,
       acquiredAt: rows[0].acquired_at,
+      hp: 252,
+      power: 21,
+      speed: 18,
       ...rows[0].characters,
     }]);
-    expect(supabase.select).toHaveBeenCalledWith("id, acquired_at, characters!user_characters_character_id_fkey(id, name, attribute, rarity)");
+    expect(supabase.select).toHaveBeenCalledWith("id, acquired_at, hp, power, speed, characters!user_characters_character_id_fkey(id, name, attribute, rarity)");
     expect(supabase.eq).toHaveBeenCalledWith("user_id", user.id);
     expect(supabase.order).toHaveBeenCalledWith("acquired_at", { ascending: false });
   });

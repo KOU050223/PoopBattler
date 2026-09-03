@@ -39,9 +39,12 @@ jobs:
 
       - run: npm ci
 
-      - uses: supabase/setup-cli@v1
+      # v1 の `version: latest` は GitHub Releases API を無認証で叩くため、
+      # レート制限で "Failed to resolve latest Supabase CLI release" になる。
+      # v3 は npm から入れる。バージョンは固定して解決自体を省略する。
+      - uses: supabase/setup-cli@v3
         with:
-          version: latest
+          version: 2.116.0
 
       # 型生成に必要なのはDBだけなので、他のコンテナは起動しない。
       - name: Start local database

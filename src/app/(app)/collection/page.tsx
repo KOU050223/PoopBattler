@@ -3,10 +3,10 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { getCollectionCharactersAction } from "@/features/collection/actions";
-import { CollectionList } from "@/features/collection/components/collection-list";
+import { InventoryScreen } from "@/features/collection/components/inventory-screen";
 
 export const metadata: Metadata = {
-  title: "図鑑",
+  title: "インベントリ",
 };
 
 export default async function CollectionPage() {
@@ -18,7 +18,7 @@ export default async function CollectionPage() {
         title={t("title")}
         description={t("description")}
       />
-      <CollectionList characters={characters} />
+      <InventoryScreen characters={characters} />
     </div>
   );
 }

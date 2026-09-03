@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fillRentalParty, toStartMember } from "./rental-party";
+import { fillParty, fillRentalParty, toStartMember } from "./rental-party";
 
 const normalA = {
   id: "normal-poop",
@@ -39,5 +39,38 @@ describe("fillRentalParty", () => {
   it("normal 以外だけでは埋めない", () => {
     expect(fillRentalParty([])).toBeNull();
     expect(fillRentalParty([curry])).toBeNull();
+  });
+});
+
+describe("fillParty", () => {
+  const ownedMember = {
+    ...toStartMember(curry),
+    userCharacterId: "uc-1",
+    hp: 260,
+    power: 22,
+    speed: 19,
+  };
+  const rentals = fillRentalParty([normalA]);
+
+  it("所持3体ならレンタルを足さない", () => {
+    const owned = [
+      ownedMember,
+      { ...ownedMember, userCharacterId: "uc-2" },
+      { ...ownedMember, userCharacterId: "uc-3" },
+    ];
+    expect(fillParty(owned, rentals ?? [])).toEqual(owned);
+  });
+
+  it("所持1体なら残り2枠をレンタルにする", () => {
+    const party = fillParty([ownedMember], rentals ?? []);
+    expect(party?.map((member) => member.userCharacterId)).toEqual([
+      "uc-1",
+      null,
+      null,
+    ]);
+  });
+
+  it("レンタル候補が無い状態で所持が足りないと埋めない", () => {
+    expect(fillParty([ownedMember], [])).toBeNull();
   });
 });

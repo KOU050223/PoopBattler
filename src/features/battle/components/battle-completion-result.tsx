@@ -64,7 +64,7 @@ export function BattleCompletionResult({ result }: { result: CompletionSuccess }
 
       <div className="grid w-full grid-cols-2 gap-3">
         <Link href="/collection" className={`flex items-center justify-center ${primaryButtonClass}`}>
-          図鑑を見る
+          インベントリを見る
         </Link>
         <Link href="/logs" className={`flex items-center justify-center ${secondaryButtonClass}`}>
           履歴を見る

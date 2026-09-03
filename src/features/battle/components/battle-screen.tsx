@@ -8,6 +8,7 @@ import {
   startBattleAction,
   type CompleteBattleResult,
 } from "@/features/battle/actions";
+import { parsePartyLineup, readPartyLineup } from "@/features/collection/party-lineup";
 import { BattleCompletionFlow } from "@/features/battle/components/battle-completion-flow";
 import {
   ATTRIBUTE_LABELS,
@@ -232,7 +233,9 @@ export function BattleScreen() {
       return;
     }
 
-    const result = await startBattleAction();
+    const result = await startBattleAction({
+      userCharacterIds: parsePartyLineup(readPartyLineup(window.localStorage)),
+    });
     setStarting(false);
     if (result.status === "error") {
       setError(result.message);

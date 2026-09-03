@@ -9,8 +9,10 @@ import {
   RENTAL_SPEED,
 } from "./battle.constants";
 import {
+  readStartBattleUserCharacterIds,
   startBattle,
   type CharacterRow,
+  type PartySnapshotMember,
   type StartBattleGateway,
   type StartedBattleRow,
 } from "./start-battle";
@@ -33,6 +35,24 @@ const normal: CharacterRow = {
 
 // start_battle RPC が返す行。ステータスはサーバーが確定させるので、
 // テストでも「サーバーが返した値」として組み立てる。
+function ownedSnapshot(
+  userCharacterId: string,
+  character: CharacterRow,
+  stats: Pick<PartySnapshotMember, "hp" | "power" | "speed"> = {
+    hp: 240,
+    power: 20,
+    speed: 20,
+  },
+): PartySnapshotMember {
+  return {
+    user_character_id: userCharacterId,
+    character_id: character.id,
+    attribute: character.attribute,
+    name: character.name,
+    ...stats,
+  };
+}
+
 function startedBattleRow(
   overrides: Partial<StartedBattleRow> = {},
 ): StartedBattleRow {
@@ -251,6 +271,113 @@ describe("startBattle", () => {
     expect(startBattleRpc).toHaveBeenCalledWith(["uc-1", "uc-2", "uc-3"]);
   });
 
+  it("選択済みの所持個体IDを開始RPCへ渡す", async () => {
+    const findOwned = vi.fn();
+    const startBattleRpc = vi.fn().mockResolvedValue({
+      battle: startedBattleRow({
+        party_snapshot: [
+          ownedSnapshot("uc-3", curry, { hp: 280, power: 24, speed: 18 }),
+          ownedSnapshot("uc-1", curry, { hp: 200, power: 16, speed: 22 }),
+          ownedSnapshot("uc-4", normal, { hp: 240, power: 20, speed: 20 }),
+        ],
+      }),
+      failed: false,
+    });
+    const result = await startBattle(
+      createGateway({
+        findOwnedCharacters: findOwned,
+        startBattle: startBattleRpc,
+      }),
+      ["uc-3", "uc-1", "uc-4", "uc-9"],
+    );
+
+    expect(startBattleRpc).toHaveBeenCalledWith(["uc-3", "uc-1", "uc-4"]);
+    expect(findOwned).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      status: "started",
+      party: [
+        expect.objectContaining({ userCharacterId: "uc-3", hp: 280, power: 24, speed: 18 }),
+        expect.objectContaining({ userCharacterId: "uc-1", hp: 200, power: 16, speed: 22 }),
+        expect.objectContaining({ userCharacterId: "uc-4", characterId: "normal-poop" }),
+      ],
+    });
+  });
+
+  it("選択済みが3体未満なら不足分をレンタルで埋める", async () => {
+    const startBattleRpc = vi.fn().mockResolvedValue({
+      battle: startedBattleRow({
+        party_snapshot: [ownedSnapshot("uc-2", curry, { hp: 260, power: 22, speed: 19 })],
+      }),
+      failed: false,
+    });
+    const result = await startBattle(
+      createGateway({ startBattle: startBattleRpc }),
+      ["uc-2"],
+    );
+
+    expect(startBattleRpc).toHaveBeenCalledWith(["uc-2"]);
+    expect(result).toMatchObject({
+      status: "started",
+      party: [
+        expect.objectContaining({ userCharacterId: "uc-2", hp: 260, power: 22 }),
+        expect.objectContaining({
+          userCharacterId: null,
+          characterId: "normal-poop",
+          hp: RENTAL_HP,
+          power: RENTAL_POWER,
+          speed: RENTAL_SPEED,
+        }),
+        expect.objectContaining({
+          userCharacterId: null,
+          characterId: "normal-poop",
+        }),
+      ],
+    });
+  });
+
+  it("不正IDが混ざってもスナップショットの本人分だけ使い、残りはレンタルにする", async () => {
+    const startBattleRpc = vi.fn().mockResolvedValue({
+      battle: startedBattleRow({
+        party_snapshot: [ownedSnapshot("uc-1", curry)],
+      }),
+      failed: false,
+    });
+    const result = await startBattle(
+      createGateway({ startBattle: startBattleRpc }),
+      ["uc-foreign", "uc-1", "uc-foreign"],
+    );
+
+    expect(startBattleRpc).toHaveBeenCalledWith(["uc-foreign", "uc-1"]);
+    expect(result).toMatchObject({
+      status: "started",
+      party: [
+        expect.objectContaining({ userCharacterId: "uc-1", characterId: "curry-poop" }),
+        expect.objectContaining({ userCharacterId: null, characterId: "normal-poop" }),
+        expect.objectContaining({ userCharacterId: null, characterId: "normal-poop" }),
+      ],
+    });
+  });
+
+  it("選択済みIDがあるときは所持個体の自動選出を読まない", async () => {
+    const findOwned = vi.fn().mockResolvedValue({ owned: [{ id: "uc-auto" }], failed: false });
+    const startBattleRpc = vi.fn().mockResolvedValue({
+      battle: startedBattleRow({
+        party_snapshot: [ownedSnapshot("uc-picked", curry)],
+      }),
+      failed: false,
+    });
+    await startBattle(
+      createGateway({
+        findOwnedCharacters: findOwned,
+        startBattle: startBattleRpc,
+      }),
+      ["uc-picked"],
+    );
+
+    expect(findOwned).not.toHaveBeenCalled();
+    expect(startBattleRpc).toHaveBeenCalledWith(["uc-picked"]);
+  });
+
   it("レンタル候補の読み出しに失敗しても敵を代替パーティにする", async () => {
     const result = await startBattle(
       createGateway({
@@ -268,5 +395,27 @@ describe("startBattle", () => {
         expect.objectContaining({ characterId: "curry-poop" }),
       ],
     });
+  });
+});
+
+describe("readStartBattleUserCharacterIds", () => {
+  const id1 = "00000000-0000-4000-8000-000000000001";
+  const id2 = "00000000-0000-4000-8000-000000000002";
+  const id3 = "00000000-0000-4000-8000-000000000003";
+  const id4 = "00000000-0000-4000-8000-000000000004";
+
+  it("UUID の所持個体IDだけを最大3件、出現順で残す", () => {
+    expect(readStartBattleUserCharacterIds({
+      userCharacterIds: [id1, "not-a-uuid", id1, id2, id3, id4],
+      hp: 9999,
+      power: 99,
+      speed: 1,
+    })).toEqual([id1, id2, id3]);
+  });
+
+  it("ID以外の入力は空にして、3値だけでは選出できないようにする", () => {
+    expect(readStartBattleUserCharacterIds(undefined)).toEqual([]);
+    expect(readStartBattleUserCharacterIds({ hp: 240, power: 20, speed: 20 })).toEqual([]);
+    expect(readStartBattleUserCharacterIds({ userCharacterIds: id1 })).toEqual([]);
   });
 });
