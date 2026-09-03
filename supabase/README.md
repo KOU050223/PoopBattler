@@ -198,28 +198,69 @@ https://poop-battler.vercel.app/auth/callback
 Vercelへデプロイされるまで本番には存在しない**（404になる）。
 本番で連携を試すのはデプロイ後。
 
-### 3. ローカルスタックで試す（任意）
+### 3. localhost で開発する
 
-Google の往復までローカルで確認したい場合のみ。
+Google連携をローカルで動かす方法は2つある。**どちらを使うかで、
+リダイレクトURIを登録する場所が変わる。**
 
-1. `.env.local` に Client ID / Secret を設定する（`.env.local.example` 参照）。
+Googleが戻る先は常に「アプリが繋いでいるSupabase」であって、アプリ自身
+（`:3000`）ではない。ローカルスタックに繋ぐなら `:54321` を Google 側へ、
+本番Supabaseに繋ぐなら Supabase Dashboard 側へ登録する、と考えると迷わない。
+
+| | A: ローカルSupabase | B: 本番Supabase |
+| --- | --- | --- |
+| Google Console | `http://127.0.0.1:54321/auth/v1/callback` を追加 | 不要 |
+| Supabase Dashboard | 不要 | Redirect URLs に `http://localhost:3000/auth/callback` を追加 |
+| データの行き先 | ローカルに隔離される | **本番DBに混ざる** |
+| Client ID / Secret | `.env.local` に必要 | 不要 |
+
+**Aを推奨する。** 昇格や衝突の確認は「同じGoogleアカウントで別ユーザーを
+作る」といった操作を繰り返すため、本番DBに検証用のユーザーが溜まる。
+
+#### A: ローカルスタックに繋ぐ
+
+1. Google Console のOAuthクライアントに、**既存のURIを消さずに追加**する。
+
+   ```text
+   http://127.0.0.1:54321/auth/v1/callback
+   ```
+
+2. `.env.local` を設定する（`.env.local.example` 参照）。
 
    ```bash
+   NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<supabase status の Publishable key>
    SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=...
    SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=...
    ```
 
-2. `config.toml` の `[auth.external.google]` の `enabled` を `true` にする。
-3. **スタックを起動し直す。** `config.toml` の変更は `supabase db reset` では
-   反映されない。認証コンテナの設定は起動時にしか読まれないため、
-   `supabase stop && supabase start` が必要。
+   `NEXT_PUBLIC_SUPABASE_URL` が本番URLのままだと、ローカルの設定は
+   一切使われない。**変更を忘れても動いてしまう**（本番に繋がるだけ）ので、
+   「ローカルのつもりで本番を触っていた」に気づきにくい。
 
-```bash
-supabase stop && supabase start
+3. `config.toml` の `[auth.external.google]` の `enabled` を `true` にする。
+4. **スタックを起動し直す。** `config.toml` の変更は `supabase db reset` では
+   反映されない。認証コンテナの設定は起動時にしか読まれないため。
+
+   ```bash
+   supabase stop && supabase start
+   npm run dev
+   ```
+
+`site_url` と `additional_redirect_urls` は `config.toml` に設定済みなので、
+`http://localhost:3000` と `http://127.0.0.1:3000` のどちらで開いても戻れる。
+
+#### B: 本番Supabaseに繋ぐ
+
+`.env.local` は本番のURL・キーのまま、Supabase Dashboard の
+**URL Configuration > Redirect URLs** に次を追加するだけでよい。
+
+```text
+http://localhost:3000/auth/callback
 ```
 
-`.env.local` の `NEXT_PUBLIC_SUPABASE_URL` がローカル（`http://127.0.0.1:54321`）を
-指していることも確認する。本番URLのままだとローカルの設定は使われない。
+Client ID / Secret は Dashboard 側に入っているので `.env.local` には要らない。
+手軽な代わりに、ローカルでの操作がそのまま本番のユーザーとして残る。
 
 ### 昇格でユーザーIDは変わらない
 
