@@ -2,14 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   STRAIN_ACCELERATION_THRESHOLD,
-  STRAIN_DEBOUNCE_MS,
+  STRAIN_IDLE_DECAY_RATE,
+  STRAIN_REQUIRED_MS,
   accelerationMagnitude,
+  advanceStrainAccumulation,
   createStrainListener,
   inspectMotionPermission,
+  isStraining,
   motionSkipReason,
   pickAcceleration,
   requestMotionPermission,
-  shouldFireStrain,
   type DeviceMotionEventLike,
   type StrainListenerHost,
 } from "./motion";
@@ -105,41 +107,13 @@ describe("motionSkipReason", () => {
 });
 
 describe("揺れ判定", () => {
-  it("欠損やしきい値未満は撃たず、しきい値以上だけ撃つ", () => {
+  it("欠損やしきい値未満は踏ん張らず、しきい値以上だけ踏ん張る", () => {
     expect(accelerationMagnitude({ x: 3, y: 4, z: null })).toBeNull();
     expect(accelerationMagnitude(axis(3, 4, 12))).toBe(13);
 
-    expect(
-      shouldFireStrain({
-        magnitude: STRAIN_ACCELERATION_THRESHOLD - 0.1,
-        now: 1_000,
-        lastFireAt: null,
-      }),
-    ).toBe(false);
-    expect(
-      shouldFireStrain({
-        magnitude: STRAIN_ACCELERATION_THRESHOLD,
-        now: 1_000,
-        lastFireAt: null,
-      }),
-    ).toBe(true);
-  });
-
-  it("デバウンス中の2回目は撃たない", () => {
-    expect(
-      shouldFireStrain({
-        magnitude: 20,
-        now: 1_000,
-        lastFireAt: 1_000 - STRAIN_DEBOUNCE_MS + 1,
-      }),
-    ).toBe(false);
-    expect(
-      shouldFireStrain({
-        magnitude: 20,
-        now: 1_000,
-        lastFireAt: 1_000 - STRAIN_DEBOUNCE_MS,
-      }),
-    ).toBe(true);
+    expect(isStraining(STRAIN_ACCELERATION_THRESHOLD - 0.1)).toBe(false);
+    expect(isStraining(STRAIN_ACCELERATION_THRESHOLD)).toBe(true);
+    expect(isStraining(null)).toBe(false);
   });
 
   it("線形加速度がほぼゼロなら重力込みを使う", () => {
@@ -157,14 +131,63 @@ describe("揺れ判定", () => {
     ).toEqual(axis(0, 0, 8));
   });
 
-  it("静止の重力では撃たない", () => {
+  it("静止の重力では踏ん張らない", () => {
+    expect(isStraining(accelerationMagnitude(axis(0, 9.8, 0)))).toBe(false);
+  });
+});
+
+describe("advanceStrainAccumulation", () => {
+  it("静止は積まず、短いスパイクでも発射しない", () => {
     expect(
-      shouldFireStrain({
-        magnitude: accelerationMagnitude(axis(0, 9.8, 0)),
-        now: 1_000,
-        lastFireAt: null,
+      advanceStrainAccumulation({
+        accumulatedMs: 0,
+        dtMs: 50,
+        straining: false,
       }),
-    ).toBe(false);
+    ).toEqual({ accumulatedMs: 0, fired: false });
+
+    expect(
+      advanceStrainAccumulation({
+        accumulatedMs: 0,
+        dtMs: 50,
+        straining: true,
+      }),
+    ).toEqual({ accumulatedMs: 50, fired: false });
+  });
+
+  it("しきい値以上の揺れを約10秒続けると発射する", () => {
+    const finished = advanceStrainAccumulation({
+      accumulatedMs: STRAIN_REQUIRED_MS - 50,
+      dtMs: 50,
+      straining: true,
+    });
+    expect(finished).toEqual({ accumulatedMs: STRAIN_REQUIRED_MS, fired: true });
+
+    const short = advanceStrainAccumulation({
+      accumulatedMs: STRAIN_REQUIRED_MS - 80,
+      dtMs: 50,
+      straining: true,
+    });
+    expect(short.fired).toBe(false);
+    expect(short.accumulatedMs).toBe(STRAIN_REQUIRED_MS - 30);
+  });
+
+  it("途切れると進捗が落ち、すぐには発射しない", () => {
+    const afterIdle = advanceStrainAccumulation({
+      accumulatedMs: 5_000,
+      dtMs: 1_000,
+      straining: false,
+    });
+    expect(afterIdle.fired).toBe(false);
+    expect(afterIdle.accumulatedMs).toBe(5_000 - 1_000 * STRAIN_IDLE_DECAY_RATE);
+
+    const spikeAfterIdle = advanceStrainAccumulation({
+      accumulatedMs: afterIdle.accumulatedMs,
+      dtMs: 50,
+      straining: true,
+    });
+    expect(spikeAfterIdle.fired).toBe(false);
+    expect(spikeAfterIdle.accumulatedMs).toBeLessThan(STRAIN_REQUIRED_MS);
   });
 });
 
@@ -198,30 +221,66 @@ describe("createStrainListener", () => {
     acceleration: axis(0, 0, 0.2),
     accelerationIncludingGravity: axis(0, 9.8, 0),
   };
+  const SAMPLE_MS = 50;
 
-  it("準備中の1回の踏ん張りだけ発射し、弱い揺れでは撃たない", () => {
+  function emitUntil(host: ReturnType<typeof createHost>, event: DeviceMotionEventLike, clock: { now: number }, until: number) {
+    while (clock.now < until) {
+      clock.now += SAMPLE_MS;
+      host.emit(event);
+    }
+  }
+
+  it("静止・短いスパイクでは撃たず、約10秒続けると撃ち、途切れ後はすぐ撃たない", () => {
     const host = createHost();
     const onStrain = vi.fn();
-    let now = 0;
+    const onProgress = vi.fn();
+    const clock = { now: 0 };
     const strain = createStrainListener({
       host: host.host,
       onStrain,
-      now: () => now,
+      onProgress,
+      now: () => clock.now,
     });
 
     host.emit(spike);
     expect(onStrain).not.toHaveBeenCalled();
 
     strain.start();
-    host.emit(rest);
+    emitUntil(host, rest, clock, 10_000);
     expect(onStrain).not.toHaveBeenCalled();
+    expect(onProgress).toHaveBeenCalled();
+    expect(onProgress.mock.calls.at(-1)?.[0].ratio).toBe(0);
 
-    now = 10;
+    clock.now = 0;
+    strain.stop();
+    strain.start();
+    clock.now = SAMPLE_MS;
     host.emit(spike);
-    now = 20;
-    host.emit(spike);
+    expect(onStrain).not.toHaveBeenCalled();
+    expect(onProgress.mock.calls.at(-1)?.[0].ratio).toBeLessThan(1);
+
+    clock.now = 0;
+    strain.stop();
+    strain.start();
+    emitUntil(host, spike, clock, STRAIN_REQUIRED_MS);
     expect(onStrain).toHaveBeenCalledTimes(1);
     expect(host.isAttached()).toBe(false);
+
+    const interrupted = createHost();
+    const interruptedStrain = vi.fn();
+    const interruptedClock = { now: 0 };
+    const listener = createStrainListener({
+      host: interrupted.host,
+      onStrain: interruptedStrain,
+      now: () => interruptedClock.now,
+    });
+    listener.start();
+    emitUntil(interrupted, spike, interruptedClock, 5_000);
+    emitUntil(interrupted, rest, interruptedClock, 6_000);
+    interruptedClock.now += SAMPLE_MS;
+    interrupted.emit(spike);
+    expect(interruptedStrain).not.toHaveBeenCalled();
+    expect(interrupted.isAttached()).toBe(true);
   });
 
   it("stop と準備終了後はイベントを購読しない", () => {

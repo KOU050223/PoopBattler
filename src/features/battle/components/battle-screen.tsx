@@ -23,6 +23,7 @@ import { BattleControls } from "@/features/battle/components/battle-controls";
 import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
 import { BattleFigure } from "@/features/battle/components/battle-figure";
 import { useBattleWakeLock } from "@/features/battle/hooks/use-battle-wake-lock";
+import { useSpecialMotion } from "@/features/battle/hooks/use-special-motion";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import { captionTextClass, mutedTextClass, primaryButtonClass, stancePillClass } from "@/lib/ui-classes";
@@ -111,6 +112,35 @@ function HpBar({
   );
 }
 
+function StrainGauge({ progress }: { progress: number }) {
+  const ratio = Math.max(0, Math.min(1, progress));
+  const percent = Math.round(ratio * 100);
+  return (
+    <div className="flex flex-col gap-1">
+      <div className={`flex justify-between ${captionTextClass}`}>
+        <span>踏ん張り</span>
+        <span>{percent}%</span>
+      </div>
+      <div
+        className="h-3 overflow-hidden rounded-full bg-blush-wash"
+        role="progressbar"
+        aria-label="踏ん張り"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+      >
+        <div
+          className="h-full bg-night-ink"
+          style={{ width: `${ratio * 100}%` }}
+        />
+      </div>
+      <p role="status" className="text-center text-sm text-charcoal">
+        振り続けて発射！
+      </p>
+    </div>
+  );
+}
+
 export function BattleScreen() {
   const hydrated = useSyncExternalStore(
     subscribeHydration,
@@ -139,6 +169,7 @@ export function BattleScreen() {
     () => DEFAULT_BATTLE_SPEED,
   );
   const previousHp = useRef<{ player: number; enemy: number } | null>(null);
+  const { reason, strainProgress, activateSpecial } = useSpecialMotion();
 
   const showRestore =
     hydrated && snapshot.status === "active" && !acceptedRestore;
@@ -386,9 +417,7 @@ export function BattleScreen() {
           </div>
         </div>
         {snapshot.playerStance === "special" ? (
-          <p role="status" className="text-center text-sm">
-            踏ん張って発射！
-          </p>
+          <StrainGauge progress={strainProgress} />
         ) : null}
         <BattleControls
           party={snapshot.party}
@@ -399,7 +428,9 @@ export function BattleScreen() {
           switchStunTicks={snapshot.switchStunTicks}
           benchGauges={snapshot.benchGauges}
           onGuard={() => useBattleStore.getState().setStance("guard")}
+          onSpecial={activateSpecial}
           onSwitch={(index) => useBattleStore.getState().switchMember(index)}
+          specialReason={reason}
           onDebugStrain={() => useBattleStore.getState().fireSpecial()}
           onDebugComplete={() => useBattleStore.getState().markCompleting()}
         />

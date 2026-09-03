@@ -65,7 +65,8 @@ export const TIMEOUT_MS = 90_000;
 export const GUARD_DURATION_MS = 10_000;
 export const GUARD_COOLDOWN_MS = 15_000;
 export const SWITCH_STUN_MS = 1_000;
-export const PLAYER_SPECIAL_CHARGE_MS = 3_000;
+// 踏ん張り積算（約10秒）より長くし、振り切る前に時間切れしない（Issue #94）。
+export const PLAYER_SPECIAL_CHARGE_MS = 15_000;
 export const ENEMY_SPECIAL_TELEGRAPH_MS = 2_000;
 
 export const TYPE_ADVANTAGE = 1.5;

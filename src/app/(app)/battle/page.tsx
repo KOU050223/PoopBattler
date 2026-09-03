@@ -12,7 +12,7 @@ export default function BattlePage() {
     <div className="mx-auto flex w-full max-w-md flex-col gap-6">
       <PageHeader
         title="バトル"
-        description="通常攻撃は自動です。必殺の準備中だけ、踏ん張りで発射します。"
+        description="通常攻撃は自動です。必殺の準備中に振り続けると発射します。"
       />
       <BattleScreen />
     </div>

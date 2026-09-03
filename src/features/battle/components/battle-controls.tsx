@@ -1,6 +1,5 @@
 "use client";
 
-import { useSpecialMotion } from "@/features/battle/hooks/use-special-motion";
 import {
   SPECIAL_GAUGE_MAX,
   type BattleStance,
@@ -29,7 +28,9 @@ export function BattleControls({
   switchStunTicks,
   benchGauges,
   onGuard,
+  onSpecial,
   onSwitch,
+  specialReason,
   onDebugStrain,
   onDebugComplete,
 }: {
@@ -41,11 +42,12 @@ export function BattleControls({
   switchStunTicks: number;
   benchGauges: [number, number, number];
   onGuard: () => void;
+  onSpecial: () => void;
   onSwitch: (index: number) => void;
+  specialReason?: string | null;
   onDebugStrain?: () => void;
   onDebugComplete?: () => void;
 }) {
-  const { reason, activateSpecial } = useSpecialMotion();
   const stunned = switchStunTicks > 0;
   const specialReady = playerGauge >= SPECIAL_GAUGE_MAX && !stunned;
   const guardBlocked = playerGuardCooldownTicks > 0 || playerStance === "guard" || stunned;
@@ -65,14 +67,14 @@ export function BattleControls({
           type="button"
           className={controlClass("special", playerStance === "special", !specialReady)}
           disabled={!specialReady}
-          onClick={activateSpecial}
+          onClick={onSpecial}
         >
           必殺
         </button>
       </div>
-      {reason ? (
+      {specialReason ? (
         <p role="status" className={`text-center ${captionTextClass}`}>
-          {reason}
+          {specialReason}
         </p>
       ) : null}
       {process.env.NODE_ENV === "development" ? (

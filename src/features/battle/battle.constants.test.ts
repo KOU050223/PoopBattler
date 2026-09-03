@@ -1,17 +1,21 @@
 import { describe, expect, it } from "vitest";
 
+import { STRAIN_REQUIRED_MS } from "@/lib/motion";
 import {
   AUTO_ATTACK_DAMAGE,
   AUTO_ATTACK_PERIOD_TICKS,
   GUARD_INCOMING_MULTIPLIER,
+  PLAYER_SPECIAL_CHARGE_MS,
   SPECIAL_BASE_DAMAGE,
   SPECIAL_DAMAGE_MULTIPLIER,
+  TICK_INTERVAL_MS,
   TYPE_ADVANTAGE,
   TYPE_DISADVANTAGE,
   TYPE_NEUTRAL,
   TYPE_WHEEL,
   computeAttackDamage,
   matchupTone,
+  msToTicks,
   shouldAutoAttack,
   typeMultiplier,
 } from "./battle.constants";
@@ -167,5 +171,13 @@ describe("shouldAutoAttack", () => {
 
     expect(split.some((roll) => roll.player && !roll.enemy)).toBe(true);
     expect(split.some((roll) => !roll.player && roll.enemy)).toBe(true);
+  });
+});
+
+describe("必殺の準備ウィンドウ", () => {
+  it("10秒振り切る前に時間切れしない", () => {
+    expect(
+      msToTicks(PLAYER_SPECIAL_CHARGE_MS) * TICK_INTERVAL_MS,
+    ).toBeGreaterThan(STRAIN_REQUIRED_MS);
   });
 });
