@@ -54,6 +54,7 @@
     "iosStepOne": "Tap the Share button at the bottom of the screen",
     "iosStepTwo": "Choose Add to Home Screen",
     "iosStepThree": "Tap Add in the top-right corner",
+    "chromiumInstructions": "Use the browser menu or the install icon in the address bar to add the app.",
     "manifestShortName": "Brule Raid",
     "manifestDescription": "Keep meal and bowel logs through battles."
   },

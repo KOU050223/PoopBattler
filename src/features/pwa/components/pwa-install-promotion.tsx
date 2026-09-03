@@ -31,7 +31,7 @@ function hasPromotionEligibility() {
 /** 初回バトルの記録完了後だけに置く、控えめなホーム画面追加案内。 */
 export function PwaInstallPromotion({ isFirstCompletedBattle }: { isFirstCompletedBattle: boolean }) {
   const t = useTranslations("Pwa");
-  const { deferredPrompt, isInstalled, isIosSafari, requestInstall } = usePwaInstall();
+  const { deferredPrompt, isInstalled, isIosSafari, isChromium, requestInstall } = usePwaInstall();
   const [dismissed, setDismissed] = useState(false);
   const hasAlreadyShown = useSyncExternalStore(
     subscribeToPromotionStorage,
@@ -58,6 +58,7 @@ export function PwaInstallPromotion({ isFirstCompletedBattle }: { isFirstComplet
     hasNativePrompt: deferredPrompt !== null,
     isInstalled,
     isIosSafari,
+    isChromium,
     hasAlreadyShown,
   });
 
@@ -89,6 +90,7 @@ export function InstallPromotionCard({
   t: ReturnType<typeof useTranslations<"Pwa">>;
 }) {
   const isNative = kind === "native";
+  const isChromiumInstructions = kind === "chromium-instructions";
 
   return (
     <aside className={`w-full text-left ${cardClass}`} aria-labelledby="pwa-install-title">
@@ -117,11 +119,15 @@ export function InstallPromotionCard({
         </div>
       ) : (
         <>
-          <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm font-medium leading-6 text-pencil-gray">
-            <li>{t("iosStepOne")}</li>
-            <li>{t("iosStepTwo")}</li>
-            <li>{t("iosStepThree")}</li>
-          </ol>
+          {isChromiumInstructions ? (
+            <p className={`mt-4 ${mutedTextClass}`}>{t("chromiumInstructions")}</p>
+          ) : (
+            <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm font-medium leading-6 text-pencil-gray">
+              <li>{t("iosStepOne")}</li>
+              <li>{t("iosStepTwo")}</li>
+              <li>{t("iosStepThree")}</li>
+            </ol>
+          )}
           <button type="button" className={`mt-4 ${secondaryButtonClass}`} onClick={onDismiss}>
             {t("later")}
           </button>

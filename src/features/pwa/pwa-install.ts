@@ -1,7 +1,7 @@
 export const PWA_INSTALL_PROMOTION_STORAGE_KEY = "poop-battler:pwa-install-promotion-shown";
 export const PWA_INSTALL_PROMOTION_ELIGIBLE_STORAGE_KEY = "poop-battler:pwa-install-promotion-eligible";
 
-export type InstallPromotionKind = "native" | "ios-instructions";
+export type InstallPromotionKind = "native" | "ios-instructions" | "chromium-instructions";
 
 /** 確定済みバトルの総数から、今回が初回の完了かを判定する。 */
 export function isFirstCompletedBattle(completedBattleCount: number) {
@@ -20,6 +20,7 @@ type InstallPromotionConditions = {
   hasNativePrompt: boolean;
   isInstalled: boolean;
   isIosSafari: boolean;
+  isChromium: boolean;
   hasAlreadyShown: boolean;
 };
 
@@ -28,12 +29,18 @@ export function installPromotionKind({
   hasNativePrompt,
   isInstalled,
   isIosSafari,
+  isChromium,
   hasAlreadyShown,
 }: InstallPromotionConditions): InstallPromotionKind | null {
   if (isInstalled || hasAlreadyShown) return null;
   if (hasNativePrompt) return "native";
   if (isIosSafari) return "ios-instructions";
+  if (isChromium) return "chromium-instructions";
   return null;
+}
+
+export function isChromiumBrowser(userAgent: string) {
+  return /Chrome|Chromium|CriOS|Edg\//.test(userAgent) && !/OPR\//.test(userAgent);
 }
 
 export function isIosSafari(userAgent: string, vendor: string, maxTouchPoints = 0) {

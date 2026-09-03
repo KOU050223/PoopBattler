@@ -2,7 +2,7 @@
 
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
-import { isIosSafari } from "@/features/pwa/pwa-install";
+import { isChromiumBrowser, isIosSafari } from "@/features/pwa/pwa-install";
 
 type DeferredInstallPrompt = Event & {
   prompt: () => Promise<void>;
@@ -13,6 +13,7 @@ type PwaInstallContextValue = {
   deferredPrompt: DeferredInstallPrompt | null;
   isInstalled: boolean;
   isIosSafari: boolean;
+  isChromium: boolean;
   requestInstall: () => Promise<void>;
 };
 
@@ -20,6 +21,7 @@ const unavailableInstallContext: PwaInstallContextValue = {
   deferredPrompt: null,
   isInstalled: false,
   isIosSafari: false,
+  isChromium: false,
   requestInstall: async () => undefined,
 };
 
@@ -37,6 +39,10 @@ function browserIsIosSafari() {
   return isIosSafari(navigator.userAgent, navigator.vendor, navigator.maxTouchPoints);
 }
 
+function browserIsChromium() {
+  return isChromiumBrowser(navigator.userAgent);
+}
+
 /**
  * beforeinstallprompt は早いタイミングで発火しうるため、アプリ全体で保持する。
  * 画面側はここから状態を読むだけにして、ユーザー操作時にだけ prompt を呼び出す。
@@ -46,6 +52,7 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
   const [installedFromEvent, setInstalledFromEvent] = useState(false);
   const isStandaloneApp = useSyncExternalStore(subscribeToNothing, isStandalone, () => false);
   const isIosSafariBrowser = useSyncExternalStore(subscribeToNothing, browserIsIosSafari, () => false);
+  const isChromium = useSyncExternalStore(subscribeToNothing, browserIsChromium, () => false);
   const isInstalled = installedFromEvent || isStandaloneApp;
 
   useEffect(() => {
@@ -70,12 +77,13 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
     deferredPrompt,
     isInstalled,
     isIosSafari: isIosSafariBrowser,
+    isChromium,
     async requestInstall() {
       if (!deferredPrompt) return;
       await deferredPrompt.prompt();
       setDeferredPrompt(null);
     },
-  }), [deferredPrompt, isInstalled, isIosSafariBrowser]);
+  }), [deferredPrompt, isInstalled, isIosSafariBrowser, isChromium]);
 
   return <PwaInstallContext.Provider value={value}>{children}</PwaInstallContext.Provider>;
 }

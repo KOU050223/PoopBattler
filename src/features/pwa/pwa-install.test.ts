@@ -14,6 +14,7 @@ describe("installPromotionKind", () => {
         hasNativePrompt: true,
         isInstalled: false,
         isIosSafari: false,
+        isChromium: true,
         hasAlreadyShown: false,
       }),
     ).toBe("native");
@@ -25,6 +26,7 @@ describe("installPromotionKind", () => {
         hasNativePrompt: false,
         isInstalled: false,
         isIosSafari: true,
+        isChromium: false,
         hasAlreadyShown: false,
       }),
     ).toBe("ios-instructions");
@@ -36,6 +38,7 @@ describe("installPromotionKind", () => {
         hasNativePrompt: true,
         isInstalled: true,
         isIosSafari: false,
+        isChromium: true,
         hasAlreadyShown: false,
       }),
     ).toBeNull();
@@ -44,6 +47,7 @@ describe("installPromotionKind", () => {
         hasNativePrompt: true,
         isInstalled: false,
         isIosSafari: false,
+        isChromium: true,
         hasAlreadyShown: true,
       }),
     ).toBeNull();
@@ -52,9 +56,20 @@ describe("installPromotionKind", () => {
         hasNativePrompt: false,
         isInstalled: false,
         isIosSafari: false,
+        isChromium: false,
         hasAlreadyShown: false,
       }),
     ).toBeNull();
+  });
+
+  it("導入イベント前のChromiumにはメニューからの追加手順を出す", () => {
+    expect(installPromotionKind({
+      hasNativePrompt: false,
+      isInstalled: false,
+      isIosSafari: false,
+      isChromium: true,
+      hasAlreadyShown: false,
+    })).toBe("chromium-instructions");
   });
 });
 
