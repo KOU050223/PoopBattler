@@ -74,7 +74,7 @@ export type BattleSnapshot = {
   enemySpecialTelegraphTicks: number;
   switchStunTicks: number;
   elapsedTicks: number;
-  // ベンチ中の味方ごとの必殺ゲージ。場に出ている activeIndex のスロットは使わない。
+  // 旧スナップショット互換のスロット。ベンチ中の必殺ゲージは持たず、常に0へ寄せる。
   benchGauges: [number, number, number];
   startedAt: number | null;
   bowelDraft: BowelDraft | null;

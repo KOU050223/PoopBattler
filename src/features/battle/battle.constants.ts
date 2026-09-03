@@ -87,10 +87,9 @@ export const SPECIAL_DAMAGE_MULTIPLIER = 10;
 export const SPECIAL_GAUGE_MAX = 100;
 export const SPECIAL_GAUGE_PER_TICK = 2;
 
-// ベンチ回復: 場に出ていない味方のHP・必殺ゲージを毎ティック少しずつ回復する。
+// ベンチ回復: 場に出ていない味方のHPを毎ティック少しずつ回復する。
 // 戦闘不能（HP 0）のキャラは回復しない。
 export const BENCH_HP_RECOVERY_RATE = 0.01; // maxHp の 1% / tick
-export const BENCH_GAUGE_RECOVERY_PER_TICK = 1; // 場の半分のペースでゲージ回復
 
 // 通常攻撃は双方とも 5 tick ごとの窓で半々。1発 20。
 // 必殺は従来の基礎 4 に倍率を掛ける。タイムアップは 180 tick（等倍で 90秒）。

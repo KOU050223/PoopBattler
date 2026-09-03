@@ -1,5 +1,4 @@
 import {
-  BENCH_GAUGE_RECOVERY_PER_TICK,
   BENCH_HP_RECOVERY_RATE,
   GUARD_COOLDOWN_MS,
   PARTY_SIZE,
@@ -90,17 +89,12 @@ function applyKnockout(state: BattleSnapshot): BattleSnapshot {
     };
   }
 
-  const benchGauges = [...state.benchGauges] as [number, number, number];
-  benchGauges[state.activeIndex] = 0;
-  const incomingGauge = benchGauges[nextIndex];
-  benchGauges[nextIndex] = 0;
-
   return {
     ...state,
     activeIndex: nextIndex,
     switchStunTicks: msToTicks(SWITCH_STUN_MS),
-    playerGauge: incomingGauge,
-    benchGauges,
+    playerGauge: 0,
+    benchGauges: [0, 0, 0],
     playerStance: "fight",
     playerSpecialChargeTicks: 0,
     playerGuardRemainingTicks: 0,
@@ -328,9 +322,10 @@ export function applyBattleTick(state: BattleSnapshot): BattleSnapshot {
     }
   }
 
-  // ベンチ回復: 場に出ていない味方のHPとゲージを毎ティック少しずつ回復する。
+  // ベンチ回復: 場に出ていない味方のHPを毎ティック少しずつ回復する。
   // 戦闘不能（HP 0）のキャラは回復しない。
   if (!next.party) return next;
+  next.benchGauges = [0, 0, 0];
   for (let i = 0; i < PARTY_SIZE; i += 1) {
     if (i === next.activeIndex) continue;
     const member = next.party[i];
@@ -339,10 +334,6 @@ export function applyBattleTick(state: BattleSnapshot): BattleSnapshot {
     member.hp = Math.min(
       member.maxHp,
       member.hp + Math.max(1, Math.floor(member.maxHp * BENCH_HP_RECOVERY_RATE)),
-    );
-    next.benchGauges[i] = Math.min(
-      SPECIAL_GAUGE_MAX,
-      next.benchGauges[i] + BENCH_GAUGE_RECOVERY_PER_TICK,
     );
   }
 
