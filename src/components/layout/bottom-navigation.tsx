@@ -17,9 +17,9 @@ export function BottomNavigation() {
   return (
     <nav
       aria-label="メインナビゲーション"
-      className="fixed inset-x-0 bottom-0 z-10 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+      className="fixed inset-x-0 bottom-0 z-10 border-t border-cotton-pink/60 bg-blush-wash/90 px-3 pb-[env(safe-area-inset-bottom)] pt-2 backdrop-blur-sm"
     >
-      <ul className="mx-auto flex max-w-3xl gap-1 rounded-2xl border-2 border-faded-gray bg-paper-white p-1 shadow-raised-gray">
+      <ul className="mx-auto flex max-w-3xl gap-1 rounded-xl bg-paper-white/85 p-1 shadow-[0_3px_12px_rgb(201_77_127_/_0.1)]">
         {navigationItems.map(({ href, label, icon: Icon }) => {
           const isCurrent = pathname === href || pathname.startsWith(`${href}/`);
 

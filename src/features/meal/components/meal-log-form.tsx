@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
+import { CalendarClock, CheckCircle2, ChevronDown, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { MealPhotoPicker } from "./meal-photo-picker";
@@ -9,7 +10,7 @@ import { MealSaveConfirmationModal } from "./meal-save-confirmation-modal";
 import { MealTagSelector } from "./meal-tag-selector";
 import { deleteMealPhoto, isMealPhotoStorageError, saveMealPhoto } from "@/features/meal/meal-photo-storage";
 import { type MealLogDraft, type MealLogSaveResult, type MealTag } from "@/features/meal/meal.types";
-import { captionTextClass, fieldClass, primaryButtonClass } from "@/lib/ui-classes";
+import { captionTextClass, fieldClass } from "@/lib/ui-classes";
 
 type FieldErrors = Partial<Record<"photo" | "tag" | "eatenAt" | "save", string>>;
 
@@ -24,6 +25,10 @@ function currentLocalDateTime() {
   const now = new Date();
   const offset = now.getTimezoneOffset() * 60_000;
   return new Date(now.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function compactDateTime(value: string) {
+  return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
 
 export function MealLogForm({ onSave }: MealLogFormProps) {
@@ -112,16 +117,26 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
   return (
     <form
       onSubmit={requestConfirmation}
-      className="flex max-w-md flex-col gap-6"
+      className="flex flex-col gap-4 sm:gap-5"
       noValidate
       inert={isConfirming}
     >
-      <div className="flex flex-col gap-2">
-        <p className="font-bold text-charcoal">
-          食事の写真 <span aria-hidden="true">*</span>
-        </p>
+      <div className="flex flex-col gap-3">
+        <p className="meal-field-label">食事の写真 <span aria-hidden="true">*</span></p>
+        {previewUrl && (
+          <div className="meal-preview">
+            <Image src={previewUrl} alt="選択した食事のプレビュー" width={720} height={405} unoptimized className="aspect-[4/3] w-full object-cover sm:aspect-video" />
+          </div>
+        )}
         <MealPhotoPicker
           error={errors.photo}
+          hasPhoto={Boolean(photo)}
+          onPhotoCleared={() => {
+            if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+            previewUrlRef.current = null;
+            setPhoto(null);
+            setPreviewUrl(null);
+          }}
           onPhotoSelected={(selectedPhoto) => {
             if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
             const nextPreviewUrl = URL.createObjectURL(selectedPhoto);
@@ -132,30 +147,6 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
           }}
           onValidationError={(message) => setErrors((current) => ({ ...current, photo: message }))}
         />
-        {previewUrl && (
-          <Image
-            src={previewUrl}
-            alt="選択した食事のプレビュー"
-            width={720}
-            height={405}
-            unoptimized
-            className="aspect-video w-full rounded-2xl border-2 border-faded-gray object-cover shadow-raised-gray"
-          />
-        )}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label htmlFor="meal-eaten-at" className="font-bold text-charcoal">食事した日時</label>
-        <input
-          id="meal-eaten-at"
-          type="datetime-local"
-          value={eatenAt}
-          onChange={(event) => setEatenAt(event.target.value)}
-          aria-invalid={Boolean(errors.eatenAt)}
-          aria-describedby={errors.eatenAt ? "meal-eaten-at-error" : undefined}
-          className={fieldClass}
-        />
-        {errors.eatenAt && <p id="meal-eaten-at-error" className="text-sm text-red-600">{errors.eatenAt}</p>}
       </div>
 
       <MealTagSelector
@@ -168,16 +159,26 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
         }}
       />
 
+      <details className="meal-date-control">
+        <summary><span><CalendarClock aria-hidden="true" className="size-4" />{compactDateTime(eatenAt)}に食べた</span><span className="meal-date-change">変更 <ChevronDown aria-hidden="true" className="size-4" /></span></summary>
+        <div className="pt-3">
+          <label htmlFor="meal-eaten-at" className="sr-only">食事した日時</label>
+          <input id="meal-eaten-at" type="datetime-local" value={eatenAt} onChange={(event) => setEatenAt(event.target.value)} aria-invalid={Boolean(errors.eatenAt)} aria-describedby={errors.eatenAt ? "meal-eaten-at-error" : undefined} className={`${fieldClass} meal-compact-date-input !min-h-10 !shadow-none`} />
+          {errors.eatenAt && <p id="meal-eaten-at-error" className="mt-2 text-sm text-red-600">{errors.eatenAt}</p>}
+        </div>
+      </details>
+
       <div className="flex flex-col gap-2">
-        <label htmlFor="meal-note" className="font-bold text-charcoal">メモ <span className={`${captionTextClass} font-medium`}>（任意）</span></label>
-        <textarea id="meal-note" value={note} onChange={(event) => setNote(event.target.value)} rows={3} maxLength={500} className={`${fieldClass} py-2`} />
+        <label htmlFor="meal-note" className="meal-field-label">メモ <span className={`${captionTextClass} font-medium`}>（任意）</span></label>
+        <textarea id="meal-note" value={note} onChange={(event) => setNote(event.target.value)} rows={2} maxLength={500} placeholder="味、量、気になったことなど" className={`${fieldClass} resize-y py-2.5 placeholder:text-pencil-gray/70`} />
       </div>
 
       {errors.save && <p role="alert" className="text-sm text-red-600">{errors.save}</p>}
-      {isComplete && <p role="status" className="text-sm font-medium text-spark-blue">入力内容を保存しました。</p>}
-      <button type="submit" className={primaryButtonClass}>
-        保存内容を確認する
-      </button>
+      {isComplete && <p role="status" className="meal-success-feedback"><CheckCircle2 aria-hidden="true" className="size-4" />記録しました。次のモンスターが楽しみです。</p>}
+      <div className="meal-cta-wrap">
+        <button type="submit" className="meal-save-button"><Sparkles aria-hidden="true" className="size-[18px]" />この食事を記録する</button>
+        <p>この食事が、次のモンスターにつながります。</p>
+      </div>
 
       {tag && (
         <MealSaveConfirmationModal
