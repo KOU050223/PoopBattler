@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -23,11 +25,16 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const locale = await getLocale();
+
   return (
-    <html lang="ja" className={`${nunito.variable} h-full antialiased`}>
+    <html
+      lang={locale}
+      className={`${nunito.variable} h-full antialiased`}
+    >
       <body className="flex min-h-full flex-col bg-paper-white font-sans text-charcoal">
-        {children}
+        <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>
   );

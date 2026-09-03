@@ -86,4 +86,21 @@ describe("useBattleStore", () => {
     expect(state.bowelDraft).toEqual({ amount: "normal" });
     expect(state.battleId).toBe("battle-1");
   });
+
+  it("reset はバトルと未送信の排便下書きをまとめて破棄する", () => {
+    useBattleStore.getState().start(startInput);
+    useBattleStore.getState().setBowelDraft({
+      hardness: 4,
+      amount: "normal",
+      color: "brown",
+      ease: "easy",
+    });
+
+    useBattleStore.getState().reset();
+
+    const state = useBattleStore.getState();
+    expect(state.status).toBe("idle");
+    expect(state.battleId).toBeNull();
+    expect(state.bowelDraft).toBeNull();
+  });
 });

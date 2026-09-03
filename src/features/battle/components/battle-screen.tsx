@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { motion } from "framer-motion";
-
-import { startBattleAction } from "@/features/battle/actions";
 import { readBattleSpeed, subscribeBattleSpeed, writeBattleSpeed } from "@/features/battle/battle-speed";
+import {
+  completeBattleAction,
+  startBattleAction,
+  type CompleteBattleResult,
+} from "@/features/battle/actions";
 import {
   ATTRIBUTE_LABELS,
   DEFAULT_BATTLE_SPEED,
@@ -18,8 +21,11 @@ import {
   tickIntervalMs,
 } from "@/features/battle/battle.constants";
 import { BattleControls } from "@/features/battle/components/battle-controls";
+import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
 import { BattleFigure } from "@/features/battle/components/battle-figure";
 import { useBattleWakeLock } from "@/features/battle/hooks/use-battle-wake-lock";
+import { BowelLogForm } from "@/features/bowel-log/components/bowel-log-form";
+import type { BowelLog } from "@/features/bowel-log/bowel-log.types";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import { captionTextClass, mutedTextClass, primaryButtonClass, stancePillClass } from "@/lib/ui-classes";
@@ -84,6 +90,11 @@ export function BattleScreen() {
   const [acceptedRestore, setAcceptedRestore] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [completionError, setCompletionError] = useState<string | null>(null);
+  const [completionResult, setCompletionResult] = useState<Extract<
+    CompleteBattleResult,
+    { success: true }
+  > | null>(null);
   const [playerMotion, setPlayerMotion] = useState<"idle" | "hit" | "attack">(
     "idle",
   );
@@ -99,8 +110,6 @@ export function BattleScreen() {
 
   const showRestore =
     hydrated && snapshot.status === "active" && !acceptedRestore;
-  const showResult =
-    snapshot.status === "completing" || snapshot.status === "defeated";
   const showStart = hydrated && snapshot.status === "idle" && !starting;
 
   useBattleWakeLock(snapshot.status === "active" && !showRestore);
@@ -178,8 +187,34 @@ export function BattleScreen() {
     setAcceptedRestore(true);
   }
 
+  async function completeBattle(bowelLog: BowelLog) {
+    if (!snapshot.battleId) {
+      setCompletionError("バトル情報を確認できませんでした。もう一度お試しください。");
+      return;
+    }
+
+    setCompletionError(null);
+    const result = await completeBattleAction({
+      battleId: snapshot.battleId,
+      bowelLog,
+    });
+    if (!result.success) {
+      setCompletionError(result.message);
+      return;
+    }
+
+    // DB確定に成功したときだけ、復元用のバトル・排便下書きを破棄する。
+    setCompletionResult(result);
+    useBattleStore.getState().reset();
+    setAcceptedRestore(false);
+  }
+
   if (!hydrated) {
     return <LoadingState label="バトルの状態を読み込んでいます…" />;
+  }
+
+  if (completionResult) {
+    return <BattleCompletionResult result={completionResult} />;
   }
 
   if (showRestore && snapshot.enemy) {
@@ -200,8 +235,22 @@ export function BattleScreen() {
     );
   }
 
-  if (showResult && snapshot.enemy) {
-    const won = snapshot.status === "completing";
+  if (snapshot.status === "completing" && snapshot.enemy) {
+    return (
+      <section className="flex flex-col gap-5">
+        <div className="flex flex-col gap-1 text-center">
+          <p className="text-xl font-bold">勝利！</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            排便の状態を記録して、バトル結果を確定します。
+          </p>
+        </div>
+        <BowelLogForm onSubmit={completeBattle} />
+        {completionError ? <p role="alert" className="text-sm text-red-600">{completionError}</p> : null}
+      </section>
+    );
+  }
+
+  if (snapshot.status === "defeated" && snapshot.enemy) {
     return (
       <section className="flex flex-col items-center gap-4 text-center">
         <p className="text-xl font-bold">{won ? "勝利" : "敗北"}</p>
