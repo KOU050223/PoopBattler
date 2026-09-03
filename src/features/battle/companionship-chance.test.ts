@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  COMPANIONSHIP_CHANCE_PER_MEAL_LOG,
+  COMPANIONSHIP_CHANCE_BY_COUNT,
   COMPANIONSHIP_MEAL_LOG_CAP,
   companionshipChance,
   companionshipChancePercent,
@@ -14,19 +14,21 @@ describe("companionshipChance", () => {
     expect(companionshipChance(1.5)).toBe(0);
   });
 
-  it("1件あたり25%で、上限件数で100%になる", () => {
-    expect(COMPANIONSHIP_CHANCE_PER_MEAL_LOG).toBe(0.25);
+  it("1件50%、2件75%、3件85%、4件以降90%になる", () => {
+    expect(COMPANIONSHIP_CHANCE_BY_COUNT).toEqual([0.5, 0.75, 0.85, 0.9]);
     expect(COMPANIONSHIP_MEAL_LOG_CAP).toBe(4);
-    expect(companionshipChance(1)).toBe(0.25);
-    expect(companionshipChance(2)).toBe(0.5);
-    expect(companionshipChance(3)).toBe(0.75);
-    expect(companionshipChance(4)).toBe(1);
-    expect(companionshipChance(5)).toBe(1);
+    expect(companionshipChance(1)).toBe(0.5);
+    expect(companionshipChance(2)).toBe(0.75);
+    expect(companionshipChance(3)).toBe(0.85);
+    expect(companionshipChance(4)).toBe(0.9);
+    expect(companionshipChance(5)).toBe(0.9);
   });
 
   it("画面表示用のパーセントは四捨五入する", () => {
     expect(companionshipChancePercent(0)).toBe(0);
-    expect(companionshipChancePercent(1)).toBe(25);
-    expect(companionshipChancePercent(4)).toBe(100);
+    expect(companionshipChancePercent(1)).toBe(50);
+    expect(companionshipChancePercent(2)).toBe(75);
+    expect(companionshipChancePercent(3)).toBe(85);
+    expect(companionshipChancePercent(4)).toBe(90);
   });
 });

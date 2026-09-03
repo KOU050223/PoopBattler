@@ -33,18 +33,31 @@ describe("postBattleCompleteLabel", () => {
 describe("postBattleMealChanceCopy", () => {
   it("既存も今回も0件なら仲間化できない旨を出す", () => {
     expect(postBattleMealChanceCopy(0, 0)).toContain("食事ログがないと仲間になりません");
-    expect(postBattleMealChanceCopy(0, 0)).toContain("今回記録すると25%");
+    expect(postBattleMealChanceCopy(0, 0)).toContain("今回記録すると50%");
+    expect(postBattleMealChanceCopy(0, 0)).toContain("4件以上で90%");
+  });
+
+  it("1件なら完了時50%、もう1件で75%と出す", () => {
+    expect(postBattleMealChanceCopy(1, 0)).toBe(
+      "いま食事ログは1件です。完了すると50%、もう1件記録すると75%です。",
+    );
   });
 
   it("今回の記録も件数に含めて完了時の確率を出す", () => {
     expect(postBattleMealChanceCopy(1, 1)).toBe(
-      "いま食事ログは2件です。完了すると50%、もう1件記録すると75%です。",
+      "いま食事ログは2件です。完了すると75%、もう1件記録すると85%です。",
     );
   });
 
   it("既存ログだけでは今回0件でも完了確率を出せる", () => {
     expect(postBattleMealChanceCopy(2, 0)).toBe(
-      "いま食事ログは2件です。完了すると50%、もう1件記録すると75%です。",
+      "いま食事ログは2件です。完了すると75%、もう1件記録すると85%です。",
+    );
+  });
+
+  it("4件以上は90%で頭打ちになる", () => {
+    expect(postBattleMealChanceCopy(4, 0)).toBe(
+      "いま食事ログは4件です。完了すると90%、もう1件記録すると90%です。",
     );
   });
 });
