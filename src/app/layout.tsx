@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
+
+import { AppHeader } from "@/components/layout/app-header";
+import { HeaderAccountSlot } from "@/features/account/components/header-account-slot";
+
 import "./globals.css";
 
 const nunito = Nunito({
@@ -34,7 +38,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${nunito.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-blush-wash font-sans text-charcoal">
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <AppHeader action={<HeaderAccountSlot />} />
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );

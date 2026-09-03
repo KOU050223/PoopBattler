@@ -1,37 +1,35 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { AnonymousSignIn } from "@/features/auth/components/anonymous-sign-in";
+import { watchAccountStatusFromBrowser } from "@/lib/supabase/account-watch";
 
-import { SIGNED_OUT_ACCOUNT_STATUS, type AccountStatus } from "../account.types";
+import type { AccountStatus } from "../account.types";
 import { GoogleAccountLink } from "./google-account-link";
 
 type Props = {
   /**
    * サーバー側で読んだアカウント状態。匿名サインインはブラウザで行うため、
-   * 初回訪問ではまだ未サインインで返る。その場合はサインイン完了後に読み直す。
+   * 初回訪問ではまだ未サインインで返る。表示のちらつきを避けるため
+   * これを初期値に使い、ブラウザ側の実際の状態で上書きする。
    */
   initialStatus: AccountStatus;
-  loadStatus: () => Promise<AccountStatus>;
 };
 
-export function AccountSection({ initialStatus, loadStatus }: Props) {
+/**
+ * アカウント画面の本体。
+ *
+ * 匿名サインインの実行はヘッダー（HeaderAccountSlot）へ移した。
+ * ここに置くとこの画面を開くまでセッションが作られず、`/battle` へ
+ * 直接来た利用者が未サインインのままになる。
+ */
+export function AccountSection({ initialStatus }: Props) {
   const [status, setStatus] = useState(initialStatus);
 
-  const refresh = useCallback(async () => {
-    try {
-      setStatus(await loadStatus());
-    } catch {
-      // 状態を読めない場合は昇格の導線を出さない。匿名サインイン側が
-      // 自分のエラーを表示するため、ここで二重にメッセージを出さない。
-      setStatus(SIGNED_OUT_ACCOUNT_STATUS);
-    }
-  }, [loadStatus]);
+  useEffect(() => watchAccountStatusFromBrowser(setStatus), []);
 
   return (
     <div className="flex flex-col gap-4">
-      <AnonymousSignIn onReady={refresh} />
       <GoogleAccountLink status={status} />
     </div>
   );
