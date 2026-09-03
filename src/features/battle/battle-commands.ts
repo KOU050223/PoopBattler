@@ -61,13 +61,11 @@ export function applySwitchMember(
   }
 
   const next = cloneBattleSnapshot(state);
-  // 退場する側のゲージはリセット（仕様: 交代でゲージ空）
-  next.benchGauges[state.activeIndex] = 0;
   next.activeIndex = partyIndex;
   next.switchStunTicks = msToTicks(SWITCH_STUN_MS);
-  // ベンチで溜まったゲージを引き継ぐ
-  next.playerGauge = next.benchGauges[partyIndex];
-  next.benchGauges[partyIndex] = 0;
+  // 必殺ゲージは場でだけ溜まる。交代で退場側も入場側も空にする。
+  next.playerGauge = 0;
+  next.benchGauges = [0, 0, 0];
   next.playerSpecialChargeTicks = 0;
   next.playerGuardRemainingTicks = 0;
   if (next.playerStance === "guard") {

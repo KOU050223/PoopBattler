@@ -26,7 +26,6 @@ export function BattleControls({
   playerGauge,
   playerGuardCooldownTicks,
   switchStunTicks,
-  benchGauges,
   onGuard,
   onSpecial,
   onSwitch,
@@ -40,7 +39,6 @@ export function BattleControls({
   playerGauge: number;
   playerGuardCooldownTicks: number;
   switchStunTicks: number;
-  benchGauges: [number, number, number];
   onGuard: () => void;
   onSpecial: () => void;
   onSwitch: (index: number) => void;
@@ -107,7 +105,6 @@ export function BattleControls({
           }
           const down = member.hp <= 0;
           const hpRatio = member.maxHp > 0 ? Math.max(0, member.hp / member.maxHp) : 0;
-          const gaugeRatio = benchGauges[index] / SPECIAL_GAUGE_MAX;
           return (
             <button
               key={`${member.characterId}-${index}`}
@@ -132,7 +129,7 @@ export function BattleControls({
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-blush-wash">
                     <div
                       className="h-full rounded-full bg-night-ink"
-                      style={{ width: `${gaugeRatio * 100}%` }}
+                      style={{ width: "0%" }}
                     />
                   </div>
                 </div>
