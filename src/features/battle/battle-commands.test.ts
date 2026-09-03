@@ -8,6 +8,7 @@ import {
   INITIAL_ENEMY_HP,
   INITIAL_MEMBER_HP,
   SPECIAL_GAUGE_MAX,
+  SWITCH_COOLDOWN_TICKS,
   SWITCH_STUN_MS,
   computeAttackDamage,
   guardCooldownTicks,
@@ -210,17 +211,102 @@ describe("交代", () => {
     expect(switched.activeIndex).toBe(1);
     expect(switched.playerGauge).toBe(0);
     expect(switched.switchStunTicks).toBe(msToTicks(SWITCH_STUN_MS));
+    expect(switched.switchCooldownTicks).toBe(SWITCH_COOLDOWN_TICKS);
 
     const afterStun = tickTimes(switched, msToTicks(SWITCH_STUN_MS));
     expect(afterStun.enemy?.hp).toBe(INITIAL_ENEMY_HP);
     expect(afterStun.switchStunTicks).toBe(0);
+    expect(afterStun.switchCooldownTicks).toBe(SWITCH_COOLDOWN_TICKS);
     expect(afterStun.party?.[0].hp).toBe(INITIAL_MEMBER_HP);
+    expect(applySetStance(switched, "guard").playerStance).toBe("fight");
   });
 
   it("硬直中の交代は無視する", () => {
     const switched = applySwitchMember(applyBattleStart(startInput), 1);
     const rejected = applySwitchMember(switched, 2);
     expect(rejected.activeIndex).toBe(1);
+  });
+
+  it("クール中は交代できず、解けたらまた交代できる", () => {
+    const switched = applySwitchMember(applyBattleStart(startInput), 1);
+    const afterStun = tickTimes(switched, msToTicks(SWITCH_STUN_MS));
+    expect(afterStun.switchStunTicks).toBe(0);
+    expect(afterStun.switchCooldownTicks).toBe(SWITCH_COOLDOWN_TICKS);
+
+    const rejected = applySwitchMember(afterStun, 2);
+    expect(rejected.activeIndex).toBe(1);
+    expect(rejected.switchCooldownTicks).toBe(SWITCH_COOLDOWN_TICKS);
+
+    const stillCooling = tickTimes(afterStun, SWITCH_COOLDOWN_TICKS - 1);
+    expect(stillCooling.switchCooldownTicks).toBe(1);
+    expect(applySwitchMember(stillCooling, 2).activeIndex).toBe(1);
+
+    const ready = tickTimes(afterStun, SWITCH_COOLDOWN_TICKS);
+    expect(ready.switchCooldownTicks).toBe(0);
+    expect(applySwitchMember(ready, 2).activeIndex).toBe(2);
+  });
+
+  it("硬直後はクール中でも殴れる。まもれと必殺にも入れる", () => {
+    const swingTick = AUTO_ATTACK_PERIOD_TICKS;
+    const battleId = battleIdWithSwingsAt(swingTick, true, false);
+    const switched = applySwitchMember(
+      applyBattleStart({ ...startInput, battleId }),
+      1,
+    );
+    const afterStun = tickTimes(switched, msToTicks(SWITCH_STUN_MS));
+    expect(afterStun.switchStunTicks).toBe(0);
+    expect(afterStun.switchCooldownTicks).toBeGreaterThan(0);
+
+    const afterSwing = tickTimes(switched, swingTick);
+    expect(afterSwing.switchCooldownTicks).toBeGreaterThan(0);
+    expect(afterSwing.enemy?.hp).toBe(
+      INITIAL_ENEMY_HP -
+        computeAttackDamage({
+          attackerAttribute: "normal",
+          defenderAttribute: "meat",
+          attackerStance: "fight",
+          defenderStance: "fight",
+          baseDamage: AUTO_ATTACK_DAMAGE,
+        }),
+    );
+
+    const guarding = applySetStance(afterStun, "guard");
+    expect(guarding.playerStance).toBe("guard");
+
+    const special = applyBeginSpecial({
+      ...afterStun,
+      playerGauge: SPECIAL_GAUGE_MAX,
+    });
+    expect(special.playerStance).toBe("special");
+  });
+
+  it("HP 0 の控えは選べない", () => {
+    const started = applyBattleStart(startInput);
+    const downed: BattleSnapshot = {
+      ...started,
+      party: [
+        started.party![0],
+        { ...started.party![1], hp: 0 },
+        started.party![2],
+      ],
+    };
+
+    expect(applySwitchMember(downed, 1).activeIndex).toBe(0);
+    expect(applySwitchMember(downed, 2).activeIndex).toBe(2);
+  });
+
+  it("交代クールは Speed では変わらない", () => {
+    const fast = applyBattleStart({
+      ...startInput,
+      party: [
+        { ...startInput.party[0], speed: 40 },
+        { ...startInput.party[1], speed: 10 },
+        startInput.party[2],
+      ],
+    });
+    const switched = applySwitchMember(fast, 1);
+    expect(switched.switchCooldownTicks).toBe(SWITCH_COOLDOWN_TICKS);
+    expect(switched.switchCooldownTicks).not.toBe(guardCooldownTicks(40));
   });
 });
 

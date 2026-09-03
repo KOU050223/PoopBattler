@@ -2,6 +2,7 @@
 
 import {
   SPECIAL_GAUGE_MAX,
+  TICK_INTERVAL_MS,
   type BattleStance,
 } from "@/features/battle/battle.constants";
 import type { BattleParty } from "@/features/battle/battle.types";
@@ -26,6 +27,7 @@ export function BattleControls({
   playerGauge,
   playerGuardCooldownTicks,
   switchStunTicks,
+  switchCooldownTicks,
   onGuard,
   onSpecial,
   onSwitch,
@@ -39,6 +41,7 @@ export function BattleControls({
   playerGauge: number;
   playerGuardCooldownTicks: number;
   switchStunTicks: number;
+  switchCooldownTicks: number;
   onGuard: () => void;
   onSpecial: () => void;
   onSwitch: (index: number) => void;
@@ -47,6 +50,10 @@ export function BattleControls({
   onDebugComplete?: () => void;
 }) {
   const stunned = switchStunTicks > 0;
+  const switchLocked = stunned || switchCooldownTicks > 0;
+  const switchWaitSeconds = Math.ceil(
+    ((switchStunTicks + switchCooldownTicks) * TICK_INTERVAL_MS) / 1000,
+  );
   const specialReady = playerGauge >= SPECIAL_GAUGE_MAX && !stunned;
   const guardBlocked = playerGuardCooldownTicks > 0 || playerStance === "guard" || stunned;
 
@@ -105,15 +112,19 @@ export function BattleControls({
           }
           const down = member.hp <= 0;
           const hpRatio = member.maxHp > 0 ? Math.max(0, member.hp / member.maxHp) : 0;
+          const blocked = down || switchLocked;
           return (
             <button
               key={`${member.characterId}-${index}`}
               type="button"
-              disabled={down || stunned}
+              disabled={blocked}
               onClick={() => onSwitch(index)}
-              className={`${controlClass("stance", false, down || stunned)} flex flex-col gap-1.5 px-3 py-2`}
+              className={`${controlClass("stance", false, blocked)} flex flex-col gap-1.5 px-3 py-2`}
             >
               <span className="text-sm">{member.name ?? `控え${index + 1}`}</span>
+              {switchLocked && !down && switchWaitSeconds > 0 ? (
+                <span className={captionTextClass}>あと{switchWaitSeconds}秒</span>
+              ) : null}
               <div className="flex w-full flex-col gap-1">
                 <div className="flex items-center gap-1.5">
                   <span className="w-5 shrink-0 text-[10px] text-pencil-gray">HP</span>

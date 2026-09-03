@@ -10,6 +10,7 @@ import {
   INITIAL_MEMBER_HP,
   SPECIAL_GAUGE_MAX,
   SPECIAL_GAUGE_PER_TICK,
+  SWITCH_COOLDOWN_TICKS,
   SWITCH_STUN_MS,
   TIMEOUT_TICKS,
   computeAttackDamage,
@@ -259,6 +260,7 @@ describe("applyBattleStart / applyBattleTick", () => {
     expect(firstKo.party?.[0].hp).toBe(0);
     expect(firstKo.playerGauge).toBe(0);
     expect(firstKo.switchStunTicks).toBe(msToTicks(SWITCH_STUN_MS));
+    expect(firstKo.switchCooldownTicks).toBe(SWITCH_COOLDOWN_TICKS);
 
     const wiped = applyBattleTick({
       ...started,

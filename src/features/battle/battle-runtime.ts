@@ -3,6 +3,7 @@ import {
   PARTY_SIZE,
   SPECIAL_GAUGE_MAX,
   SPECIAL_GAUGE_PER_TICK,
+  SWITCH_COOLDOWN_TICKS,
   SWITCH_STUN_MS,
   TIMEOUT_TICKS,
   autoAttackPeriodTicks,
@@ -93,6 +94,7 @@ function applyKnockout(state: BattleSnapshot): BattleSnapshot {
     ...state,
     activeIndex: nextIndex,
     switchStunTicks: msToTicks(SWITCH_STUN_MS),
+    switchCooldownTicks: SWITCH_COOLDOWN_TICKS,
     playerGauge: 0,
     benchGauges: [0, 0, 0],
     playerStance: "fight",
@@ -295,7 +297,11 @@ export function applyBattleTick(state: BattleSnapshot): BattleSnapshot {
     next.enemyGauge + SPECIAL_GAUGE_PER_TICK,
   );
 
+  const switchStunned = next.switchStunTicks > 0;
   next.switchStunTicks = Math.max(0, next.switchStunTicks - 1);
+  if (!switchStunned) {
+    next.switchCooldownTicks = Math.max(0, (next.switchCooldownTicks ?? 0) - 1);
+  }
 
   const playerGuard = decrementGuard(
     next.playerStance,
