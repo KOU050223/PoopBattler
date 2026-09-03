@@ -327,7 +327,7 @@ max_frequency = "5s"
 [auth.external.google]
 # ローカルスタックで Google ログイン/連携を試すときに true にする。
 # 本番は Dashboard > Authentication > Sign In / Providers で有効にする。
-enabled = false
+enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"

@@ -243,9 +243,22 @@ Googleが戻る先は常に「アプリが繋いでいるSupabase」であって
    反映されない。認証コンテナの設定は起動時にしか読まれないため。
 
    ```bash
-   supabase stop && supabase start
-   npm run dev
+   npm run dev:all
    ```
+
+   `dev:all` はスタックとNext.jsをまとめて起動する（`scripts/dev-all.sh`）。
+   手で叩くのとの違いは次の3点で、いずれも「失敗する」ではなく
+   **「黙って間違う」経路**を塞ぐためにある。
+
+   - `supabase start` の前に `.env.local` を読み込む。忘れると
+     プロバイダが「有効だが認証情報が空」で起動する。
+   - 起動済みでも必ず停止してから起動し直す。`supabase status` が通ることは
+     「設定が最新であること」を意味しない。古い `config.toml` のまま動き続ける。
+   - 起動後に `client_id` が解決できているかまで確認する。環境変数が空だと
+     Supabase は `env(...)` を展開せずその文字列を client_id に載せるため、
+     Googleの画面まで進んでから `invalid_client` で落ちる。
+
+   手で起動する場合は `supabase stop && supabase start` のあと `npm run dev`。
 
 `site_url` と `additional_redirect_urls` は `config.toml` に設定済みなので、
 `http://localhost:3000` と `http://127.0.0.1:3000` のどちらで開いても戻れる。
