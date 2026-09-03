@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:phone": "ulimit -n 10000 && next dev -H 0.0.0.0 -p 3000",
     "dev:all": "./scripts/dev-all.sh",
     "build": "next build",
     "start": "next start",
