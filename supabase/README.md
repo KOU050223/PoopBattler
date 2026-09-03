@@ -124,25 +124,41 @@ supabase migration list     # ローカルとリモートの適用状況を突�
 
 ### 1. Google Cloud Console で OAuth クライアントを作る
 
-1. <https://console.cloud.google.com/apis/credentials> を開く（プロジェクトが無ければ作る）。
-2. **OAuth consent screen** を設定する。External を選び、アプリ名・サポートメール・
-   デベロッパー連絡先を埋める。スコープは既定（`email`, `profile`, `openid`）のままでよい。
+このプロジェクトのGoogle Cloudプロジェクトは `poop-battler`。以下のリンクは
+そのプロジェクトに固定してある。
+
+1. **先に OAuth consent screen を設定する。**
+   <https://console.cloud.google.com/auth/overview?project=poop-battler>
+
+   External を選び、アプリ名・サポートメール・デベロッパー連絡先を埋める。
+   スコープは既定（`email`, `profile`, `openid`）のままでよい。
    公開前はテストユーザーに自分のGoogleアカウントを追加しておく。
-3. **Credentials > Create Credentials > OAuth client ID** を選ぶ。
+
+   **順序が重要。** consent screen を設定する前に Credentials へ行くと、
+   クライアントの種類に「Web application」が出てこない。
+
+2. **Credentials > Create Credentials > OAuth client ID** を選ぶ。
+   <https://console.cloud.google.com/apis/credentials?project=poop-battler>
    - Application type: **Web application**
    - **Authorized redirect URIs** に Supabase のコールバックを *完全一致* で入れる。
 
      | 用途 | URI |
      | --- | --- |
-     | 本番（Supabaseプロジェクト） | `https://<project-ref>.supabase.co/auth/v1/callback` |
+     | 本番（Supabaseプロジェクト） | `https://gdkfnhrqlpabnycayohi.supabase.co/auth/v1/callback` |
      | ローカルスタック | `http://127.0.0.1:54321/auth/v1/callback` |
 
-     `<project-ref>` は Dashboard の URL に含まれるID。**アプリ側の
-     `/auth/callback` ではない**。Googleが戻る先はSupabaseで、そこから
-     アプリの `/auth/callback` へ転送される。
-4. 発行された **Client ID** と **Client secret** を控える。
+     ホスト名は Supabase プロジェクトのもの（`NEXT_PUBLIC_SUPABASE_URL` と同じ）。
+     **アプリ側の `/auth/callback` ではない**。Googleが戻る先はSupabaseで、
+     そこからアプリの `/auth/callback` へ転送される。
+3. 発行された **Client ID** と **Client secret** を控える。
+
+> `gcloud` では作れない。OAuthクライアントの発行は IAP OAuth Admin API 経由に
+> なるが、この API は組織に属さないプロジェクトを拒否し（`Project must belong
+> to an organization`）、2026年3月19日に廃止済み。Consoleで作る。
 
 ### 2. Supabase Dashboard で有効化する（本番）
+
+<https://supabase.com/dashboard/project/gdkfnhrqlpabnycayohi/auth/providers>
 
 Dashboard > Authentication > **Sign In / Providers** で次の2つを行う。
 
