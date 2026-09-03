@@ -342,7 +342,7 @@ export function BattleScreen() {
         </div>
         {snapshot.playerStance === "special" ? (
           <p role="status" className="text-center text-sm">
-            踏ん張るか、端末を傾けて発射！
+            踏ん張って発射！
           </p>
         ) : null}
         <BattleControls
