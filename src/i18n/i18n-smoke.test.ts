@@ -61,4 +61,10 @@ describe("メッセージカタログ", () => {
 
     expect(english("Navigation.meals")).toBe("Meals");
   });
+
+  it("週次レポートの見出しも英語へ翻訳する", () => {
+    const english = createTranslator({ locale: "en", messages: englishMessages, onError: () => {} });
+
+    expect(english("Report.title")).toBe("Weekly poop report");
+  });
 });

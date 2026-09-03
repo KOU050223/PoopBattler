@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { getWeeklyReportAction } from "@/features/report/actions";
@@ -10,10 +11,11 @@ export const metadata: Metadata = {
 };
 
 export default async function ReportPage() {
+  const t = await getTranslations("Report");
   const report = await getWeeklyReportAction();
 
   if (!report) {
-    return <EmptyState title="レポートを作れませんでした" description="ログイン状態を確認して、もう一度お試しください。" />;
+    return <EmptyState title={t("errorTitle")} description={t("errorDescription")} />;
   }
 
   // 課金基盤の導入後、この値を subscriptions の有効な権利判定へ置き換える。

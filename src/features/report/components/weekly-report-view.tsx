@@ -1,4 +1,5 @@
 import { CalendarDays, ChartNoAxesCombined, LockKeyhole, Sparkles, Utensils } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 
 import { MEAL_TAGS } from "@/features/meal/meal.types";
 
@@ -23,36 +24,40 @@ function signedCount(value: number) {
 }
 
 function ReportHeader({ report }: { report: WeeklyReport }) {
-  const start = new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", timeZone: "Asia/Tokyo" }).format(new Date(report.range.startsAt));
-  const end = new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", timeZone: "Asia/Tokyo" }).format(new Date(report.range.endsAt));
+  const t = useTranslations("Report");
+  const locale = useLocale();
+  const start = new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", timeZone: "Asia/Tokyo" }).format(new Date(report.range.startsAt));
+  const end = new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", timeZone: "Asia/Tokyo" }).format(new Date(report.range.endsAt));
 
   return (
     <header className="mb-5">
-      <p className="mb-1 inline-flex items-center gap-1.5 text-sm font-bold text-charcoal"><ChartNoAxesCombined aria-hidden="true" className="size-4" />プレミアム</p>
-      <h1 className="text-[1.75rem] font-black tracking-[-0.04em] text-charcoal sm:text-3xl">今週のうんちレポート</h1>
-      <p className="mt-1 text-[15px] font-medium text-charcoal">{start}から{end}までの記録を振り返ります。</p>
+      <p className="mb-1 inline-flex items-center gap-1.5 text-sm font-bold text-charcoal"><ChartNoAxesCombined aria-hidden="true" className="size-4" />{t("premium")}</p>
+      <h1 className="text-[1.75rem] font-black tracking-[-0.04em] text-charcoal sm:text-3xl">{t("title")}</h1>
+      <p className="mt-1 text-[15px] font-medium text-charcoal">{t("range", { start, end })}</p>
     </header>
   );
 }
 
 function LockedReport({ report }: { report: WeeklyReport }) {
+  const t = useTranslations("Report");
+
   return (
     <>
       <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6">
         <div className="flex items-start gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blush-wash text-flush-edge"><CalendarDays aria-hidden="true" className="size-5" /></div>
           <div>
-            <h2 className="text-lg font-black tracking-[-0.025em] text-charcoal">今週は{report.summary.bowelCount}件記録しました</h2>
-            <p className="mt-1 text-sm leading-relaxed text-pencil-gray">{report.summary.recordedDays}日分の記録があります。集計・比較・食事との傾向はプレミアムで振り返れます。</p>
+            <h2 className="text-lg font-black tracking-[-0.025em] text-charcoal">{t("recordedCount", { count: report.summary.bowelCount })}</h2>
+            <p className="mt-1 text-sm leading-relaxed text-pencil-gray">{t("recordedDays", { count: report.summary.recordedDays })}</p>
           </div>
         </div>
       </section>
       <section className="mt-5 rounded-2xl bg-paper-white p-5 text-center shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="locked-report-title">
         <div className="flex size-10 items-center justify-center rounded-full bg-flush-pink text-paper-white mx-auto"><LockKeyhole aria-hidden="true" className="size-5" /></div>
-        <h2 id="locked-report-title" className="mt-3 text-lg font-black text-charcoal">今週の傾向を、もっと詳しく</h2>
-        <p className="mt-1 max-w-sm mx-auto text-sm leading-relaxed text-charcoal">硬さの変化や食事と排便の傾向を、プレミアムで確認できます。</p>
-        <button type="button" disabled className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-flush-pink px-5 text-sm font-black text-paper-white opacity-60" title="プレミアムの購入機能は準備中です"><Sparkles aria-hidden="true" className="size-4" />プレミアムで見る</button>
-        <p className="mt-2 text-xs font-medium text-charcoal">プレミアムの購入機能は準備中です。</p>
+        <h2 id="locked-report-title" className="mt-3 text-lg font-black text-charcoal">{t("lockedTitle")}</h2>
+        <p className="mt-1 max-w-sm mx-auto text-sm leading-relaxed text-charcoal">{t("lockedDescription")}</p>
+        <button type="button" disabled className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-flush-pink px-5 text-sm font-black text-paper-white opacity-60" title={t("purchaseUnavailable")}><Sparkles aria-hidden="true" className="size-4" />{t("viewPremium")}</button>
+        <p className="mt-2 text-xs font-medium text-charcoal">{t("purchaseUnavailable")}</p>
       </section>
     </>
   );
