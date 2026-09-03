@@ -46,6 +46,18 @@
     "tagline": "トイレの時間が、バトルになる。",
     "supportingCopy": "遊んだ結果として、食事と排便のログが残る。"
   },
+  "Pwa": {
+    "installTitle": "次のバトルを、すぐ始めよう",
+    "installDescription": "ホーム画面に追加すると、アプリのようにすぐ開けます。",
+    "installAction": "ホーム画面に追加",
+    "later": "あとで",
+    "iosStepOne": "画面下の共有ボタンを押す",
+    "iosStepTwo": "「ホーム画面に追加」を選ぶ",
+    "iosStepThree": "右上の「追加」を押す",
+    "chromiumInstructions": "ブラウザのメニュー、またはアドレスバーのインストールアイコンから追加できます。",
+    "manifestShortName": "ブリュレイド",
+    "manifestDescription": "食事と排便の記録を、バトルとして続けられるアプリ。"
+  },
   "AccountMenu": {
     "login": "ログイン",
     "retry": "再試行する",

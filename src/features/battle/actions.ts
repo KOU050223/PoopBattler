@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { PARTY_SIZE } from "./battle.constants";
 import type { StartBattleResult } from "./battle.types";
 import { messageForCompleteBattleError } from "./complete-battle-error";
+import { isFirstCompletedBattle } from "@/features/pwa/pwa-install";
 import {
   readStartBattleUserCharacterIds,
   startBattle,
@@ -152,6 +153,7 @@ export type CompleteBattleResult =
       > | null;
       completedAt: string;
       usedMealLog: boolean;
+      isFirstCompletedBattle: boolean;
     }
   | { success: false; message: string };
 
@@ -226,6 +228,15 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     return { success: false, message: "バトル結果の取得に失敗しました。もう一度お試しください。" };
   }
 
+  const { count: completedBattleCount, error: completedBattleCountError } = await supabase
+    .from("battle_results")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("status", "completed");
+  if (completedBattleCountError || completedBattleCount == null) {
+    return { success: false, message: "バトル結果の確認に失敗しました。もう一度お試しください。" };
+  }
+
   const { count: mealLogCount } = await supabase
     .from("meal_logs")
     .select("id", { count: "exact", head: true })
@@ -256,5 +267,6 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     completedAt: battle.completed_at,
     // 抽選したかは紐付けではなく、本人の食事ログ件数で決まる。
     usedMealLog: (mealLogCount ?? 0) > 0,
+    isFirstCompletedBattle: isFirstCompletedBattle(completedBattleCount),
   };
 }

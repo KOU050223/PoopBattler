@@ -1,5 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
+
+import messages from "../../../../messages/ja.json";
 
 import type { CompleteBattleResult } from "@/features/battle/actions";
 
@@ -17,6 +20,7 @@ const acquired: Extract<CompleteBattleResult, { success: true }> = {
   },
   completedAt: "2026-09-04T03:00:00.000Z",
   usedMealLog: true,
+  isFirstCompletedBattle: true,
 };
 
 const missed: Extract<CompleteBattleResult, { success: true }> = {
@@ -240,14 +244,16 @@ describe("CompanionshipArFrame", () => {
 
   it("結果フェーズでは確定済みのカードを出し、抽選をやり直す文言は出さない", () => {
     const markup = renderToStaticMarkup(
-      <CompanionshipArFrame
-        result={acquired}
-        mealPhotoUrl={null}
-        phase="summary"
-        status="idle"
-        reduceMotion
-        onSkip={() => undefined}
-      />,
+      <NextIntlClientProvider locale="ja" messages={messages}>
+        <CompanionshipArFrame
+          result={acquired}
+          mealPhotoUrl={null}
+          phase="summary"
+          status="idle"
+          reduceMotion
+          onSkip={() => undefined}
+        />
+      </NextIntlClientProvider>,
     );
     expect(markup).toContain("仲間になった！");
     expect(markup).toContain("インベントリを見る");

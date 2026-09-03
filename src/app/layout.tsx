@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import { AppHeader } from "@/components/layout/app-header";
 import { HeaderAccountSlot } from "@/features/account/components/header-account-slot";
+import { PwaInstallProvider } from "@/features/pwa/components/pwa-install-provider";
 
 import "./globals.css";
 
@@ -14,19 +15,33 @@ const nunito = Nunito({
   weight: ["500", "700", "900"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Poop Battler",
-    template: "%s | Poop Battler",
-  },
-  description: "食事と排便の記録を、うんちモンスターとのバトルとして続けられるアプリ。",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const [common, pwa] = await Promise.all([
+    getTranslations("Common"),
+    getTranslations("Pwa"),
+  ]);
+  const appName = common("appName");
+
+  return {
+    title: {
+      default: appName,
+      template: `%s | ${appName}`,
+    },
+    description: pwa("manifestDescription"),
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: appName,
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
   colorScheme: "light",
+  themeColor: "#ffe0ef",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -38,10 +53,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${nunito.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-blush-wash font-sans text-charcoal">
-        <NextIntlClientProvider>
-          <AppHeader action={<HeaderAccountSlot />} />
-          {children}
-        </NextIntlClientProvider>
+        <PwaInstallProvider>
+          <NextIntlClientProvider>
+            <AppHeader action={<HeaderAccountSlot />} />
+            {children}
+          </NextIntlClientProvider>
+        </PwaInstallProvider>
       </body>
     </html>
   );

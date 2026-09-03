@@ -46,6 +46,18 @@
     "tagline": "Toilet time becomes battle time.",
     "supportingCopy": "As you play, meal and bowel logs are saved."
   },
+  "Pwa": {
+    "installTitle": "Start the next battle faster",
+    "installDescription": "Add it to your Home Screen to open it like an app.",
+    "installAction": "Add to Home Screen",
+    "later": "Not now",
+    "iosStepOne": "Tap the Share button at the bottom of the screen",
+    "iosStepTwo": "Choose Add to Home Screen",
+    "iosStepThree": "Tap Add in the top-right corner",
+    "chromiumInstructions": "Use the browser menu or the install icon in the address bar to add the app.",
+    "manifestShortName": "Brule Raid",
+    "manifestDescription": "Keep meal and bowel logs through battles."
+  },
   "AccountMenu": {
     "login": "Log in",
     "retry": "Try again",
