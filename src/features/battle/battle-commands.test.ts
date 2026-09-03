@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  AUTO_ATTACK_DAMAGE,
+  AUTO_ATTACK_PERIOD_TICKS,
   GUARD_COOLDOWN_MS,
   GUARD_DURATION_MS,
   INITIAL_ENEMY_HP,
@@ -10,6 +12,7 @@ import {
   SWITCH_STUN_MS,
   computeAttackDamage,
   msToTicks,
+  shouldAutoAttack,
 } from "./battle.constants";
 import {
   applyBeginSpecial,
@@ -42,11 +45,34 @@ function tickTimes(state: BattleSnapshot, count: number): BattleSnapshot {
   return next;
 }
 
+function battleIdWithSwingsAt(
+  tick: number,
+  playerHit: boolean,
+  enemyHit: boolean,
+): string {
+  for (let index = 0; index < 10_000; index += 1) {
+    const battleId = `roll-${index}`;
+    if (
+      shouldAutoAttack(battleId, tick, "player") === playerHit &&
+      shouldAutoAttack(battleId, tick, "enemy") === enemyHit
+    ) {
+      return battleId;
+    }
+  }
+
+  throw new Error("auto-attack battleId が見つからない");
+}
+
 describe("まもれ", () => {
   it("被ダメを半減し、自分は殴らない", () => {
+    const battleId = battleIdWithSwingsAt(
+      AUTO_ATTACK_PERIOD_TICKS,
+      true,
+      true,
+    );
     const guarding = tickTimes(
-      applySetStance(applyBattleStart(startInput), "guard"),
-      1,
+      applySetStance(applyBattleStart({ ...startInput, battleId }), "guard"),
+      AUTO_ATTACK_PERIOD_TICKS,
     );
 
     const incomingGuard = computeAttackDamage({
@@ -54,12 +80,13 @@ describe("まもれ", () => {
       defenderAttribute: "spicy",
       attackerStance: "fight",
       defenderStance: "guard",
+      baseDamage: AUTO_ATTACK_DAMAGE,
     });
 
     expect(INITIAL_MEMBER_HP - (guarding.party?.[0].hp ?? 0)).toBe(incomingGuard);
     expect(guarding.enemy?.hp).toBe(INITIAL_ENEMY_HP);
     expect(guarding.playerGuardRemainingTicks).toBe(
-      msToTicks(GUARD_DURATION_MS) - 1,
+      msToTicks(GUARD_DURATION_MS) - AUTO_ATTACK_PERIOD_TICKS,
     );
   });
 

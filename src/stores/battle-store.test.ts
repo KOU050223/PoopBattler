@@ -59,7 +59,7 @@ describe("useBattleStore", () => {
     const state = useBattleStore.getState();
     expect(state.status).toBe("active");
     expect(state.battleId).toBe("battle-1");
-    expect(state.enemy?.hp).toBeLessThan(INITIAL_ENEMY_HP);
+    expect(state.enemy?.hp).toBe(INITIAL_ENEMY_HP);
     expect(state).not.toHaveProperty("comboGauge");
     expect(state).not.toHaveProperty("fed");
   });
