@@ -25,6 +25,32 @@ export const ENEMY_ATTRIBUTES: readonly CharacterAttribute[] = [
 // seed.sql が投入する "normal" 属性のキャラクターを指す。
 export const FALLBACK_ATTRIBUTE: CharacterAttribute = "normal";
 
+export const ATTRIBUTE_LABELS: Record<CharacterAttribute, string> = {
+  spicy: "激辛",
+  meat: "肉",
+  vegetable: "野菜",
+  dairy: "乳",
+  sweet: "甘",
+  curry: "カレー",
+  normal: "無",
+};
+
+export type MatchupTone = "advantage" | "neutral" | "disadvantage";
+
+export function matchupTone(
+  attacker: CharacterAttribute,
+  defender: CharacterAttribute,
+): MatchupTone {
+  const multiplier = typeMultiplier(attacker, defender);
+  if (multiplier > TYPE_NEUTRAL) {
+    return "advantage";
+  }
+  if (multiplier < TYPE_NEUTRAL) {
+    return "disadvantage";
+  }
+  return "neutral";
+}
+
 export const PARTY_SIZE = 3;
 
 // 1 tick = 500ms。UI の間隔もこれに合わせる。ダメージは tick 回数だけで決まる。
@@ -44,17 +70,20 @@ export const TYPE_DISADVANTAGE = 0.75;
 export const GUARD_INCOMING_MULTIPLIER = 0.5;
 export const GUARD_OUTGOING_MULTIPLIER = 0;
 
-export const AUTO_ATTACK_DAMAGE = 4;
+export const AUTO_ATTACK_DAMAGE = 20;
+export const AUTO_ATTACK_PERIOD_TICKS = 5;
+export const AUTO_ATTACK_CHANCE = 0.5;
+export const SPECIAL_BASE_DAMAGE = 4;
 export const SPECIAL_DAMAGE_MULTIPLIER = 10;
 export const SPECIAL_GAUGE_MAX = 100;
 export const SPECIAL_GAUGE_PER_TICK = 2;
 
-// 無操作（双方たたかえ）の長さ:
-// 有利 1.5 なら floor(4*1.5)=6/tick、480HP / 6 = 80 tick = 40秒で敵撃破。
-// 等倍なら 4/tick、480/4 = 120 tick = 60秒。タイムアップ 90秒は残HP判定用。
-// 味方1体 240HP / 4 = 60 tick。3体+交代硬直で無操作の全滅は約90秒。
+// 通常攻撃は双方とも 5 tick ごとの窓で半々。1発 20。
+// 必殺は従来の基礎 4 に倍率を掛ける。タイムアップ 90秒は残HP判定用。
 export const INITIAL_ENEMY_HP = 480;
 export const INITIAL_MEMBER_HP = 240;
+
+export type AutoAttackSide = "player" | "enemy";
 
 // 6属性の輪。時計回りに隣2つが有利、反時計回りに隣2つが不利。
 export const TYPE_WHEEL = [
@@ -107,6 +136,7 @@ export function computeAttackDamage(input: {
   attackerStance: BattleStance;
   defenderStance: BattleStance;
   isSpecial?: boolean;
+  baseDamage?: number;
 }): number {
   const typeMod = typeMultiplier(
     input.attackerAttribute,
@@ -117,8 +147,34 @@ export function computeAttackDamage(input: {
   const incomingMod =
     input.defenderStance === "guard" ? GUARD_INCOMING_MULTIPLIER : 1;
   const specialMod = input.isSpecial ? SPECIAL_DAMAGE_MULTIPLIER : 1;
+  const baseDamage =
+    input.baseDamage ??
+    (input.isSpecial ? SPECIAL_BASE_DAMAGE : AUTO_ATTACK_DAMAGE);
 
   return Math.floor(
-    AUTO_ATTACK_DAMAGE * typeMod * outgoingMod * incomingMod * specialMod,
+    baseDamage * typeMod * outgoingMod * incomingMod * specialMod,
+  );
+}
+
+function unitIntervalHash(input: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 4_294_967_296;
+}
+
+export function shouldAutoAttack(
+  battleId: string,
+  elapsedTicks: number,
+  side: AutoAttackSide,
+): boolean {
+  if (elapsedTicks <= 0 || elapsedTicks % AUTO_ATTACK_PERIOD_TICKS !== 0) {
+    return false;
+  }
+
+  return (
+    unitIntervalHash(`${side}:${battleId}:${elapsedTicks}`) < AUTO_ATTACK_CHANCE
   );
 }

@@ -21,6 +21,7 @@ export const BATTLE_SNAPSHOT_KEYS = [
   "enemyGuardCooldownTicks",
   "enemySpecialTelegraphTicks",
   "switchStunTicks",
+  "elapsedTicks",
   "startedAt",
   "bowelDraft",
 ] as const satisfies readonly (keyof BattleSnapshot)[];
@@ -42,6 +43,7 @@ export const IDLE_BATTLE_SNAPSHOT: BattleSnapshot = {
   enemyGuardCooldownTicks: 0,
   enemySpecialTelegraphTicks: 0,
   switchStunTicks: 0,
+  elapsedTicks: 0,
   startedAt: null,
   bowelDraft: null,
 };
@@ -64,6 +66,7 @@ export function partializeBattleStore(state: BattleSnapshot): BattleSnapshot {
     enemyGuardCooldownTicks: state.enemyGuardCooldownTicks,
     enemySpecialTelegraphTicks: state.enemySpecialTelegraphTicks,
     switchStunTicks: state.switchStunTicks,
+    elapsedTicks: state.elapsedTicks ?? 0,
     startedAt: state.startedAt,
     bowelDraft: state.bowelDraft,
   };
