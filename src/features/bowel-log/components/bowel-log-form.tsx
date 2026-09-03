@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { Check } from "lucide-react";
 
 import {
   BOWEL_AMOUNT_OPTIONS,
@@ -36,9 +37,10 @@ const colorSwatchClass: Record<BowelColor, string> = {
 };
 
 const segmentedControlClass =
-  "flex min-h-10 items-center justify-center rounded-lg border border-faded-gray bg-paper-white px-0.5 text-[10px] font-bold text-charcoal shadow-[0_2px_0_var(--color-faded-edge)] transition-[transform,box-shadow,background-color,border-color,color] duration-150 hover:border-flush-pink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flush-pink active:translate-y-px active:shadow-none";
+  "flex min-h-10 items-center justify-center rounded-lg border border-faded-gray px-0.5 text-[10px] font-bold shadow-[0_2px_0_var(--color-faded-edge)] transition-[transform,box-shadow,background-color,border-color,color] duration-150 hover:border-flush-pink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flush-pink active:translate-y-px active:shadow-none";
+const segmentedControlUnselectedClass = "bg-paper-white text-charcoal";
 const segmentedControlSelectedClass =
-  "border-flush-pink bg-flush-pink text-paper-white shadow-[0_2px_0_var(--color-flush-edge)]";
+  "scale-[1.02] border-flush-edge bg-flush-pink text-paper-white shadow-raised-pink ring-2 ring-flush-pink/35 ring-offset-1 ring-offset-blush-wash";
 
 function HardnessField({
   value,
@@ -66,7 +68,7 @@ function HardnessField({
           return (
             <div key={option.value}>
               <input id={inputId} name="hardness" type="radio" value={option.value} checked={selected} onChange={() => onChange(option.value)} className="peer sr-only" />
-              <label htmlFor={inputId} aria-label={option.label} className={`${segmentedControlClass} min-w-0 px-0 text-sm peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-flush-pink peer-disabled:cursor-not-allowed peer-disabled:opacity-50 ${selected ? segmentedControlSelectedClass : ""}`}>
+              <label htmlFor={inputId} aria-label={option.label} className={`${segmentedControlClass} min-w-0 px-0 text-sm peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-flush-pink peer-disabled:cursor-not-allowed peer-disabled:opacity-50 ${selected ? segmentedControlSelectedClass : segmentedControlUnselectedClass}`}>
                 {option.value}
               </label>
             </div>
@@ -108,7 +110,7 @@ function SegmentedField<T extends string>({
           const selected = value === option.value;
           return <div key={option.value}>
             <input id={inputId} name={name} type="radio" value={option.value} checked={selected} onChange={() => onChange(option.value)} className="peer sr-only" />
-            <label htmlFor={inputId} className={`${segmentedControlClass} min-w-0 text-center peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-flush-pink peer-disabled:cursor-not-allowed peer-disabled:opacity-50 ${selected ? segmentedControlSelectedClass : ""}`}>{option.label}</label>
+            <label htmlFor={inputId} className={`${segmentedControlClass} min-w-0 text-center peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-flush-pink peer-disabled:cursor-not-allowed peer-disabled:opacity-50 ${selected ? segmentedControlSelectedClass : segmentedControlUnselectedClass}`}>{option.label}</label>
           </div>;
         })}
       </div>
@@ -133,9 +135,10 @@ function ColorField({ value, error, disabled, onChange }: {
           const selected = value === option.value;
           return <div key={option.value}>
             <input id={inputId} name="color" type="radio" value={option.value} checked={selected} onChange={() => onChange(option.value)} className="peer sr-only" />
-            <label htmlFor={inputId} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border border-faded-gray bg-paper-white px-2 text-xs font-bold text-charcoal shadow-[0_2px_0_var(--color-faded-edge)] transition-[transform,box-shadow,background-color,border-color,color] duration-150 hover:border-flush-pink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-flush-pink peer-disabled:cursor-not-allowed peer-disabled:opacity-50 active:translate-y-px active:shadow-none ${selected ? segmentedControlSelectedClass : ""}`}>
+            <label htmlFor={inputId} className={`relative flex min-h-10 items-center justify-center gap-2 rounded-lg border border-faded-gray px-2 text-xs font-bold shadow-[0_2px_0_var(--color-faded-edge)] transition-[transform,box-shadow,background-color,border-color,color] duration-150 hover:border-flush-pink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-flush-pink peer-disabled:cursor-not-allowed peer-disabled:opacity-50 active:translate-y-px active:shadow-none ${selected ? segmentedControlSelectedClass : segmentedControlUnselectedClass}`}>
               <span aria-hidden="true" className={`size-3 shrink-0 rounded-full ring-1 ring-charcoal/20 ${colorSwatchClass[option.value]}`} />
               {option.label}
+              {selected ? <Check aria-hidden="true" className="absolute right-2 size-3.5" strokeWidth={3} /> : null}
             </label>
           </div>;
         })}
