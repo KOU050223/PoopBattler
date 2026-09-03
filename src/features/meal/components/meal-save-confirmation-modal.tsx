@@ -11,7 +11,6 @@ type MealSaveConfirmationModalProps = {
   isOpen: boolean;
   tag: MealTag;
   isSaving: boolean;
-  photoHint?: string;
   onCancel: () => void;
   onConfirm: () => void;
 };
@@ -21,7 +20,6 @@ export function MealSaveConfirmationModal({
   isOpen,
   tag,
   isSaving,
-  photoHint,
   onCancel,
   onConfirm,
 }: MealSaveConfirmationModalProps) {
@@ -89,7 +87,6 @@ export function MealSaveConfirmationModal({
             <h2 id="meal-confirmation-title" className="font-bold text-charcoal">この内容で保存しますか？</h2>
             <p className={`mt-2 ${mutedTextClass}`}>
               {tagLabel}として記録します。
-              {photoHint ? ` ${photoHint}` : null}
             </p>
             <div className="mt-5 flex gap-3">
               <button type="button" onClick={onCancel} disabled={isSaving} className={secondaryButtonClass}>戻る</button>

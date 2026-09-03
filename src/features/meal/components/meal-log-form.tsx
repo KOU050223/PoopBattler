@@ -23,10 +23,6 @@ type MealLogFormProps = {
   skipLabel?: string;
   autoOpenPicker?: boolean;
   refreshOnSuccess?: boolean;
-  /** 1より大きいとき、戦闘後ガチャとして写真を複数枚選べる。 */
-  maxPhotos?: number;
-  /** 枚数に応じた説明。戦闘後ガチャの確率表示に使う。 */
-  photoCountHint?: (photoCount: number) => string;
 };
 
 function currentLocalDateTime() {
@@ -41,14 +37,12 @@ export function MealLogForm({
   skipLabel = "記録せずに完了する",
   autoOpenPicker = false,
   refreshOnSuccess = true,
-  maxPhotos = 1,
-  photoCountHint,
 }: MealLogFormProps) {
   const router = useRouter();
   const tagGroupId = useId();
-  const previewUrlsRef = useRef<string[]>([]);
-  const [photos, setPhotos] = useState<File[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const previewUrlRef = useRef<string | null>(null);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [eatenAt, setEatenAt] = useState(currentLocalDateTime);
   const [tag, setTag] = useState<MealTag | "">("");
   const [note, setNote] = useState("");
@@ -58,48 +52,22 @@ export function MealLogForm({
   const [isSkipping, setIsSkipping] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const busy = isSaving || isSkipping;
-  const allowMultiple = maxPhotos > 1;
-  const photoHint = photoCountHint?.(photos.length);
 
   useEffect(() => {
     return () => {
-      previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     };
   }, []);
 
   const validate = () => {
     const nextErrors: FieldErrors = {};
-    if (photos.length === 0) nextErrors.photo = "写真を選択してください。";
+    if (!photo) nextErrors.photo = "写真を選択してください。";
     if (!tag) nextErrors.tag = "食事タグを1つ選択してください。";
     if (!eatenAt || Number.isNaN(new Date(eatenAt).getTime())) {
       nextErrors.eatenAt = "食事した日時を入力してください。";
     }
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
-  };
-
-  const addPhoto = (selectedPhoto: File) => {
-    if (previewUrlsRef.current.length >= maxPhotos) return;
-    const nextPreviewUrl = URL.createObjectURL(selectedPhoto);
-    if (!allowMultiple) {
-      previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-      previewUrlsRef.current = [nextPreviewUrl];
-      setPreviewUrls([nextPreviewUrl]);
-      setPhotos([selectedPhoto]);
-    } else {
-      previewUrlsRef.current = [...previewUrlsRef.current, nextPreviewUrl];
-      setPreviewUrls(previewUrlsRef.current);
-      setPhotos((current) => [...current, selectedPhoto]);
-    }
-    setErrors((current) => ({ ...current, photo: undefined }));
-  };
-
-  const removePhoto = (index: number) => {
-    const url = previewUrlsRef.current[index];
-    if (url) URL.revokeObjectURL(url);
-    previewUrlsRef.current = previewUrlsRef.current.filter((_, photoIndex) => photoIndex !== index);
-    setPreviewUrls(previewUrlsRef.current);
-    setPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index));
   };
 
   const requestConfirmation = (event: React.FormEvent<HTMLFormElement>) => {
@@ -109,33 +77,30 @@ export function MealLogForm({
   };
 
   const resetForm = () => {
-    previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-    previewUrlsRef.current = [];
-    setPhotos([]);
-    setPreviewUrls([]);
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = null;
+    setPhoto(null);
+    setPreviewUrl(null);
     setEatenAt(currentLocalDateTime());
     setTag("");
     setNote("");
   };
 
   const save = async () => {
-    if (photos.length === 0 || !tag) return;
+    if (!photo || !tag) return;
     setIsSaving(true);
     setErrors({});
-    const savedPhotoIds: string[] = [];
+    let photoId: string | undefined;
     try {
-      for (const photo of photos) {
-        savedPhotoIds.push(await saveMealPhoto(photo));
-      }
+      photoId = await saveMealPhoto(photo);
       const result = await onSave({
-        photoId: savedPhotoIds[0]!,
-        photoIds: savedPhotoIds,
+        photoId,
         eatenAt: new Date(eatenAt).toISOString(),
         tag,
         note: note.trim() || undefined,
       });
       if (!result.success) {
-        await Promise.all(savedPhotoIds.map((photoId) => deleteMealPhoto(photoId).catch(() => undefined)));
+        await deleteMealPhoto(photoId).catch(() => undefined);
         setErrors({ save: result.message });
         setIsConfirming(false);
         return;
@@ -145,7 +110,7 @@ export function MealLogForm({
       resetForm();
       if (refreshOnSuccess) router.refresh();
     } catch (error) {
-      await Promise.all(savedPhotoIds.map((photoId) => deleteMealPhoto(photoId).catch(() => undefined)));
+      if (photoId) await deleteMealPhoto(photoId).catch(() => undefined);
       setErrors({
         save: isMealPhotoStorageError(error)
           ? error.message
@@ -168,33 +133,29 @@ export function MealLogForm({
         <p className="font-bold text-charcoal">
           食事の写真 <span aria-hidden="true">*</span>
         </p>
-        {photoHint ? <p className={captionTextClass}>{photoHint}</p> : null}
-        {(!allowMultiple || photos.length < maxPhotos) ? (
-          <MealPhotoPicker
-            autoOpen={autoOpenPicker && photos.length === 0}
-            error={errors.photo}
-            selectLabel={allowMultiple && photos.length > 0 ? "写真を追加する" : "ファイルを選択する"}
-            onPhotoSelected={addPhoto}
-            onValidationError={(message) => setErrors((current) => ({ ...current, photo: message }))}
+        <MealPhotoPicker
+          autoOpen={autoOpenPicker}
+          error={errors.photo}
+          onPhotoSelected={(selectedPhoto) => {
+            if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+            const nextPreviewUrl = URL.createObjectURL(selectedPhoto);
+            previewUrlRef.current = nextPreviewUrl;
+            setPreviewUrl(nextPreviewUrl);
+            setPhoto(selectedPhoto);
+            setErrors((current) => ({ ...current, photo: undefined }));
+          }}
+          onValidationError={(message) => setErrors((current) => ({ ...current, photo: message }))}
+        />
+        {previewUrl && (
+          <Image
+            src={previewUrl}
+            alt="選択した食事のプレビュー"
+            width={720}
+            height={405}
+            unoptimized
+            className="aspect-video w-full rounded-2xl border-2 border-faded-gray object-cover shadow-raised-gray"
           />
-        ) : null}
-        {previewUrls.map((previewUrl, index) => (
-          <div key={previewUrl} className="flex flex-col gap-2">
-            <Image
-              src={previewUrl}
-              alt={`選択した食事のプレビュー ${index + 1}`}
-              width={720}
-              height={405}
-              unoptimized
-              className="aspect-video w-full rounded-2xl border-2 border-faded-gray object-cover shadow-raised-gray"
-            />
-            {allowMultiple ? (
-              <button type="button" className={secondaryButtonClass} onClick={() => removePhoto(index)}>
-                この写真を外す
-              </button>
-            ) : null}
-          </div>
-        ))}
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -251,7 +212,6 @@ export function MealLogForm({
           isOpen={isConfirming}
           tag={tag}
           isSaving={isSaving}
-          photoHint={allowMultiple ? photoHint : undefined}
           onCancel={() => setIsConfirming(false)}
           onConfirm={() => void save()}
         />
