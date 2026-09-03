@@ -1,6 +1,5 @@
 import {
   BENCH_HP_RECOVERY_RATE,
-  GUARD_COOLDOWN_MS,
   PARTY_SIZE,
   SPECIAL_GAUGE_MAX,
   SPECIAL_GAUGE_PER_TICK,
@@ -8,6 +7,7 @@ import {
   TIMEOUT_TICKS,
   autoAttackPeriodTicks,
   computeAttackDamage,
+  guardCooldownTicks,
   msToTicks,
   shouldAutoAttack,
   type BattleStance,
@@ -155,6 +155,7 @@ function decrementGuard(
   stance: BattleStance,
   remaining: number,
   cooldown: number,
+  nextCooldown: number,
 ): { stance: BattleStance; remaining: number; cooldown: number } {
   if (stance === "guard") {
     const nextRemaining = remaining - 1;
@@ -162,7 +163,7 @@ function decrementGuard(
       return {
         stance: "fight",
         remaining: 0,
-        cooldown: msToTicks(GUARD_COOLDOWN_MS),
+        cooldown: nextCooldown,
       };
     }
 
@@ -300,6 +301,7 @@ export function applyBattleTick(state: BattleSnapshot): BattleSnapshot {
     next.playerStance,
     next.playerGuardRemainingTicks,
     next.playerGuardCooldownTicks,
+    guardCooldownTicks(playerSpeed),
   );
   next.playerStance = playerGuard.stance;
   next.playerGuardRemainingTicks = playerGuard.remaining;
@@ -309,6 +311,7 @@ export function applyBattleTick(state: BattleSnapshot): BattleSnapshot {
     next.enemyStance,
     next.enemyGuardRemainingTicks,
     next.enemyGuardCooldownTicks,
+    guardCooldownTicks(enemySpeed),
   );
   next.enemyStance = enemyGuard.stance;
   next.enemyGuardRemainingTicks = enemyGuard.remaining;

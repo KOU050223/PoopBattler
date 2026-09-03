@@ -1,9 +1,9 @@
 import {
-  GUARD_COOLDOWN_MS,
   GUARD_DURATION_MS,
   PARTY_SIZE,
   SPECIAL_GAUGE_MAX,
   SWITCH_STUN_MS,
+  guardCooldownTicks,
   msToTicks,
   specialChargeTicks,
   type BattleSpeed,
@@ -35,7 +35,9 @@ export function applySetStance(
 
   const next = cloneBattleSnapshot(state);
   if (next.playerStance === "guard") {
-    next.playerGuardCooldownTicks = msToTicks(GUARD_COOLDOWN_MS);
+    next.playerGuardCooldownTicks = guardCooldownTicks(
+      state.party[state.activeIndex].speed,
+    );
     next.playerGuardRemainingTicks = 0;
   }
   next.playerStance = "fight";
@@ -61,6 +63,7 @@ export function applySwitchMember(
   }
 
   const next = cloneBattleSnapshot(state);
+  const guardCooldown = guardCooldownTicks(state.party[state.activeIndex].speed);
   next.activeIndex = partyIndex;
   next.switchStunTicks = msToTicks(SWITCH_STUN_MS);
   // 必殺ゲージは場でだけ溜まる。交代で退場側も入場側も空にする。
@@ -69,7 +72,7 @@ export function applySwitchMember(
   next.playerSpecialChargeTicks = 0;
   next.playerGuardRemainingTicks = 0;
   if (next.playerStance === "guard") {
-    next.playerGuardCooldownTicks = msToTicks(GUARD_COOLDOWN_MS);
+    next.playerGuardCooldownTicks = guardCooldown;
   }
   next.playerStance = "fight";
   return next;
@@ -90,7 +93,9 @@ export function applyBeginSpecial(
 
   const next = cloneBattleSnapshot(state);
   if (next.playerStance === "guard") {
-    next.playerGuardCooldownTicks = msToTicks(GUARD_COOLDOWN_MS);
+    next.playerGuardCooldownTicks = guardCooldownTicks(
+      state.party[state.activeIndex].speed,
+    );
     next.playerGuardRemainingTicks = 0;
   }
   next.playerStance = "special";
