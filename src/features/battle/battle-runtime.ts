@@ -9,6 +9,7 @@ import {
   TIMEOUT_MS,
   computeAttackDamage,
   msToTicks,
+  shouldAutoAttack,
   type BattleStance,
 } from "./battle.constants";
 import {
@@ -199,8 +200,14 @@ export function applyBattleTick(
   }
 
   let next = cloneBattleSnapshot(state);
+  next.elapsedTicks = (next.elapsedTicks ?? 0) + 1;
+  const battleId = next.battleId ?? "";
 
-  if (next.switchStunTicks === 0 && next.playerStance === "fight") {
+  if (
+    next.switchStunTicks === 0 &&
+    next.playerStance === "fight" &&
+    shouldAutoAttack(battleId, next.elapsedTicks, "player")
+  ) {
     next = dealDamage(next, "player", false);
     if (next.status !== "active") {
       return next;
@@ -208,7 +215,10 @@ export function applyBattleTick(
   }
 
   const activeIndexBeforeEnemy = next.activeIndex;
-  if (next.enemyStance === "fight") {
+  if (
+    next.enemyStance === "fight" &&
+    shouldAutoAttack(battleId, next.elapsedTicks, "enemy")
+  ) {
     next = dealDamage(next, "enemy", false);
     if (next.status !== "active") {
       return next;

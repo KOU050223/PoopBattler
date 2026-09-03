@@ -58,6 +58,7 @@ export type BattleSnapshot = {
   enemyGuardCooldownTicks: number;
   enemySpecialTelegraphTicks: number;
   switchStunTicks: number;
+  elapsedTicks: number;
   startedAt: number | null;
   bowelDraft: BowelDraft | null;
 };

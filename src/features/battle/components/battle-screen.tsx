@@ -272,6 +272,7 @@ export function BattleScreen() {
           onFight={() => useBattleStore.getState().setStance("fight")}
           onGuard={() => useBattleStore.getState().setStance("guard")}
           onSwitch={(index) => useBattleStore.getState().switchMember(index)}
+          onDebugStrain={() => useBattleStore.getState().fireSpecial()}
         />
       </section>
     );

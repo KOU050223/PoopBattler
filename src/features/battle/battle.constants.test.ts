@@ -2,16 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import {
   AUTO_ATTACK_DAMAGE,
+  AUTO_ATTACK_PERIOD_TICKS,
   GUARD_INCOMING_MULTIPLIER,
-  INITIAL_ENEMY_HP,
+  SPECIAL_BASE_DAMAGE,
   SPECIAL_DAMAGE_MULTIPLIER,
-  TICK_INTERVAL_MS,
   TYPE_ADVANTAGE,
   TYPE_DISADVANTAGE,
   TYPE_NEUTRAL,
   TYPE_WHEEL,
   computeAttackDamage,
   matchupTone,
+  shouldAutoAttack,
   typeMultiplier,
 } from "./battle.constants";
 
@@ -103,7 +104,7 @@ describe("computeAttackDamage", () => {
         defenderStance: "fight",
         isSpecial: true,
       }),
-    ).toBe(AUTO_ATTACK_DAMAGE * SPECIAL_DAMAGE_MULTIPLIER);
+    ).toBe(SPECIAL_BASE_DAMAGE * SPECIAL_DAMAGE_MULTIPLIER);
 
     expect(
       computeAttackDamage({
@@ -115,20 +116,56 @@ describe("computeAttackDamage", () => {
       }),
     ).toBe(
       Math.floor(
-        AUTO_ATTACK_DAMAGE * TYPE_ADVANTAGE * SPECIAL_DAMAGE_MULTIPLIER,
+        SPECIAL_BASE_DAMAGE * TYPE_ADVANTAGE * SPECIAL_DAMAGE_MULTIPLIER,
       ),
     );
   });
+});
 
-  it("有利タイプは約40秒で敵HPを削り切る数値になっている", () => {
-    const damagePerTick = computeAttackDamage({
-      attackerAttribute: "spicy",
-      defenderAttribute: "meat",
-      attackerStance: "fight",
-      defenderStance: "fight",
+describe("shouldAutoAttack", () => {
+  it("5 tick 以外では振らない", () => {
+    for (const tick of [0, 1, 2, 3, 4, 6, 7, 8, 9, 11]) {
+      expect(shouldAutoAttack("battle-1", tick, "player")).toBe(false);
+      expect(shouldAutoAttack("battle-1", tick, "enemy")).toBe(false);
+    }
+  });
+
+  it("同じバトルと同じ tick なら同じ結果になる", () => {
+    const first = shouldAutoAttack(
+      "battle-1",
+      AUTO_ATTACK_PERIOD_TICKS,
+      "player",
+    );
+    const second = shouldAutoAttack(
+      "battle-1",
+      AUTO_ATTACK_PERIOD_TICKS,
+      "player",
+    );
+
+    expect(first).toBe(second);
+  });
+
+  it("窓では当たる場合と外れる場合の両方がある", () => {
+    const tick = AUTO_ATTACK_PERIOD_TICKS;
+    const hits = Array.from({ length: 40 }, (_, index) =>
+      shouldAutoAttack(`roll-${index}`, tick, "player"),
+    );
+
+    expect(hits).toContain(true);
+    expect(hits).toContain(false);
+  });
+
+  it("味方と敵の抽選は独立している", () => {
+    const tick = AUTO_ATTACK_PERIOD_TICKS;
+    const split = Array.from({ length: 80 }, (_, index) => {
+      const battleId = `roll-${index}`;
+      return {
+        player: shouldAutoAttack(battleId, tick, "player"),
+        enemy: shouldAutoAttack(battleId, tick, "enemy"),
+      };
     });
-    const ticksToKo = INITIAL_ENEMY_HP / damagePerTick;
 
-    expect(ticksToKo * TICK_INTERVAL_MS).toBe(40_000);
+    expect(split.some((roll) => roll.player && !roll.enemy)).toBe(true);
+    expect(split.some((roll) => !roll.player && roll.enemy)).toBe(true);
   });
 });

@@ -27,6 +27,7 @@ export function BattleControls({
   onFight,
   onGuard,
   onSwitch,
+  onDebugStrain,
 }: {
   party: BattleParty;
   activeIndex: number;
@@ -37,6 +38,7 @@ export function BattleControls({
   onFight: () => void;
   onGuard: () => void;
   onSwitch: (index: number) => void;
+  onDebugStrain?: () => void;
 }) {
   const { reason, activateSpecial } = useSpecialMotion();
   const stunned = switchStunTicks > 0;
@@ -75,6 +77,16 @@ export function BattleControls({
         <p role="status" className="text-center text-xs text-zinc-600 dark:text-zinc-400">
           {reason}
         </p>
+      ) : null}
+      {process.env.NODE_ENV === "development" && onDebugStrain ? (
+        <button
+          type="button"
+          className={controlClass(playerStance === "special", playerStance !== "special")}
+          disabled={playerStance !== "special"}
+          onClick={onDebugStrain}
+        >
+          踏ん張る（デバッグ）
+        </button>
       ) : null}
       <div className="grid grid-cols-2 gap-2">
         {party.map((member, index) => {
