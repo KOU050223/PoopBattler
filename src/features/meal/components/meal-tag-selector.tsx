@@ -17,7 +17,7 @@ export function MealTagSelector({ value, onChange, error, errorId }: MealTagSele
   return (
     <fieldset className="flex flex-col gap-3" aria-describedby={error ? errorId : undefined}>
       <legend className="font-bold text-charcoal">食事タグ <span aria-hidden="true">*</span></legend>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         {MEAL_TAGS.map((mealTag) => {
           const isSelected = value === mealTag.value;
 

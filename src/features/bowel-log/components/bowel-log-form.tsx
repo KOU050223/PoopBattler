@@ -58,7 +58,7 @@ function ChoiceField<T extends string | number>({
       disabled={disabled}
     >
       <legend className="font-bold text-charcoal">{label} <span aria-hidden="true">*</span></legend>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-3">
         {options.map((option) => {
           const inputId = `${name}-${option.value}`;
           const selected = value === option.value;

@@ -7,7 +7,7 @@ import { MealLogImage } from "./meal-log-image";
 import { deleteMealPhoto, saveMealPhoto, validateMealPhoto } from "@/features/meal/meal-photo-storage";
 import type { MealLog } from "@/features/meal/actions";
 import { MEAL_TAGS } from "@/features/meal/meal.types";
-import { captionTextClass, dangerButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
+import { captionTextClass, cardClass, dangerButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type MealLogListProps = {
   initialLogs: MealLog[];
@@ -111,11 +111,11 @@ export function MealLogList({ initialLogs, onDelete, onReplacePhoto }: MealLogLi
       {cleanupPhotoId && <button type="button" onClick={() => void retryPhotoCleanup()} className={secondaryButtonClass}>端末内画像の削除を再試行する</button>}
       <input ref={replaceInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => void replacePhoto(event)} />
       {initialLogs.length === 0 ? (
-        <p className={`rounded-xl border-2 border-dashed border-faded-gray p-4 ${captionTextClass}`}>保存済みの食事ログはありません。</p>
+        <p className={`rounded-2xl border-2 border-dashed border-faded-gray bg-paper-white p-4 ${captionTextClass}`}>保存済みの食事ログはありません。</p>
       ) : (
-        <ul className="flex flex-col gap-4">
+          <ul className="flex flex-col gap-5">
           {initialLogs.map((mealLog) => (
-          <li key={mealLog.id} className="flex flex-col gap-3 rounded-xl border-2 border-faded-gray bg-paper-white p-4">
+          <li key={mealLog.id} className={`flex flex-col gap-3 ${cardClass}`}>
             <MealLogImage photoId={mealLog.photoId} />
             <div>
               <p className="font-bold text-charcoal">{getTagLabel(mealLog.tag)}</p>

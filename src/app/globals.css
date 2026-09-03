@@ -10,9 +10,23 @@
   --color-charcoal: #4b4b4b;
   --color-pencil-gray: #777777;
   --color-faded-gray: #afafaf;
-  --color-background: #ffffff;
+  --color-flush-edge: #c94d7f;
+  --color-faded-edge: #6f6f6f;
+  --color-night-edge: #00021a;
+  --color-danger-edge: #dc6868;
+  --color-background: #ffe0ef;
   --color-foreground: #4b4b4b;
-  --radius-xl: 12px;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.25rem;
+  --shadow-raised-gray: 0 6px 0 0 var(--color-faded-edge);
+  --shadow-pressed-gray: 0 2px 0 0 var(--color-faded-edge);
+  --shadow-raised-pink: 0 6px 0 0 var(--color-flush-edge);
+  --shadow-pressed-pink: 0 2px 0 0 var(--color-flush-edge);
+  --shadow-raised-ink: 0 6px 0 0 var(--color-night-edge);
+  --shadow-pressed-ink: 0 2px 0 0 var(--color-night-edge);
+  --shadow-raised-danger: 0 6px 0 0 var(--color-danger-edge);
+  --shadow-pressed-danger: 0 2px 0 0 var(--color-danger-edge);
 }
 
 @theme inline {
@@ -24,7 +38,7 @@ html {
 }
 
 body {
-  background: var(--color-paper-white);
+  background: var(--color-blush-wash);
   color: var(--color-charcoal);
   font-family: var(--font-sans);
   font-weight: 500;
