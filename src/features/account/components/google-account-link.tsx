@@ -17,7 +17,9 @@ type Props = {
 
 type Pending = "link" | "sign-in" | null;
 
-export function GoogleAccountLink({ status, next = "/" }: Props) {
+// 既定の戻り先はアカウント画面。連携の結果（成否）を出すのはこの画面で、
+// `/` はランディングになったため、そこへ戻すと結果が見えない。
+export function GoogleAccountLink({ status, next = "/account" }: Props) {
   const [pending, setPending] = useState<Pending>(null);
   const [message, setMessage] = useState("");
   const [confirmingSignIn, setConfirmingSignIn] = useState(false);
