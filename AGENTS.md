@@ -48,3 +48,113 @@ npm run lint
 
 「たぶんこうしないと動かない」で回避策を入れる前に、素直な書き方を試して
 実際に落ちるか確かめる。不要な回避策はそれ自体が後の抜け穴になる。
+
+# UI / UX
+
+PoopBattler のUIは以下を基本方針とする。
+
+## デザイン方向
+
+「かわいい × バカゲー × 妙にちゃんとしている」
+
+ゲームの題材はコミカルだが、
+UIそのものを意図的にダサくしたり子供向けにしない。
+
+The visual humor should come from the concept and details,
+not from intentionally making the interface ugly.
+
+PoopBattler should feel like a surprisingly polished product
+built around an absurd premise.
+
+## 優先順位
+
+UI変更では以下の順に優先する。
+
+1. usability
+2. information hierarchy
+3. responsive behavior
+4. readability
+5. consistency
+6. game personality
+7. decoration
+
+装飾のために操作性や可読性を犠牲にしない。
+
+## Agent Skills
+
+UI / UX改善では、必要に応じて `.agents/skills/` のSkillを使用する。
+
+特に既存画面の改善では以下を優先する。
+
+- `redesign-existing-projects`
+- `design-taste-frontend`
+- `gpt-taste`
+
+タスクに関係のないSkillを、インストールされているという理由だけで使用しない。
+
+画像を参考にUIを実装する場合は必要に応じて：
+
+- `image-to-code`
+- `imagegen-frontend-web`
+- `imagegen-frontend-mobile`
+
+を使用してよい。
+
+## Avoid
+
+特別な意図がない限り、以下を避ける。
+
+- 巨大なHeroセクション
+- 巨大すぎる見出し
+- 不要な英語のブランドラベル
+- genericなAI生成UI
+- admin dashboardのような見た目
+- 過剰なglassmorphism
+- 過剰なgradient
+- 過剰なemoji
+- うんちアイコンの乱用
+- 太すぎるborder
+- 強すぎるshadow
+- 無理な2カラム化
+- Desktopで単純にUIを横へ引き伸ばすこと
+- developer向けの内部IDやDBフィールドをユーザーに表示すること
+
+## Responsive
+
+Mobile Firstで考える。
+
+特に日常的に使う画面では、
+
+- 片手で主要操作を行える
+- Primary Actionまでの距離を短くする
+- Bottom Navigationにコンテンツを隠さない
+- Desktopでは適切なmax-widthを使用する
+- 横幅を埋めるためだけにレイアウトを複雑化しない
+
+ことを重視する。
+
+## UI変更時の制約
+
+UI改善だけを目的として以下を変更しない。
+
+- API
+- database schema
+- authentication
+- routing
+- business logic
+
+既存機能を維持し、
+既存のcomponent / icon / animation stackを優先する。
+
+不要なライブラリ追加を避ける。
+
+## User uploaded images
+
+ユーザーがアップロードした画像の内容を推測しない。
+
+画像には写真、スクリーンショット、表、文書、
+portrait / landscapeなど任意の内容が含まれる。
+
+カード等で表示する場合は、
+固定されたaspect ratioと `object-fit: cover` などを使用し、
+画像内容や縦横比によってレイアウトが破綻しないようにする。

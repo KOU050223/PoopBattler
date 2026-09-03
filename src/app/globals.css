@@ -51,7 +51,7 @@ body {
   .meal-form-section { @apply rounded-2xl bg-paper-white p-4 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-5; }
   .meal-form-section > h2 { @apply mb-4 text-lg font-black tracking-[-0.025em] text-charcoal; }
   .meal-field-label { @apply text-[15px] font-bold text-charcoal; }
-  .meal-upload-prompt { @apply flex min-h-28 flex-col items-center justify-center rounded-xl border border-dashed border-cotton-pink bg-blush-wash/35 px-4 text-center; }
+  .meal-upload-prompt { @apply flex min-h-24 flex-col items-center justify-center rounded-xl border border-dashed border-cotton-pink bg-blush-wash/35 px-4 text-center; }
   .meal-upload-prompt p { @apply mt-1.5 text-base font-bold text-charcoal; }
   .meal-upload-prompt span { @apply mt-1 text-xs font-medium text-pencil-gray; }
   .meal-photo-button { @apply inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-cotton-pink bg-paper-white px-3.5 text-sm font-bold text-charcoal transition-[transform,background-color,border-color] duration-200 hover:-translate-y-px hover:border-flush-pink hover:bg-blush-wash focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flush-pink active:translate-y-0; }
@@ -64,11 +64,13 @@ body {
   .meal-date-control summary span { @apply inline-flex items-center gap-2; }
   .meal-date-control .meal-date-change { @apply text-xs font-bold text-flush-edge; }
   .meal-date-control[open] .meal-date-change > svg { @apply rotate-180; }
+  .meal-compact-date-input { @apply min-h-10 px-3 text-sm shadow-none; }
   .meal-tag-chip { @apply flex min-h-9 cursor-pointer items-center rounded-full border border-cotton-pink bg-paper-white px-3.5 text-sm font-bold text-charcoal transition-colors duration-200 hover:border-flush-pink focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-flush-pink; }
   .meal-tag-chip-selected { @apply border-flush-pink bg-flush-pink text-paper-white shadow-[0_2px_6px_rgb(201_77_127_/_0.22)]; }
   .meal-cta-wrap { @apply pt-1; }
   .meal-save-button { @apply inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-flush-pink px-5 text-[15px] font-black text-paper-white shadow-[0_4px_0_#c94d7f] transition-[transform,box-shadow,background-color] duration-150 hover:bg-flush-edge active:translate-y-1 active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flush-pink; }
   .meal-cta-wrap p { @apply mt-2 text-center text-xs font-medium text-pencil-gray; }
+  .meal-success-feedback { @apply flex items-center gap-1.5 rounded-lg bg-blush-wash/65 px-3 py-2 text-xs font-bold text-flush-edge; }
   .meal-recent-section { @apply mt-7; }
   .meal-recent-heading { @apply mb-4 flex items-start justify-between gap-3; }
   .meal-recent-heading h2 { @apply text-xl font-black tracking-[-0.025em] text-charcoal; }
@@ -76,14 +78,14 @@ body {
   .meal-recent-heading > span { @apply rounded-lg bg-paper-white px-2 py-1 text-xs font-bold text-flush-edge; }
   .meal-empty-state { @apply rounded-xl border border-dashed border-cotton-pink bg-paper-white/60 p-5; }
   .meal-log-card { @apply flex min-w-0 overflow-hidden rounded-xl bg-paper-white shadow-[0_7px_20px_rgb(201_77_127_/_0.1)] transition-transform duration-200 hover:-translate-y-0.5 md:flex-col; }
-  .meal-log-card-image { @apply size-28 shrink-0 overflow-hidden bg-blush-wash sm:size-32 md:h-auto md:w-full md:aspect-[4/3]; }
+  .meal-log-card-image { @apply size-28 shrink-0 overflow-hidden bg-blush-wash sm:size-32 md:h-auto md:w-full md:aspect-video; }
   .meal-log-card-image > * { @apply h-full w-full rounded-none; }
   .meal-log-card-image img { @apply h-full w-full rounded-none object-cover; }
   .meal-log-card-content { @apply min-w-0 flex-1 p-3.5 sm:p-4; }
   .meal-log-tag { @apply shrink-0 rounded-md bg-blush-wash px-2 py-1 text-xs font-bold text-flush-edge; }
-  .meal-inline-action, .meal-inline-delete { @apply inline-flex items-center gap-1 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flush-pink; }
-  .meal-inline-action { @apply text-spark-blue hover:text-charcoal; }
-  .meal-inline-delete { @apply text-pencil-gray hover:text-red-700; }
+  .meal-inline-action, .meal-inline-delete { @apply inline-flex items-center gap-1 text-[11px] font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flush-pink; }
+  .meal-inline-action { @apply text-pencil-gray hover:text-spark-blue; }
+  .meal-inline-delete { @apply text-pencil-gray/80 hover:text-red-700; }
 }
 
 @keyframes meal-preview-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }

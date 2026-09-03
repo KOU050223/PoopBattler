@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
-import { CalendarClock, ChevronDown, Sparkles } from "lucide-react";
+import { CalendarClock, CheckCircle2, ChevronDown, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { MealPhotoPicker } from "./meal-photo-picker";
@@ -117,7 +117,7 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
   return (
     <form
       onSubmit={requestConfirmation}
-      className="flex flex-col gap-5 sm:gap-6"
+      className="flex flex-col gap-4 sm:gap-5"
       noValidate
       inert={isConfirming}
     >
@@ -163,7 +163,7 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
         <summary><span><CalendarClock aria-hidden="true" className="size-4" />{compactDateTime(eatenAt)}に食べた</span><span className="meal-date-change">変更 <ChevronDown aria-hidden="true" className="size-4" /></span></summary>
         <div className="pt-3">
           <label htmlFor="meal-eaten-at" className="sr-only">食事した日時</label>
-          <input id="meal-eaten-at" type="datetime-local" value={eatenAt} onChange={(event) => setEatenAt(event.target.value)} aria-invalid={Boolean(errors.eatenAt)} aria-describedby={errors.eatenAt ? "meal-eaten-at-error" : undefined} className={fieldClass} />
+          <input id="meal-eaten-at" type="datetime-local" value={eatenAt} onChange={(event) => setEatenAt(event.target.value)} aria-invalid={Boolean(errors.eatenAt)} aria-describedby={errors.eatenAt ? "meal-eaten-at-error" : undefined} className={`${fieldClass} meal-compact-date-input !min-h-10 !shadow-none`} />
           {errors.eatenAt && <p id="meal-eaten-at-error" className="mt-2 text-sm text-red-600">{errors.eatenAt}</p>}
         </div>
       </details>
@@ -174,7 +174,7 @@ export function MealLogForm({ onSave }: MealLogFormProps) {
       </div>
 
       {errors.save && <p role="alert" className="text-sm text-red-600">{errors.save}</p>}
-      {isComplete && <p role="status" className="text-sm font-medium text-spark-blue">入力内容を保存しました。</p>}
+      {isComplete && <p role="status" className="meal-success-feedback"><CheckCircle2 aria-hidden="true" className="size-4" />記録しました。次のモンスターが楽しみです。</p>}
       <div className="meal-cta-wrap">
         <button type="submit" className="meal-save-button"><Sparkles aria-hidden="true" className="size-[18px]" />この食事を記録する</button>
         <p>この食事が、次のモンスターにつながります。</p>

@@ -29,7 +29,7 @@ export function navTabClass(isCurrent: boolean) {
     "flex min-h-12 w-full flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs font-bold tracking-[0.02em] transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flush-pink";
 
   if (isCurrent) {
-    return `${base} bg-flush-pink text-paper-white shadow-[0_3px_8px_rgb(201_77_127_/_0.2)]`;
+    return `${base} bg-blush-wash text-flush-edge`;
   }
 
   return `${base} text-pencil-gray hover:bg-blush-wash hover:text-charcoal`;
