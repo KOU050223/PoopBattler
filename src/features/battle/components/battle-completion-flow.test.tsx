@@ -63,6 +63,8 @@ describe("BattleCompletionFlow", () => {
       />,
     );
     expect(markup).toContain("食事の記録");
+    expect(markup).toContain("食事を記録すると、仲間になりやすくなる");
+    expect(markup).toContain("meal-form-section");
     expect(markup).toContain("この食事を記録する");
     expect(markup).toContain("今回の食事");
     expect(markup).toContain("カレー");

@@ -1,7 +1,8 @@
 {
   "Common": {
-    "appName": "Poop Battler",
-    "headerAppName": "Poop Battler",
+    "appName": "Brace Up! Brule Raid!!",
+    "headerAppName": "Brace Up! Brule Raid!!",
+    "headerAppNameShort": "Brule Raid",
     "language": "Language",
     "loading": "Loading…",
     "errorTitle": "Something went wrong",
@@ -40,7 +41,10 @@
   },
   "Home": {
     "description": "Log what you eat, then take on poop monsters in battle.",
-    "start": "Start"
+    "start": "Start",
+    "gameTitle": "Brace Up! Brule Raid!!",
+    "tagline": "Toilet time becomes battle time.",
+    "supportingCopy": "As you play, meal and bowel logs are saved."
   },
   "AccountMenu": {
     "login": "Log in",
