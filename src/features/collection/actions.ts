@@ -16,7 +16,7 @@ export async function getCollectionCharactersAction(): Promise<CollectionCharact
 
   const { data, error } = await supabase
     .from("user_characters")
-    .select("id, acquired_at, characters!user_characters_character_id_fkey(id, name, attribute, rarity)")
+    .select("id, acquired_at, hp, power, speed, characters!user_characters_character_id_fkey(id, name, attribute, rarity)")
     .eq("user_id", user.id)
     .order("acquired_at", { ascending: false });
 
@@ -31,6 +31,9 @@ export async function getCollectionCharactersAction(): Promise<CollectionCharact
     return [{
       ownershipId: ownership.id,
       acquiredAt: ownership.acquired_at,
+      hp: ownership.hp,
+      power: ownership.power,
+      speed: ownership.speed,
       id: character.id,
       name: character.name,
       attribute: character.attribute,

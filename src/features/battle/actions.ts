@@ -9,6 +9,7 @@ import { PARTY_SIZE } from "./battle.constants";
 import type { StartBattleResult } from "./battle.types";
 import { messageForCompleteBattleError } from "./complete-battle-error";
 import {
+  readStartBattleUserCharacterIds,
   startBattle,
   type PartySnapshotMember,
   type StartBattleGateway,
@@ -122,13 +123,16 @@ function createGateway(supabase: SupabaseClient): StartBattleGateway {
 /**
  * バトルを開始する。敵はサーバーで確定し、クライアントは指定できない（Issue #21）。
  *
- * 引数を取らないのは意図的。敵ID・属性・所有者・乱数シードをクライアントから
- * 受け取らないことで、改ざん不能な開始済みバトルを作る。
+ * 受け取ってよいのは本人の user_characters.id だけ。HP / Power / Speed は
+ * 読まず、RPC が user_characters から確定する（Issue #73 / #108）。
  */
-export async function startBattleAction(): Promise<StartBattleResult> {
+export async function startBattleAction(input?: unknown): Promise<StartBattleResult> {
   const supabase = await createClient();
 
-  return startBattle(createGateway(supabase));
+  return startBattle(
+    createGateway(supabase),
+    readStartBattleUserCharacterIds(input),
+  );
 }
 
 export type CompleteBattleInput = {

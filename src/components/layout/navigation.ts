@@ -1,4 +1,4 @@
-import { Camera, Swords, NotebookPen, BookMarked } from "lucide-react";
+import { Camera, Swords, NotebookPen, Backpack } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavigationItem = {
@@ -12,5 +12,5 @@ export const navigationItems: readonly NavigationItem[] = [
   { href: "/meals", label: "食事", icon: Camera },
   { href: "/battle", label: "バトル", icon: Swords },
   { href: "/logs", label: "記録", icon: NotebookPen },
-  { href: "/collection", label: "図鑑", icon: BookMarked },
+  { href: "/collection", label: "インベントリ", icon: Backpack },
 ];

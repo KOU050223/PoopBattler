@@ -67,6 +67,59 @@ export type StartBattleGateway = {
 const AUTH_ERROR = "プレイの準備ができていません。時間をおいて再試行してください。";
 const START_ERROR = "バトルを開始できませんでした。時間をおいて再試行してください。";
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_PATTERN.test(value);
+}
+
+/**
+ * 開始に使う所持個体IDだけを残す。3値や余計なフィールドはここで捨てる。
+ *
+ * クライアントは user_characters.id 以外を指定できない（Issue #73 / #108）。
+ */
+export function readStartBattleUserCharacterIds(input: unknown): string[] {
+  if (!input || typeof input !== "object") {
+    return [];
+  }
+
+  const ids = (input as { userCharacterIds?: unknown }).userCharacterIds;
+  if (!Array.isArray(ids)) {
+    return [];
+  }
+
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const item of ids) {
+    if (!isUuid(item) || seen.has(item)) {
+      continue;
+    }
+    seen.add(item);
+    unique.push(item);
+    if (unique.length >= PARTY_SIZE) {
+      break;
+    }
+  }
+  return unique;
+}
+
+function selectedOwnedIds(ids: readonly string[]): string[] {
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (id.length === 0 || seen.has(id)) {
+      continue;
+    }
+    seen.add(id);
+    unique.push(id);
+    if (unique.length >= PARTY_SIZE) {
+      break;
+    }
+  }
+  return unique;
+}
+
 function toEnemy(character: CharacterRow): BattleEnemy {
   return {
     characterId: character.id,
@@ -133,28 +186,36 @@ function toOwnedPartyFromSnapshot(
  * 戻り値の形は新規・再開で同じにし、クライアントに区別を強いない。
  *
  * 選出する所持個体のIDだけはクライアントから渡す。3値は渡さず、サーバーが
- * 本人の user_characters の行から読んで確定させる（Issue #73）。
+ * 本人の user_characters の行から読んで確定させる（Issue #73 / #108）。
+ *
+ * IDが空のときは、インベントリ未訪問向けに新しい順の所持個体を使う。
  */
-export async function startBattle(gateway: StartBattleGateway): Promise<StartBattleResult> {
+export async function startBattle(
+  gateway: StartBattleGateway,
+  userCharacterIds: readonly string[] = [],
+): Promise<StartBattleResult> {
   const { userId, failed: authFailed } = await gateway.getUserId();
 
   if (authFailed || !userId) {
     return { status: "error", message: AUTH_ERROR };
   }
 
-  // 選出UI（バトル/06）が未実装なので、所持個体は新しい順に最大3体を自動で使う。
-  //
+  const selectedIds = selectedOwnedIds(userCharacterIds);
+  let ownedIds = selectedIds;
+
+  // 選出がまだ無いときだけ、所持個体を新しい順に最大3体使う。
   // 読み出しに失敗したら開始しない。失敗を「所持ゼロ」に潰すと、空の
   // party_snapshot でバトルが作られてしまう。以後の再試行はそのバトルを
   // 再開するだけなので、本来のパーティで戦い直せない（エラーも出ないまま
   // レンタルに置き換わる）。レンタルは候補が無いときの穴埋めであって、
   // 通信失敗の代替ではない。
-  const { owned, failed: ownedFailed } = await gateway.findOwnedCharacters();
-  if (ownedFailed) {
-    return { status: "error", message: START_ERROR };
+  if (ownedIds.length === 0) {
+    const { owned, failed: ownedFailed } = await gateway.findOwnedCharacters();
+    if (ownedFailed) {
+      return { status: "error", message: START_ERROR };
+    }
+    ownedIds = owned.slice(0, PARTY_SIZE).map((row) => row.id);
   }
-
-  const ownedIds = owned.slice(0, PARTY_SIZE).map((row) => row.id);
 
   // active行の検索・敵選定・INSERTは start_battle RPC だけが行う。
   const { battle, failed: startFailed } = await gateway.startBattle(ownedIds);

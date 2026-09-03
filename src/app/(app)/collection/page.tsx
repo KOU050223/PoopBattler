@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { getCollectionCharactersAction } from "@/features/collection/actions";
-import { CollectionList } from "@/features/collection/components/collection-list";
+import { InventoryScreen } from "@/features/collection/components/inventory-screen";
 
 export const metadata: Metadata = {
-  title: "図鑑",
+  title: "インベントリ",
 };
 
 export default async function CollectionPage() {
@@ -14,10 +14,10 @@ export default async function CollectionPage() {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <PageHeader
-        title="図鑑"
-        description="仲間になったうんちモンスターを集めます。"
+        title="インベントリ"
+        description="バトルに出す先発3体を入れ替えます。"
       />
-      <CollectionList characters={characters} />
+      <InventoryScreen characters={characters} />
     </div>
   );
 }
