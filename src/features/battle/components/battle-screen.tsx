@@ -253,11 +253,9 @@ export function BattleScreen() {
   if (snapshot.status === "defeated" && snapshot.enemy) {
     return (
       <section className="flex flex-col items-center gap-4 text-center">
-        <p className="text-xl font-bold">{won ? "勝利" : "敗北"}</p>
+        <p className="text-xl font-bold">敗北</p>
         <p className={mutedTextClass}>
-          {won
-            ? "撃破しました。排便の記録へ進めます。"
-            : "やられました。排便の記録へ進めます。"}
+          やられました。バトルを終えて、もう一度始められます。
         </p>
         <button
           type="button"
