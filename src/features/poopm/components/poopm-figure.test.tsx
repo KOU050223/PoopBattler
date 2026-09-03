@@ -53,4 +53,16 @@ describe("PoopmFigure", () => {
     expect(markup).not.toContain("/eyes/poopm_eye_a.png");
     expect(markup).not.toContain("/mouth/poopm_mouth_a.png");
   });
+
+  it("hit でも前向きの全パーツを重ねる", () => {
+    const markup = renderToStaticMarkup(
+      <PoopmFigure appearance={APPEARANCE} facing="front" motion="hit" />,
+    );
+
+    expect(markup).toContain("/body/poopm_body_a.png");
+    expect(markup).toContain("/legs/poopm_base_rightleg.png");
+    expect(markup).toContain("/hat/poopm_hat_a.png");
+    expect(markup).toContain("/mouth/poopm_mouth_a.png");
+    expect(markup).toContain("/eyes/poopm_eye_a.png");
+  });
 });

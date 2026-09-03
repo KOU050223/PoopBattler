@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, type TargetAndTransition, type Transition } from "framer-motion";
+import { motion } from "framer-motion";
 
 import {
   BODY_PNG,
@@ -9,7 +9,15 @@ import {
   LIMBS_PNG,
   MOUTH_PNG,
 } from "@/features/poopm/poopm.assets";
-import type { PoopmFigureProps, PoopmMotion } from "@/features/poopm/poopm.types";
+import {
+  poopmBodyMotion,
+  poopmEyesMotion,
+  poopmHeadMotion,
+  poopmLimbMotion,
+  poopmMotionTransition,
+  poopmMouthMotion,
+} from "@/features/poopm/poopm.motion";
+import type { PoopmFigureProps } from "@/features/poopm/poopm.types";
 
 type PoopmFigureComponentProps = PoopmFigureProps & {
   className?: string;
@@ -20,42 +28,6 @@ const BODY_SIZE = {
   width: 207,
   height: 220,
 } as const;
-
-const motionTransition: Record<PoopmMotion, Transition> = {
-  idle: { duration: 2.4, ease: "easeInOut", repeat: Infinity },
-  hit: { duration: 0.34, ease: "easeOut" },
-  eat: { duration: 0.42, ease: "easeInOut" },
-};
-
-const bodyMotion: Record<PoopmMotion, TargetAndTransition> = {
-  idle: { y: [0, 2, 0], scaleY: [1, 1.025, 1] },
-  hit: { x: [0, -7, 8, -4, 0], rotate: [0, -3, 3, -1, 0] },
-  eat: { y: [0, -8, 2, 0], scaleY: [1, 0.96, 1.04, 1] },
-};
-
-const headMotion: Record<PoopmMotion, TargetAndTransition> = {
-  idle: { y: [0, -2, 0], rotate: [-2, 2, -2] },
-  hit: { x: [0, -8, 7, 0], rotate: [0, -9, 8, 0] },
-  eat: { y: [0, -11, 0], rotate: [0, 5, -2, 0] },
-};
-
-const limbMotion: Record<PoopmMotion, TargetAndTransition> = {
-  idle: { y: [0, 1, 0], rotate: [0, -1, 0] },
-  hit: { x: [0, -5, 5, 0], rotate: [0, 7, -6, 0] },
-  eat: { y: [0, -5, 0], rotate: [0, -7, 4, 0] },
-};
-
-const eyesMotion: Record<PoopmMotion, TargetAndTransition> = {
-  idle: { scaleY: [1, 1, 0.12, 1, 1] },
-  hit: { x: [0, -3, 3, 0], scaleY: [1, 0.65, 1] },
-  eat: { y: [0, -2, 0], scaleY: [1, 0.85, 1] },
-};
-
-const mouthMotion: Record<PoopmMotion, TargetAndTransition> = {
-  idle: { y: [0, 1, 0] },
-  hit: { x: [0, 3, -3, 0], scaleX: [1, 0.9, 1] },
-  eat: { y: [0, -2, 0], scale: [1, 1.18, 0.96, 1] },
-};
 
 function partClass(className: string) {
   return `absolute select-none object-contain ${className}`;
@@ -68,7 +40,7 @@ export function PoopmFigure({
   className,
   label = "うんちくん",
 }: PoopmFigureComponentProps) {
-  const transition = motionTransition[figureMotion];
+  const transition = poopmMotionTransition[figureMotion];
   const isBack = facing === "back";
 
   return (
@@ -87,7 +59,8 @@ export function PoopmFigure({
         aria-hidden="true"
         draggable={false}
         className={partClass("left-[9%] top-[12%] z-20 w-[82%]")}
-        animate={bodyMotion[figureMotion]}
+        initial={false}
+        animate={poopmBodyMotion[figureMotion]}
         transition={transition}
       />
       <motion.img
@@ -98,7 +71,8 @@ export function PoopmFigure({
         aria-hidden="true"
         draggable={false}
         className={partClass("bottom-[-22%] left-[25%] z-10 h-[47%] w-auto origin-top")}
-        animate={limbMotion[figureMotion]}
+        initial={false}
+        animate={poopmLimbMotion[figureMotion]}
         transition={transition}
       />
       <motion.img
@@ -109,7 +83,8 @@ export function PoopmFigure({
         aria-hidden="true"
         draggable={false}
         className={partClass("right-[25%] bottom-[-22%] z-10 h-[46%] w-auto origin-top")}
-        animate={limbMotion[figureMotion]}
+        initial={false}
+        animate={poopmLimbMotion[figureMotion]}
         transition={transition}
       />
       <motion.img
@@ -120,7 +95,8 @@ export function PoopmFigure({
         aria-hidden="true"
         draggable={false}
         className={partClass("left-[-18%] top-[36%] z-10 w-[46%] origin-bottom")}
-        animate={limbMotion[figureMotion]}
+        initial={false}
+        animate={poopmLimbMotion[figureMotion]}
         transition={transition}
       />
       <motion.img
@@ -131,7 +107,8 @@ export function PoopmFigure({
         aria-hidden="true"
         draggable={false}
         className={partClass("right-[-18%] top-[36%] z-10 w-[47%] origin-bottom")}
-        animate={limbMotion[figureMotion]}
+        initial={false}
+        animate={poopmLimbMotion[figureMotion]}
         transition={transition}
       />
       <motion.img
@@ -142,9 +119,12 @@ export function PoopmFigure({
         aria-hidden="true"
         draggable={false}
         className={partClass("left-[31%] top-[0%] z-30 w-[38%] origin-bottom")}
-        animate={headMotion[figureMotion]}
+        initial={false}
+        animate={{
+          ...poopmHeadMotion[figureMotion],
+          scaleX: isBack ? -1 : 1,
+        }}
         transition={transition}
-        style={{ scaleX: isBack ? -1 : 1 }}
       />
       {!isBack ? (
         <>
@@ -156,7 +136,8 @@ export function PoopmFigure({
             aria-hidden="true"
             draggable={false}
             className={partClass("left-[35%] top-[68%] z-40 w-[30%] origin-center")}
-            animate={mouthMotion[figureMotion]}
+            initial={false}
+            animate={poopmMouthMotion[figureMotion]}
             transition={transition}
           />
           <motion.img
@@ -167,11 +148,12 @@ export function PoopmFigure({
             aria-hidden="true"
             draggable={false}
             className={partClass("left-[29%] top-[39%] z-50 w-[42%] origin-center")}
-            animate={eyesMotion[figureMotion]}
+            initial={false}
+            animate={poopmEyesMotion[figureMotion]}
             transition={
-              figureMotion === "idle"
-                ? { ...transition, duration: 3.2, times: [0, 0.84, 0.88, 0.92, 1] }
-                : transition
+              figureMotion === "eat"
+                ? transition
+                : { ...transition, duration: 3.2, times: [0, 0.84, 0.88, 0.92, 1] }
             }
           />
         </>

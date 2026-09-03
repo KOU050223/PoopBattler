@@ -3,8 +3,11 @@
 import { motion } from "framer-motion";
 
 import {
+  battleFigureAnimate,
+  battleFigureTransition,
+} from "@/features/battle/battle-figure.motion";
+import {
   ATTRIBUTE_LABELS,
-  scaleByBattleSpeed,
   type BattleSpeed,
   type CharacterAttribute,
 } from "@/features/battle/battle.constants";
@@ -34,22 +37,9 @@ export function BattleFigure({
   return (
     <motion.div
       className="flex flex-col items-center gap-1"
-      animate={
-        figureMotion === "hit"
-          ? { x: [0, -10, 10, -6, 0] }
-          : figureMotion === "attack"
-            ? { y: [0, -14, 0] }
-            : { y: [0, -5, 0] }
-      }
-      transition={
-        figureMotion === "idle"
-          ? {
-              repeat: Infinity,
-              duration: scaleByBattleSpeed(2.2, speed),
-              ease: "easeInOut",
-            }
-          : { duration: scaleByBattleSpeed(0.35, speed) }
-      }
+      initial={false}
+      animate={battleFigureAnimate[figureMotion]}
+      transition={battleFigureTransition(figureMotion, speed)}
     >
       <PoopmFigure
         appearance={appearanceForCharacter(characterId)}
