@@ -172,9 +172,10 @@ declare
   meal_a uuid := pg_temp.fixture('meal_rpc_a');
   meal_b uuid := pg_temp.fixture('meal_b');
   battle_no_meal uuid := pg_temp.fixture('battle_rpc_a');
-  battle_with_meal uuid := pg_temp.fixture('battle_rpc_photo_a');
+  battle_with_meal uuid;
   first_result record;
   repeated_result record;
+  started_photo_battle record;
   photo_result record;
   repeated_photo_result record;
 begin
@@ -208,12 +209,9 @@ begin
     (select count(*) = 1 from public.bowel_logs where battle_result_id = battle_no_meal),
     true);
 
-  -- 完了後は active が無いため、写真付きの次のバトルを作れる。
-  insert into public.battle_results (
-    id, user_id, enemy_character_id, enemy_attribute
-  ) values (
-    battle_with_meal, a, 'curry-poop', 'curry'
-  );
+  -- 完了後は active が無いため、RPCで写真付きの次のバトルを開始できる。
+  select * into started_photo_battle from public.start_battle();
+  battle_with_meal := started_photo_battle.battle_id;
 
   -- 他人の食事IDを渡した試行は、確定を残さず拒否する。
   perform pg_temp.expect(
@@ -267,6 +265,52 @@ begin
     pg_temp.allowed(format(
       'select * from public.complete_battle(%L, 4::smallint, ''normal'', ''brown'', ''easy'', null)',
       battle_no_meal)),
+    false);
+
+  reset role;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- start_battle RPC: 敵選定・active作成はサーバー側だけで行う
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  a uuid := pg_temp.fixture('user_a');
+  battle_first record;
+  battle_repeated record;
+begin
+  perform pg_temp.become(a);
+
+  select * into battle_first from public.start_battle();
+  perform pg_temp.expect(
+    'start_battle は新規activeバトルを作る',
+    battle_first.resumed = false
+      and (select status = 'active' and user_id = a and meal_log_id is null
+           from public.battle_results where id = battle_first.battle_id),
+    true);
+  perform pg_temp.expect(
+    'start_battle はサーバーが選んだ敵属性を保存する',
+    (select enemy_attribute = battle_first.enemy_attribute
+      and enemy_character_id = battle_first.enemy_character_id
+     from public.battle_results where id = battle_first.battle_id),
+    true);
+
+  select * into battle_repeated from public.start_battle();
+  perform pg_temp.expect(
+    'start_battle 再実行はactiveバトルを再開する',
+    battle_repeated.resumed
+      and battle_repeated.battle_id = battle_first.battle_id,
+    true);
+  perform pg_temp.expect(
+    'start_battle 再実行でactiveバトルを増やさない',
+    (select count(*) = 1 from public.battle_results where user_id = a and status = 'active'),
+    true);
+
+  perform set_config('role', 'anon', true);
+  perform pg_temp.expect(
+    'start_battle anon は実行できない',
+    pg_temp.allowed('select * from public.start_battle()'),
     false);
 
   reset role;
@@ -377,7 +421,7 @@ begin
     pg_temp.allowed(format('select 1 from public.user_characters where user_id = %L', b)),
     false);
 
-  -- INSERT: 本人名義は通り、他人名義（所有者IDの偽装）は落ちる ---------------
+  -- INSERT: battle_resultsはRPCだけが作成する --------------------------------
   perform pg_temp.expect(
     'meal_logs INSERT 本人名義',
     pg_temp.allowed(format(
@@ -390,23 +434,15 @@ begin
     false);
 
   perform pg_temp.expect(
-    'battle_results INSERT 本人名義',
+    'battle_results INSERT 本人名義でも拒否',
     pg_temp.allowed(format(
-      'insert into public.battle_results (user_id, enemy_character_id, enemy_attribute) values (%L, ''curry-poop'', ''curry'')', a)),
-    true);
-  -- 1件目の active は通る。2件目の active は部分ユニークインデックスが拒否する。
-  -- 「通るべき」と「落ちるべき」を並べて、制約が効いていることと
-  -- 効きすぎていないことを同じ実行で見る。
-  perform pg_temp.expect(
-    'battle_results INSERT active 2件目は拒否',
-    pg_temp.allowed_uniq(format(
       'insert into public.battle_results (user_id, enemy_character_id, enemy_attribute) values (%L, ''curry-poop'', ''curry'')', a)),
     false);
   perform pg_temp.expect(
-    'battle_results INSERT 完了済みは何件でも可',
-    pg_temp.allowed_uniq(format(
+    'battle_results INSERT completedでも拒否',
+    pg_temp.allowed(format(
       'insert into public.battle_results (user_id, enemy_character_id, enemy_attribute, status) values (%L, ''curry-poop'', ''curry'', ''completed'')', a)),
-    true);
+    false);
 
   perform pg_temp.expect(
     'battle_results INSERT 他人名義（偽装）',
@@ -420,10 +456,10 @@ begin
   -- active の一意制約と干渉させない（干渉させると、RLSが効いたのか
   -- 制約に当たったのか区別できなくなる）。
   perform pg_temp.expect(
-    'battle_results INSERT 本人の食事を参照',
+    'battle_results INSERT 本人の食事を参照しても拒否',
     pg_temp.allowed(format(
       'insert into public.battle_results (user_id, meal_log_id, enemy_character_id, enemy_attribute, status) values (%L, %L, ''curry-poop'', ''curry'', ''completed'')', a, meal_a)),
-    true);
+    false);
   perform pg_temp.expect(
     'battle_results INSERT 他人の食事を参照',
     pg_temp.allowed(format(
@@ -604,7 +640,6 @@ begin
       ('authenticated', 'meal_logs', 'UPDATE'),
       ('authenticated', 'meal_logs', 'DELETE'),
       ('authenticated', 'battle_results', 'SELECT'),
-      ('authenticated', 'battle_results', 'INSERT'),
       -- 排便ログと所有キャラクターは読み取り専用。
       ('authenticated', 'bowel_logs', 'SELECT'),
       ('authenticated', 'user_characters', 'SELECT')

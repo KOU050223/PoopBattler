@@ -7,7 +7,6 @@ import { revalidatePath } from "next/cache";
 import type { StartBattleResult } from "./battle.types";
 import {
   startBattle,
-  type CharacterRow,
   type StartBattleGateway,
 } from "./start-battle";
 
@@ -28,23 +27,26 @@ function createGateway(supabase: SupabaseClient): StartBattleGateway {
       return { userId: user?.id ?? null, failed: Boolean(error) };
     },
 
-    async findActiveBattle() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    async startBattle() {
+      const { data, error } = await supabase.rpc("start_battle");
+      const battle = data?.[0];
+      if (
+        !battle
+        || typeof battle.battle_id !== "string"
+        || typeof battle.enemy_character_id !== "string"
+        || typeof battle.resumed !== "boolean"
+      ) {
+        return { battle: null, failed: true };
+      }
 
-      // RLSでも本人に絞られるが、条件をクエリにも書く。RLSの変更が
-      // 静かに他人の行を拾う経路にならないようにする。
-      const { data, error } = await supabase
-        .from("battle_results")
-        .select("id, enemy_character_id")
-        .eq("user_id", user?.id ?? "")
-        .eq("status", "active")
-        .order("started_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      return { battle: data ?? null, failed: Boolean(error) };
+      return {
+        battle: {
+          id: battle.battle_id,
+          enemy_character_id: battle.enemy_character_id,
+          resumed: battle.resumed,
+        },
+        failed: Boolean(error),
+      };
     },
 
     async findCharacterById(id) {
@@ -66,24 +68,6 @@ function createGateway(supabase: SupabaseClient): StartBattleGateway {
       return { characters: data ?? [], failed: Boolean(error) };
     },
 
-    async insertBattle({ userId, character }: {
-      userId: string;
-      character: CharacterRow;
-    }) {
-      const { data } = await supabase
-        .from("battle_results")
-        .insert({
-          user_id: userId,
-          enemy_character_id: character.id,
-          enemy_attribute: character.attribute,
-          meal_log_id: null,
-          status: "active",
-        })
-        .select("id")
-        .single();
-
-      return { battleId: data?.id ?? null };
-    },
   };
 }
 

@@ -287,6 +287,15 @@ export type Database = {
           status: Database["public"]["Enums"]["battle_status"]
         }[]
       }
+      start_battle: {
+        Args: never
+        Returns: {
+          battle_id: string
+          enemy_attribute: Database["public"]["Enums"]["character_attribute"]
+          enemy_character_id: string
+          resumed: boolean
+        }[]
+      }
     }
     Enums: {
       battle_status: "active" | "won" | "completed"
