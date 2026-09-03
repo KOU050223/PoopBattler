@@ -394,6 +394,7 @@ export function BattleScreen() {
               label={member.name ?? "味方"}
               depth="near"
               speed={speed}
+              charging={snapshot.playerStance === "special"}
             />
             <HpBar
               current={member.hp}
