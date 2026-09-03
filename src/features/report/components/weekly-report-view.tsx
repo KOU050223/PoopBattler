@@ -1,5 +1,7 @@
-import { CalendarDays, ChartNoAxesCombined, LockKeyhole, Sparkles, Utensils } from "lucide-react";
+import { ChartNoAxesCombined, Sparkles, Utensils } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+
+import { ManageSubscriptionLink } from "./manage-subscription-link";
 
 import { MEAL_TAGS } from "@/features/meal/meal.types";
 
@@ -8,7 +10,8 @@ import type { WeeklyReport } from "../weekly-report";
 
 type Props = {
   report: WeeklyReport;
-  isPremium: boolean;
+  /** 購入直後などに出す案内。無ければ null。 */
+  notice?: string | null;
 };
 
 const hardnessLabels = ["1", "2", "3", "4", "5", "6", "7"];
@@ -38,36 +41,21 @@ function ReportHeader({ report }: { report: WeeklyReport }) {
   );
 }
 
-function LockedReport({ report }: { report: WeeklyReport }) {
-  const t = useTranslations("Report");
-
-  return (
-    <>
-      <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6">
-        <div className="flex items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blush-wash text-flush-edge"><CalendarDays aria-hidden="true" className="size-5" /></div>
-          <div>
-            <h2 className="text-lg font-black tracking-[-0.025em] text-charcoal">{t("recordedCount", { count: report.summary.bowelCount })}</h2>
-            <p className="mt-1 text-sm leading-relaxed text-pencil-gray">{t("recordedDays", { count: report.summary.recordedDays })}</p>
-          </div>
-        </div>
-      </section>
-      <section className="mt-5 rounded-2xl bg-paper-white p-5 text-center shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="locked-report-title">
-        <div className="flex size-10 items-center justify-center rounded-full bg-flush-pink text-paper-white mx-auto"><LockKeyhole aria-hidden="true" className="size-5" /></div>
-        <h2 id="locked-report-title" className="mt-3 text-lg font-black text-charcoal">{t("lockedTitle")}</h2>
-        <p className="mt-1 max-w-sm mx-auto text-sm leading-relaxed text-charcoal">{t("lockedDescription")}</p>
-        <button type="button" disabled className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-flush-pink px-5 text-sm font-black text-paper-white opacity-60" title={t("purchaseUnavailable")}><Sparkles aria-hidden="true" className="size-4" />{t("viewPremium")}</button>
-        <p className="mt-2 text-xs font-medium text-charcoal">{t("purchaseUnavailable")}</p>
-      </section>
-    </>
-  );
-}
-
-export function WeeklyReportView({ report, isPremium }: Props) {
+/** 権利のある利用者へ見せる本レポート。権利の判定は actions.ts が行う。 */
+export function WeeklyReportView({ report, notice = null }: Props) {
   return (
     <div className="mx-auto w-full max-w-2xl pb-3">
       <ReportHeader report={report} />
-      {isPremium ? <PremiumReport report={report} /> : <LockedReport report={report} />}
+      {notice ? (
+        <p
+          role="status"
+          className="mb-5 rounded-2xl bg-blush-wash px-4 py-3 text-sm font-medium text-charcoal"
+        >
+          {notice}
+        </p>
+      ) : null}
+      <PremiumReport report={report} />
+      <ManageSubscriptionLink />
     </div>
   );
 }

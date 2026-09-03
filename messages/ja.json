@@ -66,9 +66,8 @@
     "recordedCount": "今週は{count}件記録しました",
     "recordedDays": "{count}日分の記録があります。集計・比較・食事との傾向はプレミアムで振り返れます。",
     "lockedTitle": "今週の傾向を、もっと詳しく",
-    "lockedDescription": "硬さの変化や食事と排便の傾向を、プレミアムで確認できます。",
+    "lockedDescription": "硬さの変化や食事と排便の傾向を、プレミアムで確認できます。ここに表示しているのは見本で、あなたの記録ではありません。",
     "viewPremium": "プレミアムで見る",
-    "purchaseUnavailable": "プレミアムの購入機能は準備中です。",
     "highlights": "今週のハイライト",
     "bowelCount": "排便回数",
     "recordDays": "記録日数",
@@ -106,6 +105,15 @@
     "mealAnalysis": "24時間内の関連 {within24}件、48時間内 {within48}件。平均の硬さは {average24} / {average48}。",
     "noRecords": "記録なし",
     "errorTitle": "レポートを作れませんでした",
-    "errorDescription": "ログイン状態を確認して、もう一度お試しください。"
+    "errorDescription": "ログイン状態を確認して、もう一度お試しください。",
+    "teaserSampleLabel": "表示は見本です",
+    "purchase": "プレミアムを購入する",
+    "purchasePending": "決済ページを開いています…",
+    "linkRequiredTitle": "購入の前に、アカウントを連携してください",
+    "linkRequiredDescription": "連携しないと、端末を変えたときに購入した権利を復元できません。",
+    "linkAccount": "Googleアカウントを連携する",
+    "purchaseSuccess": "購入ありがとうございます。反映まで少し時間がかかることがあります。",
+    "purchaseCanceled": "購入は取り消されました。",
+    "manageSubscription": "購読を管理する"
   }
 }

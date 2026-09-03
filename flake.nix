@@ -23,6 +23,9 @@
           packages = [
             pkgs.nodejs_24
             pkgs.supabase-cli
+            # Stripe Webhook をローカルへ転送し、実際のイベントで課金経路を確かめる。
+            #   stripe listen --forward-to localhost:3000/api/stripe/webhook
+            pkgs.stripe-cli
           ];
         };
       });
