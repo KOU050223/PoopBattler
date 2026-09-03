@@ -140,7 +140,7 @@ describe("必殺", () => {
     expect(rejected.playerSpecialChargeTicks).toBe(0);
   });
 
-  it("準備中に発射すると定数倍率のダメージになり、未発射ならたたかえへ戻る", () => {
+  it("準備中に発射すると定数倍率のダメージになり、未発射なら自動攻撃へ戻る", () => {
     const charged = applyBeginSpecial({
       ...applyBattleStart(startInput),
       playerGauge: SPECIAL_GAUGE_MAX,
