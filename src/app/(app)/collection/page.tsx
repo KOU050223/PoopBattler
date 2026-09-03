@@ -1,23 +1,23 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { getCollectionCharactersAction } from "@/features/collection/actions";
+import { CollectionList } from "@/features/collection/components/collection-list";
 
 export const metadata: Metadata = {
   title: "図鑑",
 };
 
-export default function CollectionPage() {
+export default async function CollectionPage() {
+  const characters = await getCollectionCharactersAction();
+
   return (
-    <>
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <PageHeader
         title="図鑑"
         description="仲間になったうんちモンスターを集めます。"
       />
-      <EmptyState
-        title="まだ仲間がいません"
-        description="バトルで撃破した敵が、抽選で仲間になります。"
-      />
-    </>
+      <CollectionList characters={characters} />
+    </div>
   );
 }
