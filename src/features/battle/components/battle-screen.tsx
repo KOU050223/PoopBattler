@@ -62,6 +62,7 @@ function HpBar({
 }) {
   const reduceMotion = useReducedMotion();
   const ratio = Math.max(0, Math.min(1, current / max));
+  const fillClass = side === "enemy" ? "bg-night-ink" : "bg-flush-pink";
   const fillColor = side === "enemy"
     ? "var(--color-night-ink)"
     : "var(--color-flush-pink)";
@@ -96,8 +97,7 @@ function HpBar({
       </motion.div>
       <div className="h-2 overflow-hidden rounded-full bg-blush-wash">
         <motion.div
-          className="h-full"
-          style={{ backgroundColor: fillColor }}
+          className={`h-full ${fillClass}`}
           initial={false}
           animate={{
             width: `${ratio * 100}%`,
