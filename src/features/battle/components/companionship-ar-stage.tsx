@@ -8,6 +8,7 @@ import { BattleCompletionResult } from "@/features/battle/components/battle-comp
 import {
   canStartGachaBySwipe,
   clientPointFromPercent,
+  companionshipPhaseDelay,
   companionshipRevealCopy,
   gachaCameraStatusMessage,
   GACHA_SWIPE_MIN_DISTANCE_PX,
@@ -16,9 +17,12 @@ import {
   nextCompanionshipArPhase,
   shouldCrawlOut,
   shouldPlayThrow,
+  VIDEO_SHAKE_ANIMATE,
+  VIDEO_SHAKE_TRANSITION,
   type CompanionshipArPhase,
 } from "@/features/battle/companionship-ar";
 import { useGachaCamera } from "@/features/battle/hooks/use-gacha-camera";
+import { useGravityFloorAngle } from "@/features/battle/hooks/use-gravity-floor";
 import { useToiletDetection } from "@/features/battle/hooks/use-toilet-detection";
 import {
   DEFAULT_THROW_TARGET,
@@ -48,17 +52,54 @@ export type CompanionshipArFrameProps = {
   toiletSight?: ToiletSight;
   detectionStatus?: ToiletModelStatus;
   throwTarget?: PercentPoint;
+  floorAngleDeg?: number;
   aimPoint?: PercentPoint | null;
   onAim?: (point: PercentPoint) => void;
   onThrowStart?: () => void;
 };
 
-function phaseLabel(phase: CompanionshipArPhase, acquired: boolean, canSwipe: boolean) {
+const CONFETTI_PIECES = [
+  { x: 10, delay: 0, color: "#ff7aac", w: 8, h: 12, rot: 22 },
+  { x: 22, delay: 0.04, color: "#1cb0f6", w: 7, h: 11, rot: -16 },
+  { x: 34, delay: 0.08, color: "#ffb3d0", w: 9, h: 10, rot: 8 },
+  { x: 46, delay: 0.02, color: "#ffffff", w: 6, h: 12, rot: -28 },
+  { x: 58, delay: 0.1, color: "#ff7aac", w: 8, h: 9, rot: 14 },
+  { x: 70, delay: 0.06, color: "#1cb0f6", w: 7, h: 13, rot: -10 },
+  { x: 82, delay: 0.12, color: "#ffb3d0", w: 8, h: 11, rot: 26 },
+  { x: 16, delay: 0.16, color: "#ffffff", w: 6, h: 10, rot: -6 },
+  { x: 40, delay: 0.18, color: "#ff7aac", w: 9, h: 8, rot: 18 },
+  { x: 64, delay: 0.14, color: "#1cb0f6", w: 7, h: 12, rot: -22 },
+  { x: 88, delay: 0.2, color: "#c94d7f", w: 8, h: 10, rot: 12 },
+  { x: 28, delay: 0.22, color: "#ffffff", w: 6, h: 11, rot: -14 },
+] as const;
+
+function phaseLabel(phase: CompanionshipArPhase, canSwipe: boolean) {
   if (phase === "throw") return "食事を便器へ投げ入れています";
-  if (phase === "reveal") {
-    return acquired ? "うんちくんが這い出てきます" : "仲間化の結果です";
-  }
+  if (phase === "shake") return "便器が揺れています";
+  if (phase === "reveal") return "仲間化の結果です";
   return canSwipe ? "スワイプして食事を投げ入れてください" : "便器にカメラを向けてください";
+}
+
+function RevealConfetti({ reduceMotion }: { reduceMotion: boolean }) {
+  return (
+    <div aria-hidden="true" data-confetti="true" className="pointer-events-none absolute inset-0 z-[35] overflow-hidden">
+      {CONFETTI_PIECES.map((piece, index) => (
+        <motion.span
+          key={index}
+          className="absolute top-[-8%] rounded-sm"
+          style={{
+            left: `${piece.x}%`,
+            width: piece.w,
+            height: piece.h,
+            backgroundColor: piece.color,
+          }}
+          initial={reduceMotion ? false : { y: "-8%", rotate: piece.rot, opacity: 1 }}
+          animate={{ y: "118%", rotate: piece.rot + 120, opacity: 0.15 }}
+          transition={reduceMotion ? { duration: 0 } : { duration: 1.15, delay: piece.delay, ease: "easeOut" }}
+        />
+      ))}
+    </div>
+  );
 }
 
 function ToiletDebugOverlay({ sight }: { sight: ToiletSight }) {
@@ -93,6 +134,7 @@ export function CompanionshipArFrame({
   toiletSight = { kind: "none" },
   detectionStatus = "idle",
   throwTarget = DEFAULT_THROW_TARGET,
+  floorAngleDeg = 0,
   aimPoint = null,
   onAim,
   onThrowStart,
@@ -101,6 +143,7 @@ export function CompanionshipArFrame({
   const acquired = shouldCrawlOut(character);
   const showCamera = phase !== "summary";
   const live = showCamera && isLiveCameraOverlay(status);
+  const shaking = phase === "shake" && !reduceMotion;
   const statusMessage = gachaCameraStatusMessage(status);
   const detectionMessage = showCamera ? toiletDebugCopy(detectionStatus, toiletSight, phase === "staging") : null;
   const canSwipe = canStartGachaBySwipe({
@@ -163,7 +206,7 @@ export function CompanionshipArFrame({
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-1 text-center">
-        <p className="text-xl font-bold text-charcoal">{phaseLabel(phase, acquired, canSwipe)}</p>
+        <p className="text-xl font-bold text-charcoal">{phaseLabel(phase, canSwipe)}</p>
         <p className={`text-sm ${mutedTextClass}`}>
           仲間化の抽選はすでに確定しています。この画面ではやり直しません。
         </p>
@@ -177,23 +220,30 @@ export function CompanionshipArFrame({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
       >
-        {live ? (
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            autoPlay
-            aria-label="便器に向けたカメラ"
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-          />
-        ) : (
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 bg-[radial-gradient(circle_at_50%_78%,var(--color-blush-wash)_0%,transparent_42%),linear-gradient(180deg,#1a1d3a_0%,var(--color-night-ink)_100%)]"
-          />
-        )}
+        <motion.div
+          className="pointer-events-none absolute -inset-[8%]"
+          data-video-shake={shaking ? "on" : "off"}
+          animate={shaking ? VIDEO_SHAKE_ANIMATE : { x: 0, y: 0, rotate: 0 }}
+          transition={shaking ? VIDEO_SHAKE_TRANSITION : { duration: 0 }}
+        >
+          {live ? (
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              autoPlay
+              aria-label="便器に向けたカメラ"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-[radial-gradient(circle_at_50%_78%,var(--color-blush-wash)_0%,transparent_42%),linear-gradient(180deg,#1a1d3a_0%,var(--color-night-ink)_100%)]"
+            />
+          )}
+        </motion.div>
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-night-ink/80 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-2/5 bg-gradient-to-t from-night-ink/80 to-transparent" />
 
         <ToiletDebugOverlay sight={toiletSight} />
 
@@ -206,7 +256,7 @@ export function CompanionshipArFrame({
           />
         ) : null}
 
-        {mealPhotoUrl && (phase === "throw" || phase === "reveal") ? (
+        {mealPhotoUrl && phase === "throw" ? (
           <motion.img
             src={mealPhotoUrl}
             alt="便器へ投げ入れる食事の写真"
@@ -225,28 +275,48 @@ export function CompanionshipArFrame({
           />
         ) : null}
 
+        {phase === "reveal" && acquired ? <RevealConfetti reduceMotion={reduceMotion} /> : null}
+
         {phase === "reveal" && acquired && character ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex h-[58%] items-end justify-center overflow-hidden">
-            <motion.div
-              initial={reduceMotion ? false : { y: "110%" }}
-              animate={{ y: 0 }}
-              transition={reduceMotion ? { duration: 0 } : { duration: 1.15, ease: [0.16, 1, 0.3, 1] }}
+          <div
+            className="pointer-events-none absolute z-30"
+            data-spawn-x={throwTarget.x.toFixed(1)}
+            data-spawn-y={throwTarget.y.toFixed(1)}
+            style={{
+              left: `${throwTarget.x}%`,
+              top: `${throwTarget.y}%`,
+              transform: "translate(-50%, -100%)",
+            }}
+          >
+            <div
+              data-gravity-floor="true"
+              data-gravity-angle={floorAngleDeg.toFixed(1)}
+              style={{ transform: `rotate(${floorAngleDeg}deg)`, transformOrigin: "50% 100%" }}
             >
-              <PoopmFigure
-                appearance={appearanceForCharacter(character.id)}
-                facing="front"
-                motion="idle"
-                label={character.name}
-                className="h-44 w-44"
-              />
-            </motion.div>
+              <motion.div
+                initial={reduceMotion ? false : { scale: 0.72 }}
+                animate={{ scale: 1 }}
+                transition={reduceMotion ? { duration: 0 } : { duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <PoopmFigure
+                  appearance={appearanceForCharacter(character.id)}
+                  facing="front"
+                  motion="idle"
+                  label={character.name}
+                  className="h-44 w-44"
+                />
+              </motion.div>
+            </div>
           </div>
         ) : null}
 
         {phase === "reveal" ? (
           <p
             role="status"
-            className="absolute inset-x-3 bottom-3 z-40 rounded-xl bg-paper-white/92 px-3 py-2 text-center text-sm font-bold text-charcoal"
+            data-reveal-result={acquired ? "success" : "fail"}
+            className={`absolute inset-x-3 top-4 z-40 text-center text-3xl font-black ${
+              acquired ? "text-flush-pink" : "text-charcoal"
+            }`}
           >
             {revealCopy}
           </p>
@@ -303,6 +373,7 @@ export function CompanionshipArStage({
 }) {
   const reduceMotion = useReducedMotion();
   const { stream, status, stop } = useGachaCamera();
+  const floorAngleDeg = useGravityFloorAngle();
   const videoRef = useRef<HTMLVideoElement>(null);
   const mealPhotoUrl = useMealPhotoUrl(mealPhotoId);
   const [phase, setPhase] = useState<CompanionshipArPhase>("staging");
@@ -336,17 +407,17 @@ export function CompanionshipArStage({
   }, [phase, stop]);
 
   useEffect(() => {
-    if (phase === "summary" || phase === "staging") return;
-    const delay = reduceMotion ? 0 : phase === "throw" ? 900 : 1500;
+    const delay = companionshipPhaseDelay(phase, Boolean(reduceMotion));
+    if (delay == null) return;
     const timer = window.setTimeout(() => {
-      setPhase((current) => nextCompanionshipArPhase(current, hasPhoto));
+      setPhase((current) => nextCompanionshipArPhase(current, hasPhoto, Boolean(reduceMotion)));
     }, delay);
     return () => window.clearTimeout(timer);
   }, [hasPhoto, phase, reduceMotion]);
 
   function startThrowFromSwipe() {
     setHeldTarget(liveTargetRef.current);
-    setPhase((current) => nextCompanionshipArPhase(current, hasPhoto));
+    setPhase((current) => nextCompanionshipArPhase(current, hasPhoto, Boolean(reduceMotion)));
   }
 
   return (
@@ -364,6 +435,7 @@ export function CompanionshipArStage({
       toiletSight={sight}
       detectionStatus={detectEnabled || phase !== "staging" ? detectionStatus : "failed"}
       throwTarget={throwTarget}
+      floorAngleDeg={floorAngleDeg}
       aimPoint={aimPoint}
       onAim={setAimPoint}
       onThrowStart={startThrowFromSwipe}

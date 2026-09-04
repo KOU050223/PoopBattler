@@ -4,12 +4,16 @@ import {
   canAdvanceFromStaging,
   canStartGachaBySwipe,
   clientPointFromPercent,
+  companionshipPhaseDelay,
   companionshipRevealCopy,
+  COMPANIONSHIP_PHASE_MS,
   GACHA_SWIPE_MIN_DISTANCE_PX,
   isCameraFallback,
   isLiveCameraOverlay,
   isThrowSwipe,
   nextCompanionshipArPhase,
+  REVEAL_FAIL_COPY,
+  REVEAL_SUCCESS_COPY,
   shouldCrawlOut,
   shouldPlayThrow,
   usesCompanionshipAr,
@@ -158,24 +162,36 @@ describe("isThrowSwipe", () => {
 });
 
 describe("nextCompanionshipArPhase", () => {
-  it("写真がなければ投げ入れを飛ばす", () => {
+  it("投げ入れのあと揺れ、reduced-motion は揺れを飛ばす", () => {
     expect(nextCompanionshipArPhase("staging", true)).toBe("throw");
-    expect(nextCompanionshipArPhase("staging", false)).toBe("reveal");
-    expect(nextCompanionshipArPhase("throw", true)).toBe("reveal");
+    expect(nextCompanionshipArPhase("staging", false)).toBe("shake");
+    expect(nextCompanionshipArPhase("throw", true)).toBe("shake");
+    expect(nextCompanionshipArPhase("shake", true)).toBe("reveal");
     expect(nextCompanionshipArPhase("reveal", true)).toBe("summary");
+    expect(nextCompanionshipArPhase("staging", false, true)).toBe("reveal");
+    expect(nextCompanionshipArPhase("throw", true, true)).toBe("reveal");
+    expect(nextCompanionshipArPhase("shake", true, true)).toBe("reveal");
+  });
+});
+
+describe("companionshipPhaseDelay", () => {
+  it("staging は待たず、揺れは 700ms、reduced-motion は 0", () => {
+    expect(companionshipPhaseDelay("staging", false)).toBeNull();
+    expect(companionshipPhaseDelay("summary", false)).toBeNull();
+    expect(companionshipPhaseDelay("throw", false)).toBe(COMPANIONSHIP_PHASE_MS.throw);
+    expect(companionshipPhaseDelay("shake", false)).toBe(COMPANIONSHIP_PHASE_MS.shake);
+    expect(companionshipPhaseDelay("reveal", false)).toBe(COMPANIONSHIP_PHASE_MS.reveal);
+    expect(companionshipPhaseDelay("shake", true)).toBe(0);
+    expect(companionshipPhaseDelay("reveal", true)).toBe(0);
   });
 });
 
 describe("companionshipRevealCopy", () => {
-  it("成功と失敗で再抽選できない旨を取り違えない", () => {
-    expect(companionshipRevealCopy({ acquired: true, usedMealLog: true })).toBe(
-      "便器から這い出てきた",
-    );
-    expect(companionshipRevealCopy({ acquired: false, usedMealLog: true })).toContain(
-      "再抽選はできません",
-    );
+  it("成功と失敗の文字を取り違えない", () => {
+    expect(companionshipRevealCopy({ acquired: true, usedMealLog: true })).toBe(REVEAL_SUCCESS_COPY);
+    expect(companionshipRevealCopy({ acquired: false, usedMealLog: true })).toBe(REVEAL_FAIL_COPY);
     expect(companionshipRevealCopy({ acquired: false, usedMealLog: true })).not.toBe(
-      "便器から這い出てきた",
+      REVEAL_SUCCESS_COPY,
     );
   });
 });

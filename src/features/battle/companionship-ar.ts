@@ -1,7 +1,28 @@
 import type { ToiletModelStatus, ToiletSight } from "@/features/battle/toilet-detection";
 import type { UserMediaCameraStatus } from "@/lib/user-media-camera";
 
-export type CompanionshipArPhase = "staging" | "throw" | "reveal" | "summary";
+export type CompanionshipArPhase = "staging" | "throw" | "shake" | "reveal" | "summary";
+
+export const REVEAL_SUCCESS_COPY = "成功";
+export const REVEAL_FAIL_COPY = "失敗";
+
+export const COMPANIONSHIP_PHASE_MS = {
+  throw: 900,
+  shake: 700,
+  reveal: 2200,
+} as const;
+
+export const VIDEO_SHAKE_ANIMATE = {
+  x: [0, -3, 4, -3, 2, -7, 8, -6, 5, 0],
+  y: [0, 2, -2, 1, -2, 4, -5, 3, -3, 0],
+  rotate: [0, -1.2, 1.2, -0.8, 0.6, -2.4, 2.2, -1.8, 1.4, 0],
+};
+
+export const VIDEO_SHAKE_TRANSITION = {
+  duration: 0.7,
+  times: [0, 0.08, 0.16, 0.24, 0.32, 0.4, 0.5, 0.6, 0.7, 1],
+  ease: "linear" as const,
+};
 
 export const GACHA_SWIPE_MIN_DISTANCE_PX = 56;
 const GACHA_SWIPE_MAX_ANGLE_RAD = (65 * Math.PI) / 180;
@@ -86,10 +107,26 @@ export function isThrowSwipe(start: PixelPoint, end: PixelPoint, target: PixelPo
 export function nextCompanionshipArPhase(
   phase: CompanionshipArPhase,
   hasPhoto: boolean,
+  reduceMotion = false,
 ): CompanionshipArPhase {
-  if (phase === "staging") return hasPhoto ? "throw" : "reveal";
-  if (phase === "throw") return "reveal";
+  if (phase === "staging") {
+    if (hasPhoto) return "throw";
+    return reduceMotion ? "reveal" : "shake";
+  }
+  if (phase === "throw") return reduceMotion ? "reveal" : "shake";
+  if (phase === "shake") return "reveal";
   return "summary";
+}
+
+export function companionshipPhaseDelay(
+  phase: CompanionshipArPhase,
+  reduceMotion: boolean,
+): number | null {
+  if (phase === "staging" || phase === "summary") return null;
+  if (reduceMotion) return 0;
+  if (phase === "throw") return COMPANIONSHIP_PHASE_MS.throw;
+  if (phase === "shake") return COMPANIONSHIP_PHASE_MS.shake;
+  return COMPANIONSHIP_PHASE_MS.reveal;
 }
 
 export function gachaCameraStatusMessage(status: UserMediaCameraStatus): string | null {
@@ -117,9 +154,7 @@ export function companionshipRevealCopy(input: {
   acquired: boolean;
   usedMealLog: boolean;
 }) {
-  if (input.acquired) return "便器から這い出てきた";
-  if (input.usedMealLog) {
-    return "今回は仲間になりませんでした。仲間化抽選は確定済みのため、再抽選はできません。";
-  }
+  if (input.acquired) return REVEAL_SUCCESS_COPY;
+  if (input.usedMealLog) return REVEAL_FAIL_COPY;
   return "この回は仲間になりません。食事ログがないと、仲間化抽選は行いません。";
 }
