@@ -24,7 +24,8 @@ describe("MealLogForm", () => {
       />,
     );
     expect(markup).toContain("食事の写真");
-    expect(markup).toContain("食事タグ");
+    expect(markup).toContain("食品群・栄養観点");
+    expect(markup).toContain("緑黄色野菜");
     expect(markup).toContain("記録せずに完了する");
   });
 

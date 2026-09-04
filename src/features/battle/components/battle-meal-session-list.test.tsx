@@ -12,7 +12,7 @@ const curryLog: MealLog = {
   id: "00000000-0000-4000-8000-000000000011",
   eatenAt: "2026-09-04T03:00:00.000Z",
   photoId: "00000000-0000-4000-8000-000000000021",
-  tag: "curry",
+  foodGroups: ["rice", "spicy_food"],
   note: "昼のカレー",
 };
 
@@ -20,7 +20,7 @@ const bananaLog: MealLog = {
   id: "00000000-0000-4000-8000-000000000012",
   eatenAt: "2026-09-04T04:00:00.000Z",
   photoId: "00000000-0000-4000-8000-000000000022",
-  tag: "banana",
+  foodGroups: ["fruit"],
   note: null,
 };
 
@@ -35,8 +35,8 @@ describe("BattleMealSessionList", () => {
     );
     expect(markup).toContain("今回の食事");
     expect(markup).toContain("2件");
-    expect(markup).toContain("カレー");
-    expect(markup).toContain("バナナ");
+    expect(markup).toContain("ごはん");
+    expect(markup).toContain("果物");
     expect(markup).toContain("昼のカレー");
     expect(markup).not.toContain("削除");
   });

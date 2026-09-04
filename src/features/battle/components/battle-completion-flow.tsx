@@ -136,7 +136,7 @@ export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: Battl
         id: saved.mealLogId,
         eatenAt: draft.eatenAt,
         photoId: draft.photoId,
-        tag: draft.tag,
+        foodGroups: draft.foodGroups,
         note: draft.note ?? null,
       },
     ]);

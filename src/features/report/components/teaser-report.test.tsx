@@ -1,6 +1,16 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
+
+vi.mock("./manage-subscription-link", () => ({
+  ManageSubscriptionLink: () => <span>購読を管理する</span>,
+}));
+
+vi.mock("./purchase-call-to-action", () => ({
+  PurchaseCallToAction: ({ account }: { account: { isAnonymous: boolean; hasGoogleIdentity: boolean } }) => (
+    <span>{account.isAnonymous || !account.hasGoogleIdentity ? "Googleアカウントを連携する" : "プレミアムを購入する"}</span>
+  ),
+}));
 
 import messages from "../../../../messages/ja.json";
 import type { AccountStatus } from "@/features/account/account.types";
@@ -53,7 +63,7 @@ describe("TeaserReport", () => {
   it("実際の分析値を一切描画しない", () => {
     const markup = render({ bowelCount: 3, recordedDays: 2 }, linkedAccount);
 
-    // 分析セクションの実データ由来の値（平均の硬さ・食事タグ名など）が出ないこと。
+    // 分析セクションの実データ由来の値（平均の硬さ・食品群名など）が出ないこと。
     expect(markup).not.toContain("野菜");
     expect(markup).not.toContain("もっとも記録が多い曜日");
     expect(markup).not.toContain("食事との記録上の関連");

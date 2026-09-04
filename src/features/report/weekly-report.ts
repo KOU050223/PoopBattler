@@ -10,7 +10,7 @@ export type ReportBowelLog = {
 
 export type ReportMealLog = {
   eatenAt: string;
-  tag: string;
+  foodGroups: string[];
 };
 
 type CountBy<T extends string> = Record<T, number>;
@@ -30,8 +30,8 @@ export type WeeklyReport = {
     color: CountBy<ReportBowelLog["color"]>;
     ease: CountBy<ReportBowelLog["ease"]>;
   };
-  meals: { total: number; byTag: Record<string, number> };
-  mealRelationships: Array<{ tag: string; relatedBowelCount: number; averageHardness: number }>;
+  meals: { total: number; byFoodGroup: Record<string, number> };
+  mealRelationships: Array<{ foodGroup: string; relatedBowelCount: number; averageHardness: number }>;
   analysis: ReportAnalysis;
 };
 
@@ -105,7 +105,7 @@ export function createWeeklyReport({
   const stableRate = bowelCount === 0
     ? null
     : Math.round((currentBowelLogs.filter((log) => log.hardness >= 3 && log.hardness <= 5).length / bowelCount) * 100);
-  const relatedByTag = new Map<string, ReportBowelLog[]>();
+  const relatedByFoodGroup = new Map<string, ReportBowelLog[]>();
 
   const relationshipMealLogs = mealLogs.filter((log) => isInRange(log.eatenAt, relationshipMealStartsAt, endsAt));
   for (const meal of relationshipMealLogs) {
@@ -113,9 +113,11 @@ export function createWeeklyReport({
     for (const bowel of currentBowelLogs) {
       const elapsed = new Date(bowel.loggedAt).getTime() - mealTime;
       if (elapsed >= 0 && elapsed <= DAY_MS) {
-        const related = relatedByTag.get(meal.tag) ?? [];
-        if (!related.some((entry) => entry.loggedAt === bowel.loggedAt)) related.push(bowel);
-        relatedByTag.set(meal.tag, related);
+        for (const foodGroup of meal.foodGroups) {
+          const related = relatedByFoodGroup.get(foodGroup) ?? [];
+          if (!related.some((entry) => entry.loggedAt === bowel.loggedAt)) related.push(bowel);
+          relatedByFoodGroup.set(foodGroup, related);
+        }
       }
     }
   }
@@ -133,15 +135,15 @@ export function createWeeklyReport({
     breakdown: { hardness, amount, color, ease },
     meals: {
       total: currentMealLogs.length,
-      byTag: currentMealLogs.reduce<Record<string, number>>((counts, meal) => ({ ...counts, [meal.tag]: (counts[meal.tag] ?? 0) + 1 }), {}),
+      byFoodGroup: currentMealLogs.flatMap((meal) => meal.foodGroups).reduce<Record<string, number>>((counts, foodGroup) => ({ ...counts, [foodGroup]: (counts[foodGroup] ?? 0) + 1 }), {}),
     },
-    mealRelationships: [...relatedByTag.entries()]
-      .map(([tag, related]) => ({
-        tag,
+    mealRelationships: [...relatedByFoodGroup.entries()]
+      .map(([foodGroup, related]) => ({
+        foodGroup,
         relatedBowelCount: related.length,
         averageHardness: round(related.reduce((total, bowel) => total + bowel.hardness, 0) / related.length),
       }))
-      .sort((a, b) => b.relatedBowelCount - a.relatedBowelCount || a.tag.localeCompare(b.tag)),
+      .sort((a, b) => b.relatedBowelCount - a.relatedBowelCount || a.foodGroup.localeCompare(b.foodGroup)),
     analysis,
   };
 }

@@ -11,7 +11,7 @@ export type BattleHistoryLog = {
   battleId: string;
   completedAt: string;
   companionshipResult: boolean;
-  mealTag: string | null;
+  mealFoodGroups: string[] | null;
   enemy: Pick<CharacterRow, "id" | "name" | "attribute">;
   bowelLog: BowelLog | null;
 };
@@ -33,7 +33,7 @@ export async function getBattleHistoryAction(): Promise<BattleHistoryLog[]> {
       started_at,
       completed_at,
       companionship_result,
-      meal_logs!battle_results_meal_log_id_fkey(tag),
+      meal_logs!battle_results_meal_log_id_fkey(food_groups),
       characters!battle_results_enemy_character_id_fkey(id, name, attribute),
       bowel_logs(hardness, amount, color, ease)
     `)
@@ -42,6 +42,12 @@ export async function getBattleHistoryAction(): Promise<BattleHistoryLog[]> {
     .order("completed_at", { ascending: false });
 
   if (error) {
+    console.error("[getBattleHistoryAction]", {
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      message: error.message,
+    });
     throw new Error("履歴の読み込みに失敗しました。");
   }
 
@@ -55,7 +61,7 @@ export async function getBattleHistoryAction(): Promise<BattleHistoryLog[]> {
       // completed の行では completed_at が入る。過去の不整合行でも表示を壊さない。
       completedAt: battle.completed_at ?? battle.started_at,
       companionshipResult: battle.companionship_result === true,
-      mealTag: battle.meal_logs?.tag ?? null,
+      mealFoodGroups: battle.meal_logs?.food_groups ?? null,
       enemy: {
         id: enemy.id,
         name: enemy.name,

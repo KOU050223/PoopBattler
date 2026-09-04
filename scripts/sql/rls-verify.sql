@@ -90,11 +90,11 @@ begin
 end;
 $$;
 
-insert into public.meal_logs (id, user_id, image_path, tag)
+insert into public.meal_logs (id, user_id, image_path, tag, food_groups)
 values
-  (pg_temp.fixture('meal_a'), pg_temp.fixture('user_a'), 'meals/a.jpg', 'curry'),
-  (pg_temp.fixture('meal_b'), pg_temp.fixture('user_b'), 'meals/b.jpg', 'meat'),
-  (pg_temp.fixture('meal_rpc_a'), pg_temp.fixture('user_a'), 'meals/rpc-a.jpg', 'curry');
+  (pg_temp.fixture('meal_a'), pg_temp.fixture('user_a'), 'meals/a.jpg', 'curry', array['rice']),
+  (pg_temp.fixture('meal_b'), pg_temp.fixture('user_b'), 'meals/b.jpg', 'meat', array['meat']),
+  (pg_temp.fixture('meal_rpc_a'), pg_temp.fixture('user_a'), 'meals/rpc-a.jpg', 'curry', array['rice']);
 
 -- status を completed にしておく。active はユーザーごと1件までの部分ユニーク
 -- インデックスがあるため、fixture で active を占有すると後段の
@@ -817,12 +817,12 @@ begin
   perform pg_temp.expect(
     'meal_logs INSERT 本人名義',
     pg_temp.allowed(format(
-      'insert into public.meal_logs (user_id, image_path, tag) values (%L, ''meals/new.jpg'', ''curry'')', a)),
+      'insert into public.meal_logs (user_id, image_path, tag, food_groups) values (%L, ''meals/new.jpg'', ''curry'', array[''rice''])', a)),
     true);
   perform pg_temp.expect(
     'meal_logs INSERT 他人名義（偽装）',
     pg_temp.allowed(format(
-      'insert into public.meal_logs (user_id, image_path, tag) values (%L, ''meals/evil.jpg'', ''curry'')', b)),
+      'insert into public.meal_logs (user_id, image_path, tag, food_groups) values (%L, ''meals/evil.jpg'', ''curry'', array[''rice''])', b)),
     false);
 
   perform pg_temp.expect(

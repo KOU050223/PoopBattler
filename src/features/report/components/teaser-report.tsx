@@ -141,10 +141,10 @@ function SamplePreview({ placeholder }: { placeholder: ReturnType<typeof createT
       <div>
         <div className="flex items-center gap-2">
           <Utensils aria-hidden="true" className="size-5 text-flush-edge" />
-          <h3 className={HEADING}>{t("mealTagAnalysis")}</h3>
+          <h3 className={HEADING}>{t("mealFoodGroupAnalysis")}</h3>
         </div>
         <ul className="mt-4 space-y-3">
-          {placeholder.mealTags.map((entry, index) => (
+          {placeholder.mealFoodGroups.map((entry, index) => (
             <li key={index} className="rounded-xl bg-blush-wash/45 p-3">
               <p className="text-sm font-medium text-pencil-gray">
                 {t("mealCount", { count: entry.mealCount })}

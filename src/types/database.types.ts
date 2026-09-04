@@ -183,28 +183,31 @@ export type Database = {
         Row: {
           created_at: string
           eaten_at: string
+          food_groups: string[]
           id: string
           image_path: string
           note: string | null
-          tag: string
+          tag: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           eaten_at?: string
+          food_groups: string[]
           id?: string
           image_path: string
           note?: string | null
-          tag: string
+          tag?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           eaten_at?: string
+          food_groups?: string[]
           id?: string
           image_path?: string
           note?: string | null
-          tag?: string
+          tag?: string | null
           user_id?: string
         }
         Relationships: [
@@ -343,6 +346,10 @@ export type Database = {
           companionship_result: boolean
           status: Database["public"]["Enums"]["battle_status"]
         }[]
+      }
+      has_unique_text_array_elements: {
+        Args: { p_values: string[] }
+        Returns: boolean
       }
       start_battle: {
         Args: { p_user_character_ids?: string[] }

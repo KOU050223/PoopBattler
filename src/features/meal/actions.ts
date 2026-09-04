@@ -1,6 +1,6 @@
 "use server";
 
-import { MEAL_TAGS, type MealLogDraft, type MealLogSaveResult } from "./meal.types";
+import { isMealFoodGroup, type MealLogDraft, type MealLogSaveResult } from "./meal.types";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
@@ -8,12 +8,12 @@ export type MealLog = {
   id: string;
   eatenAt: string;
   photoId: string;
-  tag: string;
+  foodGroups: string[];
   note: string | null;
 };
 
-function isMealTag(value: unknown): value is MealLogDraft["tag"] {
-  return MEAL_TAGS.some((tag) => tag.value === value);
+function isFoodGroups(value: unknown): value is MealLogDraft["foodGroups"] {
+  return Array.isArray(value) && value.length > 0 && value.length <= 24 && value.every(isMealFoodGroup) && new Set(value).size === value.length;
 }
 
 function isPhotoId(value: unknown): value is string {
@@ -36,7 +36,7 @@ function isMealLogDraft(value: unknown): value is MealLogDraft {
 
   const draft = value as Partial<MealLogDraft>;
   return isPhotoId(draft.photoId)
-    && isMealTag(draft.tag)
+    && isFoodGroups(draft.foodGroups)
     && typeof draft.eatenAt === "string"
     && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(draft.eatenAt)
     && !Number.isNaN(Date.parse(draft.eatenAt))
@@ -65,7 +65,7 @@ export async function saveMealLogAction(draft: MealLogDraft): Promise<MealLogSav
       user_id: user.id,
       eaten_at: draft.eatenAt,
       image_path: draft.photoId,
-      tag: draft.tag,
+      food_groups: draft.foodGroups,
       note: draft.note,
     })
     .select("id")
@@ -84,7 +84,7 @@ export async function getMealLogsAction(): Promise<MealLog[]> {
   if (userError || !user) return [];
   const { data, error } = await supabase
     .from("meal_logs")
-    .select("id, eaten_at, image_path, tag, note")
+    .select("id, eaten_at, image_path, food_groups, note")
     .eq("user_id", user.id)
     .order("eaten_at", { ascending: false });
   if (error) throw new Error("食事ログの取得に失敗しました。");
@@ -93,7 +93,7 @@ export async function getMealLogsAction(): Promise<MealLog[]> {
     id: mealLog.id,
     eatenAt: mealLog.eaten_at,
     photoId: mealLog.image_path,
-    tag: mealLog.tag,
+    foodGroups: mealLog.food_groups,
     note: mealLog.note,
   }));
 }

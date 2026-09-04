@@ -19,7 +19,7 @@ describe("createTeaserPlaceholder", () => {
     expect(placeholder.metrics).toHaveLength(4);
     expect(placeholder.hardnessHeights).toHaveLength(7);
     expect(placeholder.fourWeekTrend).toHaveLength(4);
-    expect(placeholder.mealTags).toHaveLength(3);
+    expect(placeholder.mealFoodGroups).toHaveLength(3);
   });
 
   it("棒グラフの高さは表示できる範囲に収まる", () => {

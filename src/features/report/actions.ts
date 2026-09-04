@@ -75,7 +75,7 @@ export async function getWeeklyReportAction(now = new Date().toISOString()): Pro
       .order("logged_at", { ascending: false }),
     supabase
       .from("meal_logs")
-      .select("eaten_at, tag")
+      .select("eaten_at, food_groups")
       .eq("user_id", user.id)
       .gte("eaten_at", fourWeekStartsAt.toISOString())
       .order("eaten_at", { ascending: false }),
@@ -97,7 +97,7 @@ export async function getWeeklyReportAction(now = new Date().toISOString()): Pro
         color: log.color as "brown" | "dark_brown" | "yellow" | "green",
         ease: log.ease as "easy" | "normal" | "hard",
       })),
-      mealLogs: mealResult.data.map((log) => ({ eatenAt: log.eaten_at, tag: log.tag })),
+      mealLogs: mealResult.data.map((log) => ({ eatenAt: log.eaten_at, foodGroups: log.food_groups })),
     }),
   };
 }

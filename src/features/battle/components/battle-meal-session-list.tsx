@@ -1,6 +1,6 @@
 import { MealLogImage } from "@/features/meal/components/meal-log-image";
 import type { MealLog } from "@/features/meal/actions";
-import { MEAL_TAGS } from "@/features/meal/meal.types";
+import { getMealFoodGroupLabel } from "@/features/meal/meal.types";
 import { captionTextClass } from "@/lib/ui-classes";
 
 type BattleMealSessionListProps = {
@@ -12,10 +12,6 @@ function formatEatenAt(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
-}
-
-function getTagLabel(tag: string) {
-  return MEAL_TAGS.find((item) => item.value === tag)?.label ?? tag;
 }
 
 /** この回で送る食事だけを、完了ボタンの上に積む。 */
@@ -40,10 +36,10 @@ export function BattleMealSessionList({ logs }: BattleMealSessionListProps) {
             <div className="meal-log-card-content">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-bold text-charcoal">{getTagLabel(mealLog.tag)}</p>
+                  <p className="font-bold text-charcoal">{mealLog.foodGroups.map(getMealFoodGroupLabel).join("・")}</p>
                   <p className={captionTextClass}>{formatEatenAt(mealLog.eatenAt)}</p>
                 </div>
-                <span className="meal-log-tag">{getTagLabel(mealLog.tag)}</span>
+                <div className="flex flex-wrap justify-end gap-1">{mealLog.foodGroups.map((foodGroup) => <span key={foodGroup} className="meal-log-tag">{getMealFoodGroupLabel(foodGroup)}</span>)}</div>
               </div>
               {mealLog.note ? (
                 <p className="mt-2 text-sm leading-relaxed text-charcoal">{mealLog.note}</p>

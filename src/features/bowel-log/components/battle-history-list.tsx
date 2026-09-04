@@ -3,7 +3,7 @@ import { CheckCircle2, Swords, UserRoundPlus } from "lucide-react";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { ATTRIBUTE_LABELS } from "@/features/battle/battle.constants";
-import { MEAL_TAGS } from "@/features/meal/meal.types";
+import { getMealFoodGroupLabel } from "@/features/meal/meal.types";
 
 import type { BattleHistoryLog } from "../actions";
 import {
@@ -22,10 +22,6 @@ function formatCompletedAt(value: string) {
 
 function optionLabel<T>(options: readonly { value: T; label: string }[], value: T) {
   return options.find((option) => option.value === value)?.label ?? String(value);
-}
-
-function mealTagLabel(value: string) {
-  return MEAL_TAGS.find((tag) => tag.value === value)?.label ?? "食事記録";
 }
 
 export function BattleHistoryList({ logs }: { logs: BattleHistoryLog[] }) {
@@ -66,7 +62,7 @@ export function BattleHistoryList({ logs }: { logs: BattleHistoryLog[] }) {
             <span className={`battle-report-companion ${log.companionshipResult ? "battle-report-companion-success" : ""}`}>
               <UserRoundPlus aria-hidden="true" className="size-3.5" />{log.companionshipResult ? "仲間になった" : "仲間にならなかった"}
             </span>
-            {log.mealTag ? <span className="battle-report-meal">きっかけ: {mealTagLabel(log.mealTag)}</span> : null}
+            {log.mealFoodGroups ? <span className="battle-report-meal">きっかけ: {log.mealFoodGroups.map(getMealFoodGroupLabel).join("・")}</span> : null}
           </div>
 
           {log.bowelLog ? (

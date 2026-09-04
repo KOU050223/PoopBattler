@@ -42,7 +42,7 @@ function createReadSupabase({
 }: {
   userData?: typeof user | null;
   queryError?: { message: string } | null;
-  mealLogs?: Array<{ id: string; eaten_at: string; image_path: string; tag: string; note: string | null }>;
+  mealLogs?: Array<{ id: string; eaten_at: string; image_path: string; food_groups: string[]; note: string | null }>;
 } = {}) {
   const order = vi.fn().mockResolvedValue({ data: mealLogs, error: queryError });
   const eq = vi.fn().mockReturnValue({ order });
@@ -57,11 +57,11 @@ function createReadSupabase({
   };
 }
 
-function createDraft(overrides: Partial<Parameters<typeof saveMealLogAction>[0]> = {}) {
+function createDraft(overrides: Partial<Parameters<typeof saveMealLogAction>[0]> = {}): Parameters<typeof saveMealLogAction>[0] {
   return {
     photoId,
     eatenAt: "2026-09-02T12:34:56.000Z",
-    tag: "curry" as const,
+    foodGroups: ["rice", "green_yellow_vegetables"],
     note: "昼ごはん",
     ...overrides,
   };
@@ -82,20 +82,22 @@ describe("saveMealLogAction", () => {
       user_id: user.id,
       eaten_at: "2026-09-02T12:34:56.000Z",
       image_path: photoId,
-      tag: "curry",
+      food_groups: ["rice", "green_yellow_vegetables"],
       note: "昼ごはん",
     });
     expect(supabase.select).toHaveBeenCalledWith("id");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/meals");
   });
 
-  it("不正な画像ID・タグ・日時・長すぎるメモをDBへ送らない", async () => {
+  it("不正な画像ID・食品群・空配列・日時・長すぎるメモをDBへ送らない", async () => {
     const supabase = createSupabase();
     mocks.createClient.mockResolvedValue(supabase);
 
     for (const draft of [
       createDraft({ photoId: "not-a-uuid" }),
-      createDraft({ tag: "invalid" as "curry" }),
+      createDraft({ foodGroups: ["invalid"] as unknown as ["rice"] }),
+      createDraft({ foodGroups: [] }),
+      createDraft({ foodGroups: ["rice", "rice"] }),
       createDraft({ eatenAt: "2026-09-02" }),
       createDraft({ note: "a".repeat(501) }),
     ]) {
@@ -135,7 +137,7 @@ describe("getMealLogsAction", () => {
 
   it("本人の食事ログを新しい順で取得し、画像IDをURLに変換せず返す", async () => {
     const mealLogs = [
-      { id: "00000000-0000-4000-8000-000000000003", eaten_at: "2026-09-02T12:34:56.000Z", image_path: photoId, tag: "banana", note: null },
+      { id: "00000000-0000-4000-8000-000000000003", eaten_at: "2026-09-02T12:34:56.000Z", image_path: photoId, food_groups: ["fruit", "yogurt"], note: null },
     ];
     const supabase = createReadSupabase({ mealLogs });
     mocks.createClient.mockResolvedValue(supabase);
@@ -144,10 +146,10 @@ describe("getMealLogsAction", () => {
       id: mealLogs[0].id,
       eatenAt: mealLogs[0].eaten_at,
       photoId,
-      tag: "banana",
+      foodGroups: ["fruit", "yogurt"],
       note: null,
     }]);
-    expect(supabase.select).toHaveBeenCalledWith("id, eaten_at, image_path, tag, note");
+    expect(supabase.select).toHaveBeenCalledWith("id, eaten_at, image_path, food_groups, note");
     expect(supabase.eq).toHaveBeenCalledWith("user_id", user.id);
     expect(supabase.order).toHaveBeenCalledWith("eaten_at", { ascending: false });
   });
