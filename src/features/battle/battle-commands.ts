@@ -2,6 +2,7 @@ import {
   GUARD_DURATION_MS,
   PARTY_SIZE,
   SPECIAL_GAUGE_MAX,
+  SWITCH_COOLDOWN_TICKS,
   SWITCH_STUN_MS,
   guardCooldownTicks,
   msToTicks,
@@ -49,7 +50,11 @@ export function applySwitchMember(
   state: BattleSnapshot,
   partyIndex: number,
 ): BattleSnapshot {
-  if (!isFighting(state) || state.switchStunTicks > 0) {
+  if (
+    !isFighting(state) ||
+    state.switchStunTicks > 0 ||
+    state.switchCooldownTicks > 0
+  ) {
     return state;
   }
 
@@ -66,6 +71,7 @@ export function applySwitchMember(
   const guardCooldown = guardCooldownTicks(state.party[state.activeIndex].speed);
   next.activeIndex = partyIndex;
   next.switchStunTicks = msToTicks(SWITCH_STUN_MS);
+  next.switchCooldownTicks = SWITCH_COOLDOWN_TICKS;
   // 必殺ゲージは場でだけ溜まる。交代で退場側も入場側も空にする。
   next.playerGauge = 0;
   next.benchGauges = [0, 0, 0];

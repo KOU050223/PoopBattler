@@ -65,6 +65,7 @@ describe("battle snapshot persist", () => {
     expect(Object.keys(persisted).sort()).toEqual(
       [...BATTLE_SNAPSHOT_KEYS].sort(),
     );
+    expect(persisted.switchCooldownTicks).toBe(0);
     expect(persisted).not.toHaveProperty("combo");
     expect(persisted).not.toHaveProperty("comboGauge");
     expect(persisted).not.toHaveProperty("fed");
@@ -72,6 +73,18 @@ describe("battle snapshot persist", () => {
     expect(persisted).not.toHaveProperty("acceleration");
     expect(persisted).not.toHaveProperty("camera");
     expect(useBattleStore.persist.getOptions().name).toBe(BATTLE_STORE_NAME);
+  });
+
+  it("保存済みに switchCooldownTicks が無くても 0 に戻す", () => {
+    const legacy = { ...IDLE_BATTLE_SNAPSHOT } as Partial<
+      typeof IDLE_BATTLE_SNAPSHOT
+    >;
+    delete legacy.switchCooldownTicks;
+    const persisted = partializeBattleStore(
+      legacy as typeof IDLE_BATTLE_SNAPSHOT,
+    );
+
+    expect(persisted.switchCooldownTicks).toBe(0);
   });
 
   it("window が無いとき sessionStorage を読まない", () => {

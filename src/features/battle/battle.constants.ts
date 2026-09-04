@@ -64,6 +64,8 @@ export const HIT_MOTION_MS = 350;
 export const TIMEOUT_MS = 90_000;
 export const GUARD_DURATION_MS = 5_000;
 export const SWITCH_STUN_MS = 1_000;
+// 交代後の次交代クール。10ティック＝等倍で約5秒。Speed では変えない（Issue #138）。
+export const SWITCH_COOLDOWN_TICKS = 10;
 // 踏ん張り積算（約3秒）より長くし、振り切る前に時間切れしない（Issue #94 / #116）。
 export const PLAYER_SPECIAL_CHARGE_MS = 15_000;
 export const ENEMY_SPECIAL_TELEGRAPH_MS = 2_000;
@@ -76,6 +78,8 @@ export const GUARD_INCOMING_MULTIPLIER = 0.5;
 export const GUARD_OUTGOING_MULTIPLIER = 0;
 
 export const AUTO_ATTACK_DAMAGE = 20;
+// 敵 Power の基準。サーバーが ±4 で振る。味方の AUTO_ATTACK_DAMAGE とは別（Issue #139）。
+export const ENEMY_BASE_POWER = 26;
 export const AUTO_ATTACK_PERIOD_TICKS = 5;
 export const BASE_SPEED = 20;
 export const MIN_AUTO_ATTACK_PERIOD_TICKS = 2;

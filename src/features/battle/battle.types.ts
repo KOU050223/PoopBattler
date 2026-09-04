@@ -73,6 +73,8 @@ export type BattleSnapshot = {
   enemyGuardCooldownTicks: number;
   enemySpecialTelegraphTicks: number;
   switchStunTicks: number;
+  // 次の交代までの残りティック。硬直中は減らさない。Speed 非依存（Issue #138）。
+  switchCooldownTicks: number;
   elapsedTicks: number;
   // 旧スナップショット互換のスロット。ベンチ中の必殺ゲージは持たず、常に0へ寄せる。
   benchGauges: [number, number, number];
