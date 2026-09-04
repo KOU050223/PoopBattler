@@ -46,7 +46,8 @@ describe("CompanionshipArFrame", () => {
     expect(markup).toContain("muted");
     expect(markup).not.toContain("controls");
     expect(markup).not.toContain("撮影する");
-    expect(markup).not.toContain("便器から這い出てきた");
+    expect(markup).not.toContain("成功");
+    expect(markup).not.toContain("失敗");
     expect(markup).toContain("この画面ではやり直しません");
   });
 
@@ -66,7 +67,17 @@ describe("CompanionshipArFrame", () => {
     expect(markup).toContain("結果を見る");
   });
 
-  it("成功時だけ這い出る。失敗時は再抽選できないと出す", () => {
+  it("揺れ中は結果を出さず、ぽんで成功と失敗を分ける", () => {
+    const shakeMarkup = renderToStaticMarkup(
+      <CompanionshipArFrame
+        result={acquired}
+        mealPhotoUrl={null}
+        phase="shake"
+        status="ready"
+        reduceMotion
+        onSkip={() => undefined}
+      />,
+    );
     const successMarkup = renderToStaticMarkup(
       <CompanionshipArFrame
         result={acquired}
@@ -75,6 +86,8 @@ describe("CompanionshipArFrame", () => {
         status="ready"
         reduceMotion
         onSkip={() => undefined}
+        throwTarget={{ x: 41.2, y: 68.5 }}
+        floorAngleDeg={18}
       />,
     );
     const missMarkup = renderToStaticMarkup(
@@ -87,10 +100,43 @@ describe("CompanionshipArFrame", () => {
         onSkip={() => undefined}
       />,
     );
-    expect(successMarkup).toContain("便器から這い出てきた");
+    expect(shakeMarkup).toContain("便器が揺れています");
+    expect(shakeMarkup).toContain('data-video-shake="off"');
+    expect(shakeMarkup).not.toContain("成功");
+    expect(shakeMarkup).not.toContain("失敗");
+    expect(shakeMarkup).not.toContain("data-confetti");
+    expect(shakeMarkup).not.toContain("カレーうんちくん");
+    expect(successMarkup).toContain('data-reveal-result="success"');
+    expect(successMarkup).toContain("成功");
+    expect(successMarkup).toContain("data-confetti");
     expect(successMarkup).toContain("カレーうんちくん");
-    expect(missMarkup).toContain("再抽選はできません");
-    expect(missMarkup).not.toContain("便器から這い出てきた");
+    expect(successMarkup).toContain('data-spawn-x="41.2"');
+    expect(successMarkup).toContain('data-spawn-y="68.5"');
+    expect(successMarkup).toContain('data-gravity-floor="true"');
+    expect(successMarkup).toContain('data-gravity-angle="18.0"');
+    expect(successMarkup).not.toContain("失敗");
+    expect(missMarkup).toContain('data-reveal-result="fail"');
+    expect(missMarkup).toContain("失敗");
+    expect(missMarkup).not.toContain("成功");
+    expect(missMarkup).not.toContain("data-confetti");
+    expect(missMarkup).not.toContain("カレーうんちくん");
+    expect(missMarkup).toContain("この画面ではやり直しません");
+  });
+
+  it("揺れありのときは映像レイヤだけ揺らす印を付ける", () => {
+    const markup = renderToStaticMarkup(
+      <CompanionshipArFrame
+        result={acquired}
+        mealPhotoUrl={null}
+        phase="shake"
+        status="ready"
+        reduceMotion={false}
+        onSkip={() => undefined}
+      />,
+    );
+    expect(markup).toContain('data-video-shake="on"');
+    expect(markup).not.toContain("成功");
+    expect(markup).not.toContain("data-confetti");
   });
 
   it("選んである食事写真があるときだけ投げ入れ画像を出す", () => {
