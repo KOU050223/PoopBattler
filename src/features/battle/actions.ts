@@ -255,7 +255,8 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     acquiredCharacter = character;
   }
 
-  revalidatePath("/battle");
+  // /battle はクライアントの Zustand が画面状態を持っている。
+  // ここで refresh すると勝敗演出と排便入力が巻き戻る（Issue #160）。
   revalidatePath("/logs");
   revalidatePath("/collection");
 

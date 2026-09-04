@@ -66,6 +66,7 @@ describe("battle snapshot persist", () => {
       [...BATTLE_SNAPSHOT_KEYS].sort(),
     );
     expect(persisted.switchCooldownTicks).toBe(0);
+    expect(persisted.outcomeAcknowledged).toBe(false);
     expect(persisted).not.toHaveProperty("combo");
     expect(persisted).not.toHaveProperty("comboGauge");
     expect(persisted).not.toHaveProperty("fed");
@@ -116,6 +117,10 @@ describe("useBattleStore", () => {
     const state = useBattleStore.getState();
     expect(state.status).toBe("completing");
     expect(state.enemy?.hp).toBe(0);
+    expect(state.outcomeAcknowledged).toBe(false);
+
+    useBattleStore.getState().acknowledgeOutcome();
+    expect(useBattleStore.getState().outcomeAcknowledged).toBe(true);
   });
 
   it("restore は渡したスナップショットに置き換える", () => {

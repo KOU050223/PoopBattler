@@ -26,6 +26,7 @@ import {
   tickIntervalMs,
   type BattleSpeed,
 } from "@/features/battle/battle.constants";
+import { resolveBattleScreenView } from "@/features/battle/battle-screen-view";
 import { BattleControls } from "@/features/battle/components/battle-controls";
 import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
 import { BattleFigure } from "@/features/battle/components/battle-figure";
@@ -173,7 +174,6 @@ export function BattleScreen() {
   );
   const [playerHitFlashKey, setPlayerHitFlashKey] = useState(0);
   const [enemyHitFlashKey, setEnemyHitFlashKey] = useState(0);
-  const [dismissedOutcomeKey, setDismissedOutcomeKey] = useState<string | null>(null);
   const speed = useSyncExternalStore(
     subscribeBattleSpeed,
     () => readBattleSpeed(window.localStorage),
@@ -188,11 +188,15 @@ export function BattleScreen() {
 
   useBattleWakeLock(snapshot.status === "active" && !showRestore);
 
-  const outcomeKey =
-    snapshot.status === "completing" || snapshot.status === "defeated"
-      ? `${snapshot.status}:${snapshot.battleId ?? "none"}`
-      : null;
-  const awaitingOutcomeAck = outcomeKey !== null && dismissedOutcomeKey !== outcomeKey;
+  const screenView = resolveBattleScreenView({
+    status: snapshot.status,
+    outcomeAcknowledged: snapshot.outcomeAcknowledged,
+    hasParty: Boolean(snapshot.party),
+    hasEnemy: Boolean(snapshot.enemy),
+  });
+  const awaitingOutcomeAck = screenView.kind === "fight"
+    ? screenView.showOutcomeOverlay
+    : screenView.kind === "outcome-only";
 
   function toggleSpeed() {
     writeBattleSpeed(window.localStorage, nextBattleSpeed(speed));
@@ -323,7 +327,7 @@ export function BattleScreen() {
     );
   }
 
-  if (snapshot.status === "completing" && snapshot.enemy && !awaitingOutcomeAck) {
+  if (screenView.kind === "completion") {
     if (!snapshot.battleId) {
       return (
         <ErrorState
@@ -344,7 +348,7 @@ export function BattleScreen() {
     );
   }
 
-  if (snapshot.status === "defeated" && snapshot.enemy && !awaitingOutcomeAck) {
+  if (screenView.kind === "defeat") {
     return (
       <section className="flex flex-col items-center gap-4 text-center">
         <p className="text-xl font-bold">敗北</p>
@@ -366,7 +370,7 @@ export function BattleScreen() {
   }
 
   if (
-    (snapshot.status === "active" || awaitingOutcomeAck) &&
+    screenView.kind === "fight" &&
     snapshot.party &&
     snapshot.enemy
   ) {
@@ -472,7 +476,7 @@ export function BattleScreen() {
         <BattleOutcomeOverlay
           outcome={snapshot.status === "defeated" ? "lose" : "win"}
           onDismiss={() => {
-            if (outcomeKey) setDismissedOutcomeKey(outcomeKey);
+            useBattleStore.getState().acknowledgeOutcome();
           }}
         />
       ) : null}
@@ -480,13 +484,13 @@ export function BattleScreen() {
     );
   }
 
-  if (awaitingOutcomeAck) {
+  if (screenView.kind === "outcome-only") {
     return (
       <BattleOutcomeOverlay
         outcome={snapshot.status === "defeated" ? "lose" : "win"}
         onDismiss={() => {
-            if (outcomeKey) setDismissedOutcomeKey(outcomeKey);
-          }}
+          useBattleStore.getState().acknowledgeOutcome();
+        }}
       />
     );
   }

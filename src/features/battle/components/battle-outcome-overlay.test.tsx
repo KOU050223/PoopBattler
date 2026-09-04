@@ -11,6 +11,7 @@ describe("BattleOutcomeOverlay", () => {
 
     expect(markup).toContain("data-battle-outcome=\"win\"");
     expect(markup).toContain("fixed inset-0");
+    expect(markup).toContain("aria-disabled=\"true\"");
     expect(markup).toContain("勝利");
     expect(markup).toContain("タップしてつづける");
     expect(markup).toContain("data-confetti");

@@ -281,6 +281,15 @@ describe("applyBattleStart / applyBattleTick", () => {
       elapsedTicks: TIMEOUT_TICKS - 1,
     });
     expect(beforeTimeout.status).toBe("active");
+    expect(beforeTimeout.elapsedTicks).toBe(TIMEOUT_TICKS);
+
+    const early = applyBattleTick({
+      ...started,
+      elapsedTicks: 0,
+      enemy: { ...started.enemy!, hp: INITIAL_ENEMY_HP },
+    });
+    expect(early.status).toBe("active");
+    expect(early.enemy?.hp).toBeGreaterThan(0);
 
     const survived = applyBattleTick({
       ...started,

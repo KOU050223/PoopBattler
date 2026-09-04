@@ -52,6 +52,7 @@ function resolveTimeout(state: BattleSnapshot): BattleSnapshot {
   return {
     ...state,
     status: partyAlive ? "completing" : "defeated",
+    outcomeAcknowledged: false,
     playerStance: "fight",
     enemyStance: "fight",
     playerSpecialChargeTicks: 0,
@@ -69,6 +70,7 @@ function applyKnockout(state: BattleSnapshot): BattleSnapshot {
       ...state,
       enemy: { ...state.enemy, hp: 0 },
       status: "completing",
+      outcomeAcknowledged: false,
       playerStance: "fight",
       enemyStance: "fight",
       playerSpecialChargeTicks: 0,
@@ -85,6 +87,7 @@ function applyKnockout(state: BattleSnapshot): BattleSnapshot {
     return {
       ...state,
       status: "defeated",
+      outcomeAcknowledged: false,
       playerStance: "fight",
       playerSpecialChargeTicks: 0,
     };

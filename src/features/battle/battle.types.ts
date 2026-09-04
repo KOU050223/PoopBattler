@@ -80,6 +80,8 @@ export type BattleSnapshot = {
   benchGauges: [number, number, number];
   startedAt: number | null;
   bowelDraft: BowelDraft | null;
+  // 勝敗演出を閉じたあと。再マウントで演出→入力をやり直さない。
+  outcomeAcknowledged: boolean;
 };
 
 // クライアントへ返す敵の表示用情報。

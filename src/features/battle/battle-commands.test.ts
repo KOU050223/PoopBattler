@@ -21,6 +21,7 @@ import {
   applyFireSpecial,
   applyMarkCompleting,
   applyMarkDefeated,
+  applyAcknowledgeOutcome,
   applySetBowelDraft,
   applySetStance,
   applySwitchMember,
@@ -325,6 +326,13 @@ describe("終了と下書き", () => {
     expect(won.status).toBe("completing");
     expect(won.enemy?.hp).toBe(0);
     expect(won.playerStance).toBe("fight");
+    expect(won.outcomeAcknowledged).toBe(false);
+
+    const acked = applyAcknowledgeOutcome(won);
+    expect(acked.outcomeAcknowledged).toBe(true);
+    expect(applyAcknowledgeOutcome(applyBattleStart(startInput)).outcomeAcknowledged).toBe(
+      false,
+    );
   });
 
   it("排便下書きだけを保持する", () => {

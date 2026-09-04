@@ -12,6 +12,7 @@ import {
   applyFireSpecial,
   applyMarkCompleting,
   applyMarkDefeated,
+  applyAcknowledgeOutcome,
   applySetBowelDraft,
   applySetStance,
   applySwitchMember,
@@ -35,7 +36,7 @@ export const BATTLE_STORE_NAME = "poop-battler.battle";
 
 // 個体ごとの HP / Power / Speed を持たせたときに 1 へ上げた（Issue #73）。
 // スナップショットの形が変わったら必ず上げる。
-export const BATTLE_STORE_VERSION = 1;
+export const BATTLE_STORE_VERSION = 2;
 
 const noopStorage: StateStorage = {
   getItem: () => null,
@@ -62,6 +63,7 @@ export type BattleStore = BattleSnapshot & {
   markDefeated: () => void;
   markCompleting: () => void;
   setBowelDraft: (draft: BowelDraft | null) => void;
+  acknowledgeOutcome: () => void;
   reset: () => void;
 };
 
@@ -80,6 +82,7 @@ export const useBattleStore = create<BattleStore>()(
       markDefeated: () => set((state) => applyMarkDefeated(state)),
       markCompleting: () => set((state) => applyMarkCompleting(state)),
       setBowelDraft: (draft) => set((state) => applySetBowelDraft(state, draft)),
+      acknowledgeOutcome: () => set((state) => applyAcknowledgeOutcome(state)),
       reset: () => set(IDLE_BATTLE_SNAPSHOT),
     }),
     {
