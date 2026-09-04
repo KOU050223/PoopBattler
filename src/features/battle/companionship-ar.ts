@@ -16,7 +16,7 @@ export const VIDEO_SHAKE_ANIMATE = {
   x: [0, -3, 4, -3, 2, -7, 8, -6, 5, 0],
   y: [0, 2, -2, 1, -2, 4, -5, 3, -3, 0],
   rotate: [0, -1.2, 1.2, -0.8, 0.6, -2.4, 2.2, -1.8, 1.4, 0],
-} as const;
+};
 
 export const VIDEO_SHAKE_TRANSITION = {
   duration: 0.7,
