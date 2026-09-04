@@ -374,7 +374,7 @@ export function BattleScreen() {
     const tone = matchupTone(member.attribute, snapshot.enemy.attribute);
     return (
       <>
-        <section className="flex flex-col gap-5">
+        <section className="flex flex-col gap-5" inert={awaitingOutcomeAck || undefined}>
         <div className="relative flex items-center justify-center">
           <p
             className={`rounded-xl px-3 py-1 text-xs font-medium ${MATCHUP_CLASS[tone]}`}
