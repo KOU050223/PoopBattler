@@ -347,6 +347,10 @@ export type Database = {
           status: Database["public"]["Enums"]["battle_status"]
         }[]
       }
+      has_unique_text_array_elements: {
+        Args: { p_values: string[] }
+        Returns: boolean
+      }
       start_battle: {
         Args: { p_user_character_ids?: string[] }
         Returns: {
@@ -516,3 +520,4 @@ export const Constants = {
     },
   },
 } as const
+
