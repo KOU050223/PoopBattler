@@ -78,6 +78,8 @@ export const GUARD_INCOMING_MULTIPLIER = 0.5;
 export const GUARD_OUTGOING_MULTIPLIER = 0;
 
 export const AUTO_ATTACK_DAMAGE = 20;
+// 敵 Power の基準。サーバーが ±4 で振る。味方の AUTO_ATTACK_DAMAGE とは別（Issue #139）。
+export const ENEMY_BASE_POWER = 26;
 export const AUTO_ATTACK_PERIOD_TICKS = 5;
 export const BASE_SPEED = 20;
 export const MIN_AUTO_ATTACK_PERIOD_TICKS = 2;

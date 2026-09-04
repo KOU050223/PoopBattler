@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  AUTO_ATTACK_DAMAGE,
   BASE_SPEED,
+  ENEMY_BASE_POWER,
   INITIAL_ENEMY_HP,
   RENTAL_HP,
   RENTAL_POWER,
@@ -60,7 +60,7 @@ function startedBattleRow(
     id: "battle-1",
     enemy_character_id: "curry-poop",
     enemy_hp: INITIAL_ENEMY_HP,
-    enemy_power: AUTO_ATTACK_DAMAGE,
+    enemy_power: ENEMY_BASE_POWER,
     enemy_speed: BASE_SPEED,
     party_snapshot: [],
     resumed: false,
@@ -112,7 +112,7 @@ describe("startBattle", () => {
         imageKey: "characters/curry-poop.png",
       },
       enemyHp: INITIAL_ENEMY_HP,
-      enemyPower: AUTO_ATTACK_DAMAGE,
+      enemyPower: ENEMY_BASE_POWER,
       enemySpeed: BASE_SPEED,
       party: [
         {

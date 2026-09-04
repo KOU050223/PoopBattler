@@ -35,6 +35,9 @@ values
   -- 個体ステータス検査の専用ユーザー（Issue #73）。他のケースが作る
   -- activeバトルや所有行を引き継がないよう、独立した1人を用意する。
   ('user_c', gen_random_uuid()),
+  -- 敵 Power の基準検査（Issue #139）。複数回 start_battle するため、
+  -- user_c の active バトルや所有行と混ぜない。
+  ('user_d', gen_random_uuid()),
   ('uc_c1', gen_random_uuid()),
   ('uc_c2', gen_random_uuid()),
   ('uc_c3', gen_random_uuid()),
@@ -68,7 +71,7 @@ select
   now(),
   now()
 from rls_fixture f
-where f.key in ('user_a', 'user_b', 'user_empty', 'user_c');
+where f.key in ('user_a', 'user_b', 'user_empty', 'user_c', 'user_d');
 
 -- トリガーが実際に発火したかを先に確認する。ここが通らないと、
 -- 以降の「他人の行が見えない」は単に行が無いだけになってしまう。
@@ -79,8 +82,9 @@ begin
         pg_temp.fixture('user_a'),
         pg_temp.fixture('user_b'),
         pg_temp.fixture('user_empty'),
-        pg_temp.fixture('user_c')
-      )) <> 4 then
+        pg_temp.fixture('user_c'),
+        pg_temp.fixture('user_d')
+      )) <> 5 then
     raise exception 'FAIL: on_auth_user_created が profiles を作っていない';
   end if;
 end;
@@ -641,6 +645,56 @@ begin
   -- activeバトルを残すと後続のケースが引き継ぐ。クライアントは
   -- battle_results を直接UPDATEできないので、RPCで畳む。
   perform public.complete_battle(started.battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 敵 Power の基準（Issue #139）
+-- ---------------------------------------------------------------------------
+-- 新規バトルの敵 Power は 26 ±4（22〜30）。味方 common / AUTO_ATTACK_DAMAGE (20)
+-- とは別。1回だと 22〜24 が旧範囲と重なるので、複数回振って分布を見る。
+--
+-- 通るべき: すべて 22〜30。
+-- 落ちるべき: 旧基準 20 ±4（16〜24）に固定されていると、24 を超える値が出ない。
+reset role;
+do $$
+declare
+  d uuid := pg_temp.fixture('user_d');
+  started record;
+  powers integer[] := '{}';
+  i integer;
+  sample_count constant integer := 20;
+begin
+  -- 検査が素通りしていないこと。旧基準の値は新しい範囲に収まらない。
+  perform pg_temp.expect(
+    '旧基準（16〜24）の値は 22〜30 検査に落ちる',
+    (select bool_and(x between 22 and 30) from unnest(array[16, 18, 20, 22, 24]) as x),
+    false);
+  perform pg_temp.expect(
+    '旧基準の値は 24 超の検査にも落ちる',
+    (select bool_or(x > 24) from unnest(array[16, 18, 20, 22, 24]) as x),
+    false);
+
+  perform pg_temp.become(d);
+
+  for i in 1..sample_count loop
+    select * into started from public.start_battle(array[]::uuid[]);
+    powers := powers || started.enemy_power;
+    perform public.complete_battle(
+      started.battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+  end loop;
+
+  perform pg_temp.expect(
+    '新規バトルの敵 Power は 22〜30 に収まる',
+    (select bool_and(x between 22 and 30) from unnest(powers) as x),
+    true);
+
+  perform pg_temp.expect(
+    '敵 Power は旧基準（20 ±4）に固定されない',
+    (select bool_or(x > 24) from unnest(powers) as x),
+    true);
+
+  reset role;
 end;
 $$;
 
