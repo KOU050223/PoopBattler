@@ -1,7 +1,12 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
+import {
+  OUTCOME_OVERLAY_DISMISS_LOCK_MS,
+  isOutcomeOverlayDismissLocked,
+} from "@/features/battle/battle-screen-view";
 import { captionTextClass } from "@/lib/ui-classes";
 
 export type BattleOutcome = "win" | "lose";
@@ -47,13 +52,33 @@ export function BattleOutcomeOverlay({
   const reduceMotion = useReducedMotion();
   const isWin = outcome === "win";
   const title = isWin ? "勝利" : "敗北";
+  const shownAtRef = useRef<number | null>(null);
+  const [dismissLocked, setDismissLocked] = useState(true);
+
+  useEffect(() => {
+    shownAtRef.current = Date.now();
+    const timer = window.setTimeout(() => {
+      setDismissLocked(false);
+    }, OUTCOME_OVERLAY_DISMISS_LOCK_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   return (
     <button
       type="button"
       data-battle-outcome={outcome}
       aria-label={`${title}。タップしてつづける`}
-      onClick={onDismiss}
+      aria-disabled={dismissLocked}
+      onClick={() => {
+        const shownAt = shownAtRef.current;
+        if (
+          shownAt == null
+          || isOutcomeOverlayDismissLocked(shownAt, Date.now())
+        ) {
+          return;
+        }
+        onDismiss();
+      }}
       className={`fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 px-6 ${
         isWin ? "bg-blush-wash/95" : "bg-night-ink/94"
       }`}

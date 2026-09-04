@@ -133,7 +133,7 @@ export function applyMarkDefeated(state: BattleSnapshot): BattleSnapshot {
     return state;
   }
 
-  return { ...state, status: "defeated" };
+  return { ...state, status: "defeated", outcomeAcknowledged: false };
 }
 
 export function applyMarkCompleting(state: BattleSnapshot): BattleSnapshot {
@@ -148,6 +148,7 @@ export function applyMarkCompleting(state: BattleSnapshot): BattleSnapshot {
 
   next.enemy.hp = 0;
   next.status = "completing";
+  next.outcomeAcknowledged = false;
   next.playerStance = "fight";
   next.enemyStance = "fight";
   next.playerSpecialChargeTicks = 0;
@@ -163,4 +164,16 @@ export function applySetBowelDraft(
     ...state,
     bowelDraft: draft === null ? null : { ...draft },
   };
+}
+
+export function applyAcknowledgeOutcome(state: BattleSnapshot): BattleSnapshot {
+  if (state.status !== "completing" && state.status !== "defeated") {
+    return state;
+  }
+
+  if (state.outcomeAcknowledged) {
+    return state;
+  }
+
+  return { ...state, outcomeAcknowledged: true };
 }

@@ -26,6 +26,7 @@ export const BATTLE_SNAPSHOT_KEYS = [
   "benchGauges",
   "startedAt",
   "bowelDraft",
+  "outcomeAcknowledged",
 ] as const satisfies readonly (keyof BattleSnapshot)[];
 
 export const IDLE_BATTLE_SNAPSHOT: BattleSnapshot = {
@@ -50,6 +51,7 @@ export const IDLE_BATTLE_SNAPSHOT: BattleSnapshot = {
   benchGauges: [0, 0, 0],
   startedAt: null,
   bowelDraft: null,
+  outcomeAcknowledged: false,
 };
 
 export function partializeBattleStore(state: BattleSnapshot): BattleSnapshot {
@@ -75,6 +77,7 @@ export function partializeBattleStore(state: BattleSnapshot): BattleSnapshot {
     benchGauges: state.benchGauges,
     startedAt: state.startedAt,
     bowelDraft: state.bowelDraft,
+    outcomeAcknowledged: state.outcomeAcknowledged ?? false,
   };
 }
 
