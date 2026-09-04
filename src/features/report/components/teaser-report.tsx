@@ -130,9 +130,9 @@ function SamplePreview({ placeholder }: { placeholder: ReturnType<typeof createT
         <BarChart
           ariaLabel={t("recordsByHardness")}
           emptyLabel={t("noRecords")}
-          bars={placeholder.hardnessHeights.map((height, index) => ({
+          bars={placeholder.hardnessCounts.map((count, index) => ({
             label: String(index + 1),
-            value: height,
+            value: count,
             highlighted: index + 1 >= 3 && index + 1 <= 5,
           }))}
         />

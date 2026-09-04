@@ -94,7 +94,6 @@ function PremiumReport({ report }: { report: WeeklyReport }) {
             value: count,
             highlighted: index + 1 >= 3 && index + 1 <= 5,
           }))}
-          unit={t("times", { count: "" })}
         />
         <p className="mt-3 text-xs text-pencil-gray">{t("stableBandNote")}</p>
       </section>

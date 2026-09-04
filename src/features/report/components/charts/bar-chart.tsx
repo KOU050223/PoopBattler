@@ -22,8 +22,6 @@ type Bar = {
 
 type Props = {
   bars: Bar[];
-  /** 値に付ける単位。「件」など。 */
-  unit?: string;
   /** 図全体の説明。読み上げ用に使う。 */
   ariaLabel: string;
   /** 記録が0件のときに出す文言。 */
@@ -33,7 +31,7 @@ type Props = {
 
 const HEIGHT_CLASS = { sm: "h-16", md: "h-24" } as const;
 
-export function BarChart({ bars, unit = "", ariaLabel, emptyLabel, height = "md" }: Props) {
+export function BarChart({ bars, ariaLabel, emptyLabel, height = "md" }: Props) {
   const max = Math.max(...bars.map((bar) => bar.value), 0);
 
   // 全部0の週で max を割ると NaN になり、棒が消えるのではなく壊れる。
@@ -52,7 +50,6 @@ export function BarChart({ bars, unit = "", ariaLabel, emptyLabel, height = "md"
           </div>
           <p className="mt-1.5 truncate text-[11px] font-bold text-charcoal">{bar.label}</p>
           {bar.caption ? <p className="truncate text-[10px] text-pencil-gray">{bar.caption}</p> : null}
-          <span className="sr-only">{unit}</span>
         </li>
       ))}
     </ol>

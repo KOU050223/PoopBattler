@@ -17,7 +17,7 @@ describe("createTeaserPlaceholder", () => {
   it("シードが0でもレポートの形を保った値を返す", () => {
     const placeholder = createTeaserPlaceholder(0);
     expect(placeholder.metrics).toHaveLength(4);
-    expect(placeholder.hardnessHeights).toHaveLength(7);
+    expect(placeholder.hardnessCounts).toHaveLength(7);
     expect(placeholder.fourWeekTrend).toHaveLength(4);
     expect(placeholder.mealFoodGroups).toHaveLength(3);
     expect(placeholder.weekdayCounts).toHaveLength(7);
@@ -36,11 +36,13 @@ describe("createTeaserPlaceholder", () => {
     }
   });
 
-  it("棒グラフの高さは表示できる範囲に収まる", () => {
+  // 見本の硬さは高さ(%)ではなく件数。本レポートと桁数の揃った値でないと、
+  // ぼかしの下でも「別の図」だと分かってしまう。
+  it("硬さの見本は本レポートと同じ桁の件数になる", () => {
     for (const seed of [0, 1, 3, 12, 99]) {
-      for (const height of createTeaserPlaceholder(seed).hardnessHeights) {
-        expect(height).toBeGreaterThanOrEqual(12);
-        expect(height).toBeLessThanOrEqual(100);
+      for (const count of createTeaserPlaceholder(seed).hardnessCounts) {
+        expect(count).toBeGreaterThanOrEqual(0);
+        expect(count).toBeLessThanOrEqual(9);
       }
     }
   });
