@@ -7,7 +7,7 @@ import { ImagePlus, Trash2 } from "lucide-react";
 import { MealLogImage } from "./meal-log-image";
 import { deleteMealPhoto, saveMealPhoto, validateMealPhoto } from "@/features/meal/meal-photo-storage";
 import type { MealLog } from "@/features/meal/actions";
-import { MEAL_TAGS } from "@/features/meal/meal.types";
+import { getMealFoodGroupLabel } from "@/features/meal/meal.types";
 import { captionTextClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type MealLogListProps = {
@@ -18,10 +18,6 @@ type MealLogListProps = {
 
 function formatEatenAt(value: string) {
   return new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-}
-
-function getTagLabel(tag: string) {
-  return MEAL_TAGS.find((item) => item.value === tag)?.label ?? tag;
 }
 
 export function MealLogList({ initialLogs, onDelete, onReplacePhoto }: MealLogListProps) {
@@ -130,10 +126,10 @@ export function MealLogList({ initialLogs, onDelete, onReplacePhoto }: MealLogLi
             <div className="meal-log-card-content">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-bold text-charcoal">{getTagLabel(mealLog.tag)}</p>
+                  <p className="font-bold text-charcoal">{mealLog.foodGroups.map(getMealFoodGroupLabel).join("・")}</p>
                   <p className={captionTextClass}>{formatEatenAt(mealLog.eatenAt)}</p>
                 </div>
-                <span className="meal-log-tag">{getTagLabel(mealLog.tag)}</span>
+                <div className="flex flex-wrap justify-end gap-1">{mealLog.foodGroups.map((foodGroup) => <span key={foodGroup} className="meal-log-tag">{getMealFoodGroupLabel(foodGroup)}</span>)}</div>
               </div>
               {mealLog.note && <p className="mt-2 text-sm leading-relaxed text-charcoal">{mealLog.note}</p>}
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">

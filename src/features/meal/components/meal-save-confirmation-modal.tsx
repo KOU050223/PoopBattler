@@ -4,12 +4,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
-import { MEAL_TAGS, type MealTag } from "@/features/meal/meal.types";
+import { getMealFoodGroupLabel, type MealFoodGroup } from "@/features/meal/meal.types";
 import { mutedTextClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type MealSaveConfirmationModalProps = {
   isOpen: boolean;
-  tag: MealTag;
+  foodGroups: MealFoodGroup[];
   isSaving: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -18,14 +18,13 @@ type MealSaveConfirmationModalProps = {
 /** 保存前の確認を、現在のスクロール位置に依存しない中央モーダルで表示する。 */
 export function MealSaveConfirmationModal({
   isOpen,
-  tag,
+  foodGroups,
   isSaving,
   onCancel,
   onConfirm,
 }: MealSaveConfirmationModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
-  const tagLabel = MEAL_TAGS.find((mealTag) => mealTag.value === tag)?.label;
 
   useEffect(() => {
     if (isOpen) {
@@ -86,7 +85,7 @@ export function MealSaveConfirmationModal({
           >
             <h2 id="meal-confirmation-title" className="font-bold text-charcoal">この内容で保存しますか？</h2>
             <p className={`mt-2 ${mutedTextClass}`}>
-              {tagLabel}として記録します。
+              {foodGroups.map(getMealFoodGroupLabel).join("・")}として記録します。
             </p>
             <div className="mt-5 flex gap-3">
               <button type="button" onClick={onCancel} disabled={isSaving} className={secondaryButtonClass}>戻る</button>

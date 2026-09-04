@@ -48,7 +48,7 @@ describe("BattleCompletionFlow", () => {
         id: "00000000-0000-4000-8000-000000000011",
         eatenAt: "2026-09-04T03:00:00.000Z",
         photoId: "00000000-0000-4000-8000-000000000021",
-        tag: "curry",
+        foodGroups: ["rice"],
         note: null,
       },
     ];
@@ -67,7 +67,7 @@ describe("BattleCompletionFlow", () => {
     expect(markup).toContain("meal-form-section");
     expect(markup).toContain("この食事を記録する");
     expect(markup).toContain("今回の食事");
-    expect(markup).toContain("カレー");
+    expect(markup).toContain("ごはん");
     expect(markup).toContain("完了する");
     expect(markup).not.toContain("記録せずに完了する");
   });

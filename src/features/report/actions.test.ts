@@ -30,7 +30,7 @@ function createSupabase({
   subscription?: Subscription;
   subscriptionError?: { message: string } | null;
   bowelRows?: BowelRow[];
-  mealRows?: Array<{ eaten_at: string; tag: string }>;
+  mealRows?: Array<{ eaten_at: string; food_groups: string[] }>;
   queryError?: { message: string } | null;
 } = {}) {
   const subscriptionMaybeSingle = vi
@@ -86,7 +86,7 @@ describe("getWeeklyReportAction（権利あり）", () => {
   it("本人の必要な期間の食事・排便記録だけから今週のレポートを作る", async () => {
     const supabase = createSupabase({
       bowelRows: [bowelRow],
-      mealRows: [{ eaten_at: "2026-09-02T12:00:00.000Z", tag: "vegetable" }],
+      mealRows: [{ eaten_at: "2026-09-02T12:00:00.000Z", food_groups: ["green_yellow_vegetables"] }],
     });
     mocks.createClient.mockResolvedValue(supabase);
 
@@ -94,7 +94,7 @@ describe("getWeeklyReportAction（権利あり）", () => {
       entitled: true,
       report: {
         summary: { bowelCount: 1, averageHardness: 4 },
-        meals: { total: 1, byTag: { vegetable: 1 } },
+        meals: { total: 1, byFoodGroup: { green_yellow_vegetables: 1 } },
       },
     });
     expect(supabase.subscriptionEq).toHaveBeenCalledWith("user_id", user.id);

@@ -183,28 +183,31 @@ export type Database = {
         Row: {
           created_at: string
           eaten_at: string
+          food_groups: string[]
           id: string
           image_path: string
           note: string | null
-          tag: string
+          tag: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           eaten_at?: string
+          food_groups: string[]
           id?: string
           image_path: string
           note?: string | null
-          tag: string
+          tag?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           eaten_at?: string
+          food_groups?: string[]
           id?: string
           image_path?: string
           note?: string | null
-          tag?: string
+          tag?: string | null
           user_id?: string
         }
         Relationships: [
@@ -513,4 +516,3 @@ export const Constants = {
     },
   },
 } as const
-

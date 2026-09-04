@@ -13,10 +13,10 @@ describe("createWeeklyReport", () => {
         { loggedAt: "2026-08-30T10:00:00.000Z", hardness: 2, amount: "small", color: "green", ease: "hard" },
       ],
       mealLogs: [
-        { eatenAt: "2026-09-01T12:00:00.000Z", tag: "vegetable" },
-        { eatenAt: "2026-09-02T12:00:00.000Z", tag: "vegetable" },
-        { eatenAt: "2026-09-03T00:00:00.000Z", tag: "spicy" },
-        { eatenAt: "2026-08-30T12:00:00.000Z", tag: "banana" },
+        { eatenAt: "2026-09-01T12:00:00.000Z", foodGroups: ["green_yellow_vegetables"] },
+        { eatenAt: "2026-09-02T12:00:00.000Z", foodGroups: ["green_yellow_vegetables"] },
+        { eatenAt: "2026-09-03T00:00:00.000Z", foodGroups: ["spicy_food"] },
+        { eatenAt: "2026-08-30T12:00:00.000Z", foodGroups: ["fruit"] },
       ],
     });
 
@@ -33,10 +33,10 @@ describe("createWeeklyReport", () => {
     });
     expect(report.breakdown.hardness).toEqual([0, 0, 0, 1, 1, 1, 0]);
     expect(report.breakdown.amount).toEqual({ small: 1, normal: 1, large: 1 });
-    expect(report.meals).toEqual({ total: 3, byTag: { vegetable: 2, spicy: 1 } });
+    expect(report.meals).toEqual({ total: 3, byFoodGroup: { green_yellow_vegetables: 2, spicy_food: 1 } });
     expect(report.mealRelationships).toEqual([
-      { tag: "vegetable", relatedBowelCount: 2, averageHardness: 5.5 },
-      { tag: "spicy", relatedBowelCount: 1, averageHardness: 6 },
+      { foodGroup: "green_yellow_vegetables", relatedBowelCount: 2, averageHardness: 5.5 },
+      { foodGroup: "spicy_food", relatedBowelCount: 1, averageHardness: 6 },
     ]);
   });
 
@@ -59,10 +59,10 @@ describe("createWeeklyReport", () => {
     const report = createWeeklyReport({
       now: "2026-09-01T18:00:00.000Z",
       bowelLogs: [{ loggedAt: "2026-08-30T16:00:00.000Z", hardness: 4, amount: "normal", color: "brown", ease: "easy" }],
-      mealLogs: [{ eatenAt: "2026-08-30T14:30:00.000Z", tag: "banana" }],
+      mealLogs: [{ eatenAt: "2026-08-30T14:30:00.000Z", foodGroups: ["fruit"] }],
     });
 
-    expect(report.meals).toEqual({ total: 0, byTag: {} });
-    expect(report.mealRelationships).toEqual([{ tag: "banana", relatedBowelCount: 1, averageHardness: 4 }]);
+    expect(report.meals).toEqual({ total: 0, byFoodGroup: {} });
+    expect(report.mealRelationships).toEqual([{ foodGroup: "fruit", relatedBowelCount: 1, averageHardness: 4 }]);
   });
 });

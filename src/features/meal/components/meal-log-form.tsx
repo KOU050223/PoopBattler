@@ -9,10 +9,10 @@ import { MealPhotoPicker } from "./meal-photo-picker";
 import { MealSaveConfirmationModal } from "./meal-save-confirmation-modal";
 import { MealTagSelector } from "./meal-tag-selector";
 import { deleteMealPhoto, isMealPhotoStorageError, saveMealPhoto } from "@/features/meal/meal-photo-storage";
-import { type MealLogDraft, type MealLogSaveResult, type MealTag } from "@/features/meal/meal.types";
+import { type MealFoodGroup, type MealLogDraft, type MealLogSaveResult } from "@/features/meal/meal.types";
 import { captionTextClass, fieldClass, secondaryButtonClass } from "@/lib/ui-classes";
 
-type FieldErrors = Partial<Record<"photo" | "tag" | "eatenAt" | "save", string>>;
+type FieldErrors = Partial<Record<"photo" | "foodGroups" | "eatenAt" | "save", string>>;
 
 type MealLogFormProps = {
   /**
@@ -45,12 +45,12 @@ export function MealLogForm({
   children,
 }: MealLogFormProps) {
   const router = useRouter();
-  const tagGroupId = useId();
+  const foodGroupId = useId();
   const previewUrlRef = useRef<string | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [eatenAt, setEatenAt] = useState(currentLocalDateTime);
-  const [tag, setTag] = useState<MealTag | "">("");
+  const [foodGroups, setFoodGroups] = useState<MealFoodGroup[]>([]);
   const [note, setNote] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isConfirming, setIsConfirming] = useState(false);
@@ -68,7 +68,7 @@ export function MealLogForm({
   const validate = () => {
     const nextErrors: FieldErrors = {};
     if (!photo) nextErrors.photo = "写真を選択してください。";
-    if (!tag) nextErrors.tag = "食事タグを1つ選択してください。";
+    if (foodGroups.length === 0) nextErrors.foodGroups = "食品群を1つ以上選択してください。";
     if (!eatenAt || Number.isNaN(new Date(eatenAt).getTime())) {
       nextErrors.eatenAt = "食事した日時を入力してください。";
     }
@@ -88,12 +88,12 @@ export function MealLogForm({
     setPhoto(null);
     setPreviewUrl(null);
     setEatenAt(currentLocalDateTime());
-    setTag("");
+    setFoodGroups([]);
     setNote("");
   };
 
   const save = async () => {
-    if (!photo || !tag) return;
+    if (!photo || foodGroups.length === 0) return;
     setIsSaving(true);
     setErrors({});
     let photoId: string | undefined;
@@ -102,7 +102,7 @@ export function MealLogForm({
       const result = await onSave({
         photoId,
         eatenAt: new Date(eatenAt).toISOString(),
-        tag,
+        foodGroups,
         note: note.trim() || undefined,
       });
       if (!result.success) {
@@ -164,12 +164,12 @@ export function MealLogForm({
       </div>
 
       <MealTagSelector
-        value={tag}
-        error={errors.tag}
-        errorId={`${tagGroupId}-error`}
-        onChange={(selectedTag) => {
-          setTag(selectedTag);
-          setErrors((current) => ({ ...current, tag: undefined }));
+        value={foodGroups}
+        error={errors.foodGroups}
+        errorId={`${foodGroupId}-error`}
+        onChange={(selectedFoodGroups) => {
+          setFoodGroups(selectedFoodGroups);
+          setErrors((current) => ({ ...current, foodGroups: undefined }));
         }}
       />
 
@@ -209,10 +209,10 @@ export function MealLogForm({
         </button>
       ) : null}
 
-      {tag && (
+      {foodGroups.length > 0 && (
         <MealSaveConfirmationModal
           isOpen={isConfirming}
-          tag={tag}
+          foodGroups={foodGroups}
           isSaving={isSaving}
           onCancel={() => setIsConfirming(false)}
           onConfirm={() => void save()}

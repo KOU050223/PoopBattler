@@ -15,7 +15,7 @@ type HistoryRow = {
   started_at: string;
   completed_at: string | null;
   companionship_result: boolean | null;
-  meal_logs: { tag: string } | null;
+  meal_logs: { food_groups: string[] } | null;
   characters: { id: string; name: string; attribute: "curry" } | null;
   bowel_logs: { hardness: number; amount: string; color: string; ease: string } | null;
 };
@@ -63,7 +63,7 @@ describe("getBattleHistoryAction", () => {
         started_at: "2026-09-03T06:00:00.000Z",
         completed_at: "2026-09-03T06:03:00.000Z",
         companionship_result: true,
-        meal_logs: { tag: "banana" },
+        meal_logs: { food_groups: ["fruit"] },
         characters: { id: "banana-poop", name: "バナナうんちくん", attribute: "curry" },
         bowel_logs: { hardness: 5, amount: "large", color: "yellow", ease: "normal" },
       },
@@ -76,7 +76,7 @@ describe("getBattleHistoryAction", () => {
         battleId: rows[0].id,
         completedAt: rows[0].completed_at,
         companionshipResult: false,
-        mealTag: null,
+        mealFoodGroups: null,
         enemy: rows[0].characters,
         bowelLog: rows[0].bowel_logs,
       },
@@ -84,7 +84,7 @@ describe("getBattleHistoryAction", () => {
         battleId: rows[1].id,
         completedAt: rows[1].completed_at,
         companionshipResult: true,
-        mealTag: "banana",
+        mealFoodGroups: ["fruit"],
         enemy: rows[1].characters,
         bowelLog: rows[1].bowel_logs,
       },

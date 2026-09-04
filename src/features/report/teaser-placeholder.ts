@@ -33,8 +33,8 @@ export type TeaserPlaceholder = {
   dailyCounts: number[];
   /** 4週間の推移（回数と平均の硬さ）。 */
   fourWeekTrend: Array<{ count: number; average: string }>;
-  /** 食事タグ別分析の行数ぶんのダミー値。 */
-  mealTags: Array<{ mealCount: number; within24: number; within48: number }>;
+  /** 食品群別分析の行数ぶんのダミー値。 */
+  mealFoodGroups: Array<{ mealCount: number; within24: number; within48: number }>;
 };
 
 /**
@@ -62,7 +62,7 @@ export function createTeaserPlaceholder(seed: number): TeaserPlaceholder {
       count: between(4, 15),
       average: (between(25, 52) / 10).toFixed(1),
     })),
-    mealTags: Array.from({ length: 3 }, () => ({
+    mealFoodGroups: Array.from({ length: 3 }, () => ({
       mealCount: between(5, 18),
       within24: between(3, 11),
       within48: between(4, 16),

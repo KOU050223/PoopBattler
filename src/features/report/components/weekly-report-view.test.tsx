@@ -1,6 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
+
+vi.mock("./manage-subscription-link", () => ({
+  ManageSubscriptionLink: () => <span>subscription link</span>,
+}));
 
 import messages from "../../../../messages/ja.json";
 
@@ -16,14 +20,14 @@ const report: WeeklyReport = {
     color: { brown: 3, dark_brown: 0, yellow: 0, green: 0 },
     ease: { easy: 2, normal: 1, hard: 0 },
   },
-  meals: { total: 2, byTag: { vegetable: 2 } },
-  mealRelationships: [{ tag: "vegetable", relatedBowelCount: 2, averageHardness: 4.5 }],
+  meals: { total: 2, byFoodGroup: { green_yellow_vegetables: 2 } },
+  mealRelationships: [{ foodGroup: "green_yellow_vegetables", relatedBowelCount: 2, averageHardness: 4.5 }],
   analysis: {
     dailyCounts: [],
     weekdayCounts: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 },
     timeOfDayCounts: { morning: 0, afternoon: 0, evening: 0, night: 0 },
     fourWeekTrend: [],
-    mealTagAnalyses: [],
+    mealFoodGroupAnalyses: [],
   },
 };
 
@@ -42,7 +46,7 @@ describe("WeeklyReportView", () => {
     expect(markup).toContain("食事との記録上の関連");
     expect(markup).toContain("日別の記録");
     expect(markup).toContain("4週間の推移");
-    expect(markup).toContain("食事タグ別の分析");
-    expect(markup).toContain("野菜");
+    expect(markup).toContain("食品群別の分析");
+    expect(markup).toContain("緑黄色野菜");
   });
 });

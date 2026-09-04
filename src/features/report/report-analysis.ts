@@ -6,7 +6,7 @@ export type AnalysisBowelLog = {
 
 export type AnalysisMealLog = {
   eatenAt: string;
-  tag: string;
+  foodGroups: string[];
 };
 
 type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
@@ -66,8 +66,8 @@ export type ReportAnalysis = {
   weekdayCounts: Record<Weekday, number>;
   timeOfDayCounts: Record<TimeOfDay, number>;
   fourWeekTrend: Array<{ weekStartsAt: string; bowelCount: number; averageHardness: number | null }>;
-  mealTagAnalyses: Array<{
-    tag: string;
+  mealFoodGroupAnalyses: Array<{
+    foodGroup: string;
     mealCount: number;
     relatedWithin24Hours: number;
     relatedWithin48Hours: number;
@@ -109,15 +109,15 @@ export function createReportAnalysis({ now, bowelLogs, mealLogs }: { now: string
   });
   const lookbackMeals = mealLogs.filter((meal) => inRange(meal.eatenAt, fourWeekStartsAt, endsAt));
   const lookbackBowelLogs = bowelLogs.filter((log) => inRange(log.loggedAt, fourWeekStartsAt, endsAt));
-  const mealsByTag = Map.groupBy(lookbackMeals, (meal) => meal.tag);
-  const mealTagAnalyses = [...mealsByTag.entries()]
-    .flatMap(([tag, meals]) => {
+  const mealsByFoodGroup = Map.groupBy(lookbackMeals.flatMap((meal) => meal.foodGroups.map((foodGroup) => ({ ...meal, foodGroup }))), (meal) => meal.foodGroup);
+  const mealFoodGroupAnalyses = [...mealsByFoodGroup.entries()]
+    .flatMap(([foodGroup, meals]) => {
       if (meals.length < 5) return [];
       const related24 = findRelatedBowelLogs(meals, lookbackBowelLogs, DAY_MS);
       if (related24.length < 3) return [];
       const related48 = findRelatedBowelLogs(meals, lookbackBowelLogs, DAY_MS * 2);
       return [{
-        tag,
+        foodGroup,
         mealCount: meals.length,
         relatedWithin24Hours: related24.length,
         relatedWithin48Hours: related48.length,
@@ -125,7 +125,7 @@ export function createReportAnalysis({ now, bowelLogs, mealLogs }: { now: string
         averageHardnessWithin48Hours: averageHardness(related48),
       }];
     })
-    .sort((a, b) => b.mealCount - a.mealCount || a.tag.localeCompare(b.tag));
+    .sort((a, b) => b.mealCount - a.mealCount || a.foodGroup.localeCompare(b.foodGroup));
 
-  return { dailyCounts, weekdayCounts: weekdays, timeOfDayCounts: times, fourWeekTrend, mealTagAnalyses };
+  return { dailyCounts, weekdayCounts: weekdays, timeOfDayCounts: times, fourWeekTrend, mealFoodGroupAnalyses };
 }
