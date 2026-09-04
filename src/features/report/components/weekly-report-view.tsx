@@ -1,11 +1,15 @@
-import { ChartNoAxesCombined, Sparkles, Utensils } from "lucide-react";
+import { ChartNoAxesCombined, Clock, Palette, Sparkles, Utensils } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { ManageSubscriptionLink } from "./manage-subscription-link";
 
 import { getMealFoodGroupLabel } from "@/features/meal/meal.types";
 
-import { weekdayLabel, type Weekday } from "../report-labels";
+import { BarChart, EmptyChart } from "./charts/bar-chart";
+import { ShareBar } from "./charts/share-bar";
+import { TrendLine } from "./charts/trend-line";
+
+import { BOWEL_COLOR_LABELS, weekdayLabel, weekdayShortLabel, type BowelColor, type Weekday } from "../report-labels";
 import type { WeeklyReport } from "../weekly-report";
 
 type Props = {
@@ -14,9 +18,9 @@ type Props = {
   notice?: string | null;
 };
 
-const hardnessLabels = ["1", "2", "3", "4", "5", "6", "7"];
-const amountLabels = { small: "少ない", normal: "普通", large: "多い" } as const;
-const easeLabels = { easy: "すっきり", normal: "普通", hard: "出にくい" } as const;
+const CARD = "rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6";
+const HEADING = "text-lg font-black tracking-[-0.025em] text-charcoal";
+const WEEKDAYS: Weekday[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
 function signedCount(value: number) {
   return value > 0 ? `+${value}` : String(value);
@@ -57,71 +61,218 @@ export function WeeklyReportView({ report, notice = null }: Props) {
 }
 
 function PremiumReport({ report }: { report: WeeklyReport }) {
+  const t = useTranslations("Report");
+  const locale = useLocale();
   const { summary, breakdown, mealRelationships, analysis } = report;
+  const dayFormat = new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", timeZone: "Asia/Tokyo" });
+  const weekdayFormat = new Intl.DateTimeFormat(locale, { weekday: "narrow", timeZone: "Asia/Tokyo" });
+
   return (
     <div className="space-y-5">
-      <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="report-highlight-title">
-        <div className="flex items-center gap-2"><Sparkles aria-hidden="true" className="size-5 text-flush-edge" /><h2 id="report-highlight-title" className="text-lg font-black tracking-[-0.025em] text-charcoal">今週のハイライト</h2></div>
+      <section className={CARD} aria-labelledby="report-highlight-title">
+        <div className="flex items-center gap-2"><Sparkles aria-hidden="true" className="size-5 text-flush-edge" /><h2 id="report-highlight-title" className={HEADING}>{t("highlights")}</h2></div>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Metric label="排便回数" value={`${summary.bowelCount}回`} detail={`先週比 ${signedCount(summary.countChangeFromPreviousWeek)}回`} />
-          <Metric label="記録日数" value={`${summary.recordedDays}日`} detail="今週の記録" />
-          <Metric label="平均の硬さ" value={summary.averageHardness?.toFixed(1) ?? "-"} detail="1から7の記録" />
-          <Metric label="3から5の割合" value={summary.stableRate === null ? "-" : `${summary.stableRate}%`} detail="今週の記録" />
+          <Metric label={t("bowelCount")} value={t("times", { count: summary.bowelCount })} detail={t("comparedLastWeek", { count: signedCount(summary.countChangeFromPreviousWeek) })} />
+          <Metric label={t("recordDays")} value={t("days", { count: summary.recordedDays })} detail={t("thisWeek")} />
+          <Metric label={t("averageHardness")} value={summary.averageHardness?.toFixed(1) ?? "-"} detail={t("hardnessScale")} />
+          <Metric label={t("stableRate")} value={summary.stableRate === null ? "-" : `${summary.stableRate}%`} detail={t("thisWeek")} />
         </div>
       </section>
 
-      <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="hardness-title">
-        <h2 id="hardness-title" className="text-lg font-black tracking-[-0.025em] text-charcoal">硬さの分布</h2>
-        <p className="mt-1 text-sm text-pencil-gray">1が硬め、7がゆるめです。診断ではなく、あなたの記録を示します。</p>
-        <ol className="mt-5 grid grid-cols-7 gap-2" aria-label="硬さ別の記録数">
-          {breakdown.hardness.map((count, index) => <li key={hardnessLabels[index]} className="text-center"><div className="flex h-24 items-end rounded-lg bg-blush-wash/50 p-1"><div className="w-full rounded-md bg-flush-pink" style={{ height: `${count === 0 ? 0 : Math.max(10, (count / summary.bowelCount) * 100)}%` }} /></div><p className="mt-2 text-xs font-black text-charcoal">{hardnessLabels[index]}</p><p className="text-[11px] font-medium text-pencil-gray">{count}件</p></li>)}
-        </ol>
+      <section className={CARD} aria-labelledby="hardness-title">
+        <h2 id="hardness-title" className={HEADING}>{t("hardnessTitle")}</h2>
+        <p className="mt-1 text-sm text-pencil-gray">{t("hardnessDescription")}</p>
+        {/*
+          3から5を濃い色にするのは、ハイライトの「3から5の割合」と同じ帯を
+          指しているため。数字と図で別々の話をすると読み手が突き合わせられない。
+        */}
+        <BarChart
+          ariaLabel={t("recordsByHardness")}
+          emptyLabel={t("noRecords")}
+          bars={breakdown.hardness.map((count, index) => ({
+            label: String(index + 1),
+            value: count,
+            highlighted: index + 1 >= 3 && index + 1 <= 5,
+          }))}
+          unit={t("times", { count: "" })}
+        />
+        <p className="mt-3 text-xs text-pencil-gray">{t("stableBandNote")}</p>
       </section>
 
-      <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="condition-title">
-        <h2 id="condition-title" className="text-lg font-black tracking-[-0.025em] text-charcoal">ほかの記録</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Breakdown title="量" values={breakdown.amount} labels={amountLabels} />
-          <Breakdown title="出やすさ" values={breakdown.ease} labels={easeLabels} />
+      <section className={CARD} aria-labelledby="condition-title">
+        <h2 id="condition-title" className={HEADING}>{t("otherRecords")}</h2>
+        <div className="mt-4 grid gap-5 sm:grid-cols-2">
+          <div>
+            <h3 className="text-sm font-black text-charcoal">{t("amount")}</h3>
+            <ShareBar
+              ariaLabel={t("amount")}
+              emptyLabel={t("noRecords")}
+              segments={[
+                { key: "small", label: t("small"), value: breakdown.amount.small, color: "var(--color-cotton-pink)" },
+                { key: "normal", label: t("normal"), value: breakdown.amount.normal, color: "var(--color-flush-pink)" },
+                { key: "large", label: t("large"), value: breakdown.amount.large, color: "var(--color-flush-edge)" },
+              ]}
+            />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-charcoal">{t("ease")}</h3>
+            <ShareBar
+              ariaLabel={t("ease")}
+              emptyLabel={t("noRecords")}
+              segments={[
+                { key: "easy", label: t("easy"), value: breakdown.ease.easy, color: "var(--color-cotton-pink)" },
+                { key: "normal", label: t("normal"), value: breakdown.ease.normal, color: "var(--color-flush-pink)" },
+                { key: "hard", label: t("hard"), value: breakdown.ease.hard, color: "var(--color-flush-edge)" },
+              ]}
+            />
+          </div>
         </div>
       </section>
 
-      <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="trend-title">
-        <h2 id="trend-title" className="text-lg font-black tracking-[-0.025em] text-charcoal">日別の記録</h2>
-        <div className="mt-4 grid grid-cols-5 gap-2">{analysis.dailyCounts.map((day) => <div key={day.date} className="rounded-lg bg-blush-wash/45 p-2 text-center"><p className="text-[11px] text-pencil-gray">{day.date.slice(5).replace("-", "/")}</p><p className="mt-1 text-lg font-black text-charcoal">{day.count}</p><p className="text-[11px] text-pencil-gray">件</p></div>)}</div>
-        <h3 className="mt-5 text-sm font-black text-charcoal">曜日・時間帯</h3>
-        <p className="mt-2 text-sm text-pencil-gray">もっとも記録が多い曜日: {mostFrequentWeekdays(analysis.weekdayCounts)}。朝 {analysis.timeOfDayCounts.morning}件、昼 {analysis.timeOfDayCounts.afternoon}件、夜 {analysis.timeOfDayCounts.evening + analysis.timeOfDayCounts.night}件。</p>
+      <section className={CARD} aria-labelledby="color-title">
+        <div className="flex items-center gap-2"><Palette aria-hidden="true" className="size-5 text-flush-edge" /><h2 id="color-title" className={HEADING}>{t("colorTitle")}</h2></div>
+        <ShareBar
+          ariaLabel={t("colorTitle")}
+          emptyLabel={t("noRecords")}
+          segments={(Object.keys(BOWEL_COLOR_LABELS) as BowelColor[]).map((key) => ({
+            key,
+            label: BOWEL_COLOR_LABELS[key].label,
+            value: breakdown.color[key],
+            color: BOWEL_COLOR_LABELS[key].hex,
+          }))}
+        />
       </section>
 
-      <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="four-week-title">
-        <h2 id="four-week-title" className="text-lg font-black tracking-[-0.025em] text-charcoal">4週間の推移</h2>
-        <div className="mt-4 grid grid-cols-4 gap-2">{analysis.fourWeekTrend.map((week) => <div key={week.weekStartsAt} className="rounded-xl bg-blush-wash/45 p-3"><p className="text-[11px] text-pencil-gray">{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", timeZone: "Asia/Tokyo" }).format(new Date(week.weekStartsAt))}週</p><p className="mt-1 text-lg font-black text-charcoal">{week.bowelCount}回</p><p className="mt-1 text-[11px] text-pencil-gray">平均 {week.averageHardness ?? "-"}</p></div>)}</div>
+      <section className={CARD} aria-labelledby="trend-title">
+        <h2 id="trend-title" className={HEADING}>{t("dailyRecords")}</h2>
+        <BarChart
+          ariaLabel={t("dailyRecords")}
+          emptyLabel={t("noRecords")}
+          height="sm"
+          bars={analysis.dailyCounts.map((day) => ({
+            label: weekdayFormat.format(new Date(`${day.date}T00:00:00+09:00`)),
+            caption: dayFormat.format(new Date(`${day.date}T00:00:00+09:00`)),
+            value: day.count,
+          }))}
+        />
       </section>
 
-      <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="meal-title">
-        <div className="flex items-center gap-2"><Utensils aria-hidden="true" className="size-5 text-flush-edge" /><h2 id="meal-title" className="text-lg font-black tracking-[-0.025em] text-charcoal">食事との記録上の関連</h2></div>
-        {mealRelationships.length === 0 ? <p className="mt-3 rounded-xl bg-blush-wash/45 p-3 text-sm leading-relaxed text-pencil-gray">食事と排便の両方を記録すると、24時間以内の記録上の関連をここで振り返れます。</p> : <ul className="mt-4 space-y-3">{mealRelationships.map((relationship) => <li key={relationship.foodGroup} className="rounded-xl bg-blush-wash/45 p-3"><p className="font-bold text-charcoal">{getMealFoodGroupLabel(relationship.foodGroup)}</p><p className="mt-1 text-sm text-pencil-gray">{relationship.relatedBowelCount}件の排便記録と関連。平均の硬さは {relationship.averageHardness.toFixed(1)} です。</p></li>)}</ul>}
-        <p className="mt-4 text-xs leading-relaxed text-pencil-gray">食事が原因であることを示すものではありません。あなたが記録した食事から24時間以内の排便を、振り返りやすく表示しています。</p>
+      <section className={CARD} aria-labelledby="weekday-title">
+        <h2 id="weekday-title" className={HEADING}>{t("weekdayAndTime")}</h2>
+        <p className="mt-1 text-sm text-pencil-gray">{t("mostFrequentWeekdayShort", { weekday: mostFrequentWeekdays(analysis.weekdayCounts, t("noRecords")) })}</p>
+        <BarChart
+          ariaLabel={t("weekdayAndTime")}
+          emptyLabel={t("noRecords")}
+          height="sm"
+          bars={WEEKDAYS.map((weekday) => ({ label: weekdayShortLabel(weekday), value: analysis.weekdayCounts[weekday] }))}
+        />
+        <h3 className="mt-5 flex items-center gap-1.5 text-sm font-black text-charcoal"><Clock aria-hidden="true" className="size-4 text-flush-edge" />{t("timeOfDay")}</h3>
+        {/* 夜と深夜を1つに丸めない。「22時以降だけが多い」は本人にしか意味が分からない差で、丸めると消える。 */}
+        <ShareBar
+          ariaLabel={t("timeOfDay")}
+          emptyLabel={t("noRecords")}
+          segments={[
+            { key: "morning", label: t("morning"), value: analysis.timeOfDayCounts.morning, color: "#ffd28f" },
+            { key: "afternoon", label: t("afternoon"), value: analysis.timeOfDayCounts.afternoon, color: "var(--color-flush-pink)" },
+            { key: "evening", label: t("evening"), value: analysis.timeOfDayCounts.evening, color: "var(--color-flush-edge)" },
+            { key: "night", label: t("night"), value: analysis.timeOfDayCounts.night, color: "var(--color-night-ink)" },
+          ]}
+        />
       </section>
 
-      <section className="rounded-2xl bg-paper-white p-5 shadow-[0_8px_24px_rgb(201_77_127_/_0.1)] sm:p-6" aria-labelledby="meal-analysis-title">
-        <h2 id="meal-analysis-title" className="text-lg font-black tracking-[-0.025em] text-charcoal">食品群別の分析</h2>
-        {analysis.mealFoodGroupAnalyses.length === 0 ? <p className="mt-3 text-sm leading-relaxed text-pencil-gray">同じ食品群を5件以上、かつ24時間以内の排便を3件以上記録すると、ここに比較を表示します。</p> : <ul className="mt-4 space-y-3">{analysis.mealFoodGroupAnalyses.map((entry) => <li key={entry.foodGroup} className="rounded-xl bg-blush-wash/45 p-3"><p className="font-bold text-charcoal">{getMealFoodGroupLabel(entry.foodGroup)} <span className="text-sm font-medium text-pencil-gray">{entry.mealCount}件の食事記録</span></p><p className="mt-1 text-sm text-pencil-gray">24時間内の関連 {entry.relatedWithin24Hours}件、48時間内 {entry.relatedWithin48Hours}件。平均の硬さは {entry.averageHardnessWithin24Hours ?? "-"} / {entry.averageHardnessWithin48Hours ?? "-"}。</p></li>)}</ul>}
+      <section className={CARD} aria-labelledby="four-week-title">
+        <h2 id="four-week-title" className={HEADING}>{t("fourWeekTrend")}</h2>
+        <TrendLine
+          ariaLabel={t("fourWeekTrend")}
+          emptyLabel={t("noRecords")}
+          points={analysis.fourWeekTrend.map((week) => ({
+            key: week.weekStartsAt,
+            label: `${dayFormat.format(new Date(week.weekStartsAt))}${t("week")}`,
+            value: week.bowelCount,
+            caption: t("average", { value: week.averageHardness ?? "-" }),
+          }))}
+        />
+      </section>
+
+      <section className={CARD} aria-labelledby="meal-title">
+        <div className="flex items-center gap-2"><Utensils aria-hidden="true" className="size-5 text-flush-edge" /><h2 id="meal-title" className={HEADING}>{t("mealRelationship")}</h2></div>
+        {mealRelationships.length === 0 ? <EmptyChart label={t("noMealRelationship")} /> : (
+          <ul className="mt-4 space-y-2.5" aria-label={t("mealRelationship")}>
+            {mealRelationships.map((relationship) => (
+              <MealRelationshipRow
+                key={relationship.foodGroup}
+                label={getMealFoodGroupLabel(relationship.foodGroup)}
+                count={relationship.relatedBowelCount}
+                max={Math.max(...mealRelationships.map((entry) => entry.relatedBowelCount))}
+                detail={t("relatedBowel", { count: relationship.relatedBowelCount, average: relationship.averageHardness.toFixed(1) })}
+                caption={t("average", { value: relationship.averageHardness.toFixed(1) })}
+              />
+            ))}
+          </ul>
+        )}
+        <p className="mt-4 text-xs leading-relaxed text-pencil-gray">{t("mealDisclaimer")}</p>
+      </section>
+
+      <section className={CARD} aria-labelledby="meal-analysis-title">
+        <h2 id="meal-analysis-title" className={HEADING}>{t("mealFoodGroupAnalysis")}</h2>
+        {analysis.mealFoodGroupAnalyses.length === 0 ? <EmptyChart label={t("noMealFoodGroupAnalysis")} /> : (
+          <ul className="mt-4 space-y-3">
+            {analysis.mealFoodGroupAnalyses.map((entry) => (
+              <li key={entry.foodGroup} className="rounded-xl bg-blush-wash/45 p-3">
+                <p className="font-bold text-charcoal">{getMealFoodGroupLabel(entry.foodGroup)} <span className="text-sm font-medium text-pencil-gray">{t("mealCount", { count: entry.mealCount })}</span></p>
+                {/* 24時間と48時間を並べた帯にする。数字2つの比較は、長さの差にした方が速い。 */}
+                <div className="mt-2.5 space-y-1.5">
+                  <WindowBar label={t("within24")} value={entry.relatedWithin24Hours} max={entry.relatedWithin48Hours} average={entry.averageHardnessWithin24Hours} averageLabel={t("average", { value: entry.averageHardnessWithin24Hours ?? "-" })} strong />
+                  <WindowBar label={t("within48")} value={entry.relatedWithin48Hours} max={entry.relatedWithin48Hours} average={entry.averageHardnessWithin48Hours} averageLabel={t("average", { value: entry.averageHardnessWithin48Hours ?? "-" })} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );
 }
 
 function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return <div className="rounded-xl bg-blush-wash/55 p-3"><p className="text-xs font-medium text-pencil-gray">{label}</p><p className="mt-1 text-xl font-black tracking-[-0.03em] text-charcoal">{value}</p><p className="mt-1 text-[11px] font-medium text-pencil-gray">{detail}</p></div>;
+  return <div className="rounded-xl bg-blush-wash/55 p-3"><p className="text-xs font-medium text-pencil-gray">{label}</p><p className="mt-1 text-xl font-black tabular-nums tracking-[-0.03em] text-charcoal">{value}</p><p className="mt-1 text-[11px] font-medium text-pencil-gray">{detail}</p></div>;
 }
 
-function Breakdown<T extends string>({ title, values, labels }: { title: string; values: Record<T, number>; labels: Record<T, string> }) {
-  return <div><h3 className="text-sm font-black text-charcoal">{title}</h3><dl className="mt-2 grid grid-cols-3 gap-2">{(Object.keys(labels) as T[]).map((key) => <div key={key} className="rounded-lg bg-blush-wash/45 px-2.5 py-2"><dt className="text-[11px] font-medium text-pencil-gray">{labels[key]}</dt><dd className="mt-0.5 text-sm font-black text-charcoal">{values[key]}件</dd></div>)}</dl></div>;
+/** 食品群ごとの関連件数を、横棒の長さで比べられるようにする。 */
+function MealRelationshipRow({ label, count, max, detail, caption }: { label: string; count: number; max: number; detail: string; caption: string }) {
+  return (
+    <li className="rounded-xl bg-blush-wash/45 p-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="font-bold text-charcoal">{label}</p>
+        <p className="shrink-0 text-sm font-black tabular-nums text-charcoal">{count}</p>
+      </div>
+      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-paper-white">
+        <div className="h-full rounded-full bg-flush-pink" style={{ width: `${max === 0 ? 0 : Math.max(4, (count / max) * 100)}%` }} />
+      </div>
+      {/* 読み上げには1文で渡す。数字だけが並ぶと、何の数字か分からない。 */}
+      <p className="sr-only">{detail}</p>
+      <p aria-hidden="true" className="mt-1.5 text-xs text-pencil-gray">{caption}</p>
+    </li>
+  );
 }
 
-function mostFrequentWeekdays(counts: Record<Weekday, number>) {
+function WindowBar({ label, value, max, average, averageLabel, strong = false }: { label: string; value: number; max: number; average: number | null; averageLabel: string; strong?: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <p className="w-14 shrink-0 text-[11px] font-medium text-pencil-gray">{label}</p>
+      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-paper-white">
+        <div className={`h-full rounded-full ${strong ? "bg-flush-edge" : "bg-cotton-pink"}`} style={{ width: `${max === 0 ? 0 : Math.max(4, (value / max) * 100)}%` }} />
+      </div>
+      <p className="w-24 shrink-0 text-right text-[11px] font-black tabular-nums text-charcoal">
+        {value}
+        <span className="ml-1 font-medium text-pencil-gray">{average === null ? "" : averageLabel}</span>
+      </p>
+    </div>
+  );
+}
+
+function mostFrequentWeekdays(counts: Record<Weekday, number>, emptyLabel: string) {
   const highest = Math.max(...Object.values(counts));
-  if (highest === 0) return "記録なし";
-  return (Object.entries(counts) as Array<[keyof typeof counts, number]>).filter(([, count]) => count === highest).map(([weekday]) => weekdayLabel(weekday)).join("・");
+  if (highest === 0) return emptyLabel;
+  return (Object.entries(counts) as Array<[Weekday, number]>).filter(([, count]) => count === highest).map(([weekday]) => weekdayLabel(weekday)).join("・");
 }

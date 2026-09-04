@@ -20,6 +20,20 @@ describe("createTeaserPlaceholder", () => {
     expect(placeholder.hardnessHeights).toHaveLength(7);
     expect(placeholder.fourWeekTrend).toHaveLength(4);
     expect(placeholder.mealFoodGroups).toHaveLength(3);
+    expect(placeholder.weekdayCounts).toHaveLength(7);
+    expect(placeholder.timeOfDayCounts).toHaveLength(4);
+    expect(placeholder.colorCounts).toHaveLength(4);
+  });
+
+  // 割合の帯は合計0だと「記録なし」に落ちる。見本がそこに落ちると、
+  // 買った後に見えるものが伝わらない。どの成分も1以上を保つ。
+  it("割合の帯に使う値は合計が0にならない", () => {
+    for (const seed of [0, 1, 3, 12, 99]) {
+      const placeholder = createTeaserPlaceholder(seed);
+      for (const counts of [placeholder.timeOfDayCounts, placeholder.colorCounts]) {
+        expect(Math.min(...counts)).toBeGreaterThanOrEqual(1);
+      }
+    }
   });
 
   it("棒グラフの高さは表示できる範囲に収まる", () => {

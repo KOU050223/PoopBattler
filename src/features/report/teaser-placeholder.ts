@@ -35,6 +35,12 @@ export type TeaserPlaceholder = {
   fourWeekTrend: Array<{ count: number; average: string }>;
   /** 食品群別分析の行数ぶんのダミー値。 */
   mealFoodGroups: Array<{ mealCount: number; within24: number; within48: number }>;
+  /** 曜日別の記録数（月曜始まりの7件）。 */
+  weekdayCounts: number[];
+  /** 時間帯の内訳（朝・昼・夕方・夜）。 */
+  timeOfDayCounts: number[];
+  /** 色の内訳（茶色・こげ茶・黄色・緑）。 */
+  colorCounts: number[];
 };
 
 /**
@@ -67,5 +73,10 @@ export function createTeaserPlaceholder(seed: number): TeaserPlaceholder {
       within24: between(3, 11),
       within48: between(4, 16),
     })),
+    weekdayCounts: Array.from({ length: 7 }, () => between(0, 5)),
+    // 割合の帯は合計が0だと描けない。どの成分も必ず1以上にして、
+    // 見本が「記録なし」に落ちないようにする。
+    timeOfDayCounts: Array.from({ length: 4 }, () => between(1, 8)),
+    colorCounts: Array.from({ length: 4 }, () => between(1, 9)),
   };
 }
