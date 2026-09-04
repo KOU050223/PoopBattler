@@ -34,6 +34,7 @@ export function BattleControls({
   specialReason,
   onDebugStrain,
   onDebugComplete,
+  onDebugDefeat,
 }: {
   party: BattleParty;
   activeIndex: number;
@@ -48,6 +49,7 @@ export function BattleControls({
   specialReason?: string | null;
   onDebugStrain?: () => void;
   onDebugComplete?: () => void;
+  onDebugDefeat?: () => void;
 }) {
   const stunned = switchStunTicks > 0;
   const switchLocked = stunned || switchCooldownTicks > 0;
@@ -101,6 +103,15 @@ export function BattleControls({
               onClick={onDebugComplete}
             >
               即完了（デバッグ）
+            </button>
+          ) : null}
+          {onDebugDefeat ? (
+            <button
+              type="button"
+              className={secondaryButtonClass}
+              onClick={onDebugDefeat}
+            >
+              即敗北（デバッグ）
             </button>
           ) : null}
         </div>
