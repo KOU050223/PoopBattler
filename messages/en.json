@@ -44,7 +44,11 @@
     "start": "Start",
     "gameTitle": "Brace Up! Brule Raid!!",
     "tagline": "Toilet time becomes battle time.",
-    "supportingCopy": "As you play, meal and bowel logs are saved."
+    "supportingCopy": "As you play, meal and bowel logs are saved.",
+    "enableShake": "Enable shake surprise",
+    "shakeHint": "Give your phone a shake",
+    "shakeFound": "Poop friends appeared",
+    "shakePreview": "Preview character entrance"
   },
   "Pwa": {
     "installTitle": "Start the next battle faster",

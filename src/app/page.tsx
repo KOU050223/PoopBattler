@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 
 import { readAuthErrorCode } from "@/features/account/callback-params";
 import { AuthCallbackNotice } from "@/features/account/components/auth-callback-notice";
+import { TitleShakeSurprise } from "@/features/poopm/components/title-shake-surprise";
 import { primaryButtonClass } from "@/lib/ui-classes";
 
 export default async function Home({
@@ -49,6 +50,14 @@ export default async function Home({
           <Link href="/battle" className={`title-screen-cta ${primaryButtonClass}`}>
             {t("start")}
           </Link>
+          <TitleShakeSurprise
+            copy={{
+              enable: t("enableShake"),
+              hint: t("shakeHint"),
+              found: t("shakeFound"),
+              preview: t("shakePreview"),
+            }}
+          />
         </section>
       </main>
     </div>
