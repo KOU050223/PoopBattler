@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { POOPM_APPEARANCES } from "@/features/poopm/poopm.appearances";
@@ -16,8 +16,17 @@ import {
 } from "@/lib/motion";
 
 const SHAKE_ACCELERATION_THRESHOLD = 18;
-const SHAKE_COOLDOWN_MS = 1_100;
+const SHAKE_COOLDOWN_MS = 260;
+const MAX_FALLING_CHARACTERS = 5;
 const CHARACTER_IDS = ["curry-poop", "vegetable-poop", "spicy-poop"] as const;
+
+type FallingCharacter = {
+  id: number;
+  characterId: (typeof CHARACTER_IDS)[number];
+  left: number;
+  distance: number;
+  tilt: number;
+};
 
 type Copy = {
   enable: string;
@@ -35,8 +44,9 @@ export function TitleShakeSurprise({ copy }: { copy: Copy }) {
   const reduceMotion = useReducedMotion();
   const isDevelopment = process.env.NODE_ENV === "development";
   const [permission, setPermission] = useState<MotionPermission>("unsupported");
-  const [surpriseId, setSurpriseId] = useState(0);
+  const [fallingCharacters, setFallingCharacters] = useState<FallingCharacter[]>([]);
   const lastShakeAt = useRef(0);
+  const nextCharacterId = useRef(0);
 
   const revealCharacters = useCallback(() => {
     if (reduceMotion) {
@@ -49,9 +59,24 @@ export function TitleShakeSurprise({ copy }: { copy: Copy }) {
     }
 
     lastShakeAt.current = now;
-    setSurpriseId((current) => current + 1);
-    navigator.vibrate?.(35);
+    nextCharacterId.current += 1;
+    const character: FallingCharacter = {
+      id: nextCharacterId.current,
+      characterId: CHARACTER_IDS[nextCharacterId.current % CHARACTER_IDS.length],
+      left: 4 + Math.random() * 86,
+      distance: window.innerHeight + 180,
+      tilt: -12 + Math.random() * 24,
+    };
+    setFallingCharacters((current) => [
+      ...current.slice(-(MAX_FALLING_CHARACTERS - 1)),
+      character,
+    ]);
+    navigator.vibrate?.(12);
   }, [reduceMotion]);
+
+  const removeCharacter = useCallback((id: number) => {
+    setFallingCharacters((current) => current.filter((character) => character.id !== id));
+  }, []);
 
   const listen = useCallback(() => {
     const onDeviceMotion = (event: DeviceMotionEvent) => {
@@ -108,45 +133,33 @@ export function TitleShakeSurprise({ copy }: { copy: Copy }) {
         ) : null}
       </div>
 
-      <AnimatePresence>
-        {surpriseId > 0 ? (
-          <motion.div
-            key={surpriseId}
-            role="status"
-            aria-label={copy.found}
-            className="title-shake-characters"
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            variants={{
-              hidden: { opacity: 0 },
-              visible: { opacity: 1 },
-            }}
-          >
-            {CHARACTER_IDS.map((characterId, index) => (
-              <motion.div
-                key={characterId}
-                className={`title-shake-character title-shake-character-${index + 1}`}
-                initial={{ opacity: 0, scale: 0.72, y: -260, rotate: index === 1 ? 0 : index === 0 ? -12 : 12 }}
-                animate={{
-                  opacity: [0, 1, 1, 0],
-                  scale: [0.72, 1.08, 0.94, 0.88],
-                  y: [-260, 12, -16, 0],
-                  rotate: index === 1 ? [0, 5, -3, 0] : index === 0 ? [-12, 7, -4, -8] : [12, -7, 4, 8],
-                }}
-                transition={{ duration: 1.5, delay: index * 0.1, ease: "easeOut", times: [0, 0.62, 0.78, 1] }}
-              >
-                <PoopmFigure
-                  appearance={POOPM_APPEARANCES[characterId]}
-                  facing="front"
-                  motion="eat"
-                  label=""
-                />
-              </motion.div>
-            ))}
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {fallingCharacters.length > 0 ? (
+        <div role="status" aria-label={copy.found} className="title-shake-characters">
+          {fallingCharacters.map((character) => (
+            <motion.div
+              key={character.id}
+              className="title-shake-character"
+              style={{ left: `${character.left}%` }}
+              initial={{ opacity: 0, scale: 0.72, y: -180, rotate: character.tilt }}
+              animate={{
+                opacity: [0, 1, 1, 0],
+                scale: [0.72, 1, 0.9],
+                y: [-180, character.distance],
+                rotate: [character.tilt, character.tilt * -0.35],
+              }}
+              transition={{ duration: 1.1, ease: "linear", times: [0, 0.08, 0.84, 1] }}
+              onAnimationComplete={() => removeCharacter(character.id)}
+            >
+              <PoopmFigure
+                appearance={POOPM_APPEARANCES[character.characterId]}
+                facing="front"
+                motion="idle"
+                label=""
+              />
+            </motion.div>
+          ))}
+        </div>
+      ) : null}
     </>
   );
 }

@@ -163,14 +163,11 @@ body:has(.title-screen) > header > div > a {
 
 .title-shake-character {
   position: absolute;
+  top: -2rem;
   width: clamp(5.5rem, 18vw, 9.5rem);
   filter: drop-shadow(0 .75rem .85rem rgb(89 57 57 / .18));
   will-change: transform, opacity;
 }
-
-.title-shake-character-1 { left: 4%; top: 38%; }
-.title-shake-character-2 { left: calc(50% - clamp(2.75rem, 9vw, 4.75rem)); top: 48%; }
-.title-shake-character-3 { right: 4%; top: 35%; }
 
 @media (max-width: 30rem) {
   .title-screen-main {
