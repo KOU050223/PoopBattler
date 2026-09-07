@@ -48,7 +48,8 @@
     "enableShake": "シェイクでなかまをよぶ",
     "shakeHint": "スマホをふってみよう",
     "shakeFound": "うんちくんたちがやってきた",
-    "shakePreview": "登場演出をプレビュー"
+    "shakePreview": "登場演出をプレビュー",
+    "shakeSecureHint": "実機シェイクはHTTPSで開いて確認"
   },
   "Pwa": {
     "installTitle": "次のバトルを、すぐ始めよう",

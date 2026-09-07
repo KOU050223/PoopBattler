@@ -48,7 +48,8 @@
     "enableShake": "Enable shake surprise",
     "shakeHint": "Give your phone a shake",
     "shakeFound": "Poop friends appeared",
-    "shakePreview": "Preview character entrance"
+    "shakePreview": "Preview character entrance",
+    "shakeSecureHint": "Test device shake over HTTPS"
   },
   "Pwa": {
     "installTitle": "Start the next battle faster",

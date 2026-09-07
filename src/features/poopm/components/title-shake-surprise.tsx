@@ -5,17 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { POOPM_APPEARANCES } from "@/features/poopm/poopm.appearances";
 import { PoopmFigure } from "@/features/poopm/components/poopm-figure";
+import { isTitleShake } from "@/features/poopm/title-shake";
 import {
-  accelerationMagnitude,
   inspectMotionPermission,
-  pickAcceleration,
   readBrowserMotionEnv,
   requestMotionPermission,
-  type DeviceMotionEventLike,
   type MotionPermission,
 } from "@/lib/motion";
 
-const SHAKE_ACCELERATION_THRESHOLD = 18;
 const SHAKE_COOLDOWN_MS = 260;
 const MAX_FALLING_CHARACTERS = 5;
 const CHARACTER_IDS = ["curry-poop", "vegetable-poop", "spicy-poop"] as const;
@@ -37,12 +34,8 @@ type Copy = {
   hint: string;
   found: string;
   preview: string;
+  secureHint: string;
 };
-
-function canShake(event: DeviceMotionEventLike) {
-  const magnitude = accelerationMagnitude(pickAcceleration(event));
-  return magnitude != null && magnitude >= SHAKE_ACCELERATION_THRESHOLD;
-}
 
 export function TitleShakeSurprise({ copy }: { copy: Copy }) {
   const reduceMotion = useReducedMotion();
@@ -98,7 +91,7 @@ export function TitleShakeSurprise({ copy }: { copy: Copy }) {
 
   const listen = useCallback(() => {
     const onDeviceMotion = (event: DeviceMotionEvent) => {
-      if (canShake(event)) {
+      if (isTitleShake(event)) {
         revealCharacters();
       }
     };
@@ -156,6 +149,8 @@ export function TitleShakeSurprise({ copy }: { copy: Copy }) {
           </button>
         ) : permission === "granted" ? (
           <p>{copy.hint}</p>
+        ) : isDevelopment && permission === "unsupported" ? (
+          <p>{copy.secureHint}</p>
         ) : null}
       </div>
 

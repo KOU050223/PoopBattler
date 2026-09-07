@@ -56,6 +56,7 @@ export default async function Home({
               hint: t("shakeHint"),
               found: t("shakeFound"),
               preview: t("shakePreview"),
+              secureHint: t("shakeSecureHint"),
             }}
           />
         </section>
