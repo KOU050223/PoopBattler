@@ -44,7 +44,11 @@
     "start": "はじめる",
     "gameTitle": "踏ん張れ！ブリュレイド！！",
     "tagline": "トイレの時間が、バトルになる。",
-    "supportingCopy": "遊んだ結果として、食事と排便のログが残る。"
+    "supportingCopy": "遊んだ結果として、食事と排便のログが残る。",
+    "enableShake": "シェイクでなかまをよぶ",
+    "shakeHint": "スマホをふってみよう",
+    "shakeFound": "うんちくんたちがやってきた",
+    "shakePreview": "登場演出をプレビュー"
   },
   "Pwa": {
     "installTitle": "次のバトルを、すぐ始めよう",
