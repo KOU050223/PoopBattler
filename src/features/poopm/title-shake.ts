@@ -5,23 +5,23 @@ import {
 
 const LINEAR_SHAKE_THRESHOLD = 3.5;
 const GRAVITY_MAGNITUDE = 9.80665;
-const GRAVITY_SHAKE_DELTA_THRESHOLD = 2.5;
+const GRAVITY_SHAKE_DELTA_THRESHOLD = 1.8;
 
 /**
  * タイトル画面用の単発シェイク判定。
  *
- * 端末ごとに `acceleration` の有無が異なるため、線形加速度を優先し、
- * 無い場合は重力込みの大きさが静止時から十分ずれたときだけ反応する。
+ * Android の一部は `acceleration` を常にゼロで返すため、線形加速度と
+ * 重力込みの加速度のどちらでも反応できるようにする。重力込みの値は
+ * 静止時の重力から十分ずれたときだけ扱い、持っただけでは反応させない。
  */
 export function isTitleShake(event: DeviceMotionEventLike): boolean {
   const linearMagnitude = accelerationMagnitude(event.acceleration);
-  if (linearMagnitude != null) {
-    return linearMagnitude >= LINEAR_SHAKE_THRESHOLD;
-  }
-
   const gravityMagnitude = accelerationMagnitude(event.accelerationIncludingGravity);
-  return (
+  const hasLinearShake =
+    linearMagnitude != null && linearMagnitude >= LINEAR_SHAKE_THRESHOLD;
+  const hasGravityShake =
     gravityMagnitude != null &&
-    Math.abs(gravityMagnitude - GRAVITY_MAGNITUDE) >= GRAVITY_SHAKE_DELTA_THRESHOLD
-  );
+    Math.abs(gravityMagnitude - GRAVITY_MAGNITUDE) >= GRAVITY_SHAKE_DELTA_THRESHOLD;
+
+  return hasLinearShake || hasGravityShake;
 }

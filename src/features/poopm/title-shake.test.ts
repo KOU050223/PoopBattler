@@ -22,7 +22,7 @@ describe("isTitleShake", () => {
     ).toBe(true);
   });
 
-  it("線形加速度が無い端末では静止重力を除外し、十分な変化だけ扱う", () => {
+  it("静止重力を除外し、十分な変化だけ扱う", () => {
     expect(
       isTitleShake({
         acceleration: null,
@@ -33,6 +33,21 @@ describe("isTitleShake", () => {
       isTitleShake({
         acceleration: null,
         accelerationIncludingGravity: axis(0, 0, 13),
+      }),
+    ).toBe(true);
+  });
+
+  it("Android のゼロ線形加速度でも重力込みのシェイクを取りこぼさない", () => {
+    expect(
+      isTitleShake({
+        acceleration: axis(0, 0, 0),
+        accelerationIncludingGravity: axis(0, 9.8, 0),
+      }),
+    ).toBe(false);
+    expect(
+      isTitleShake({
+        acceleration: axis(0, 0, 0),
+        accelerationIncludingGravity: axis(0, 0, 12),
       }),
     ).toBe(true);
   });
