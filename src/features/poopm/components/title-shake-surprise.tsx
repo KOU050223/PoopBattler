@@ -19,6 +19,10 @@ const SHAKE_ACCELERATION_THRESHOLD = 18;
 const SHAKE_COOLDOWN_MS = 260;
 const MAX_FALLING_CHARACTERS = 5;
 const CHARACTER_IDS = ["curry-poop", "vegetable-poop", "spicy-poop"] as const;
+const POOP_VOICE_SOURCES = Array.from(
+  { length: 18 },
+  (_, index) => `/poop_voice/onara_${String(index + 1).padStart(3, "0")}.mp3`,
+);
 
 type FallingCharacter = {
   id: number;
@@ -47,6 +51,19 @@ export function TitleShakeSurprise({ copy }: { copy: Copy }) {
   const [fallingCharacters, setFallingCharacters] = useState<FallingCharacter[]>([]);
   const lastShakeAt = useRef(0);
   const nextCharacterId = useRef(0);
+  const activeAudio = useRef(new Set<HTMLAudioElement>());
+
+  const playRandomFart = useCallback(() => {
+    const source = POOP_VOICE_SOURCES[Math.floor(Math.random() * POOP_VOICE_SOURCES.length)];
+    const audio = new Audio(source);
+    audio.volume = 0.55;
+    activeAudio.current.add(audio);
+
+    const removeAudio = () => activeAudio.current.delete(audio);
+    audio.addEventListener("ended", removeAudio, { once: true });
+    audio.addEventListener("error", removeAudio, { once: true });
+    void audio.play().catch(removeAudio);
+  }, []);
 
   const revealCharacters = useCallback(() => {
     if (reduceMotion) {
@@ -71,8 +88,9 @@ export function TitleShakeSurprise({ copy }: { copy: Copy }) {
       ...current.slice(-(MAX_FALLING_CHARACTERS - 1)),
       character,
     ]);
+    playRandomFart();
     navigator.vibrate?.(12);
-  }, [reduceMotion]);
+  }, [playRandomFart, reduceMotion]);
 
   const removeCharacter = useCallback((id: number) => {
     setFallingCharacters((current) => current.filter((character) => character.id !== id));
@@ -105,6 +123,14 @@ export function TitleShakeSurprise({ copy }: { copy: Copy }) {
       return listen();
     }
   }, [listen, permission, reduceMotion]);
+
+  useEffect(() => {
+    const audio = activeAudio.current;
+    return () => {
+      audio.forEach((voice) => voice.pause());
+      audio.clear();
+    };
+  }, []);
 
   async function enableShake() {
     const env = readBrowserMotionEnv();
