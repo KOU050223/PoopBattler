@@ -93,7 +93,7 @@
     "bowelCount": "Bowel movements",
     "recordDays": "Days logged",
     "averageHardness": "Average hardness",
-    "stableRate": "Share between 3 and 5",
+    "stableRate": "Share between Types 3 and 4",
     "times": "{count} times",
     "days": "{count} days",
     "comparedLastWeek": "{count} vs. last week",

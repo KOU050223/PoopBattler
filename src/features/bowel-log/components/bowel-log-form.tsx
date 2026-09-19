@@ -8,10 +8,12 @@ import {
   BOWEL_COLOR_OPTIONS,
   BOWEL_EASE_OPTIONS,
   BOWEL_HARDNESS_OPTIONS,
+  BOWEL_SYMPTOM_OPTIONS,
   isBowelLog,
   type BowelColor,
   type BowelLog,
   type BowelLogDraft,
+  type BowelSymptom,
 } from "../bowel-log.types";
 import { useBattleStore } from "@/stores/battle-store";
 
@@ -19,10 +21,10 @@ type BowelLogFormProps = {
   onSubmit: (log: BowelLog) => void | Promise<void>;
 };
 
-type FieldName = keyof BowelLog;
-type FieldErrors = Partial<Record<FieldName | "submit", string>>;
+type RequiredFieldName = Exclude<keyof BowelLog, "symptoms">;
+type FieldErrors = Partial<Record<RequiredFieldName | "submit", string>>;
 
-const REQUIRED_FIELD_MESSAGES: Record<FieldName, string> = {
+const REQUIRED_FIELD_MESSAGES: Record<RequiredFieldName, string> = {
   hardness: "硬さを選択してください。",
   amount: "量を選択してください。",
   color: "色を選択してください。",
@@ -34,6 +36,10 @@ const colorSwatchClass: Record<BowelColor, string> = {
   dark_brown: "bg-[#50301f]",
   yellow: "bg-[#d7aa35]",
   green: "bg-[#4e8a59]",
+  red: "bg-[#c94d5f]",
+  black: "bg-[#34343a]",
+  white_gray: "bg-[#d1d1cc]",
+  other: "bg-[#a48f7b]",
 };
 
 const segmentedControlClass =
@@ -148,6 +154,41 @@ function ColorField({ value, error, disabled, onChange }: {
   );
 }
 
+function SymptomsField({
+  value = [],
+  disabled,
+  onChange,
+}: {
+  value: BowelSymptom[] | undefined;
+  disabled: boolean;
+  onChange: (value: BowelSymptom[]) => void;
+}) {
+  const toggle = (symptom: BowelSymptom) => {
+    onChange(value.includes(symptom)
+      ? value.filter((current) => current !== symptom)
+      : [...value, symptom]);
+  };
+
+  return (
+    <fieldset className="flex flex-col gap-2" disabled={disabled}>
+      <div className="flex items-baseline justify-between gap-3">
+        <legend className="text-[15px] font-bold text-charcoal">気になること <span className="font-medium text-pencil-gray">（任意）</span></legend>
+        <p className="text-xs font-medium text-pencil-gray">選ばなくてもOK</p>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {BOWEL_SYMPTOM_OPTIONS.map((option) => {
+          const inputId = `symptom-${option.value}`;
+          const selected = value.includes(option.value);
+          return <div key={option.value}>
+            <input id={inputId} name="symptoms" type="checkbox" value={option.value} checked={selected} onChange={() => toggle(option.value)} className="peer sr-only" />
+            <label htmlFor={inputId} className={`flex min-h-10 items-center justify-center rounded-lg border border-faded-gray px-2 text-center text-xs font-bold shadow-[0_2px_0_var(--color-faded-edge)] transition-[transform,box-shadow,background-color,border-color,color] duration-150 hover:border-flush-pink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-flush-pink peer-disabled:cursor-not-allowed peer-disabled:opacity-50 active:translate-y-px active:shadow-none ${selected ? segmentedControlSelectedClass : segmentedControlUnselectedClass}`}>{option.label}</label>
+          </div>;
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
 function getFieldErrors(draft: BowelLogDraft): FieldErrors {
   const errors: FieldErrors = {};
   if (!BOWEL_HARDNESS_OPTIONS.some((option) => option.value === draft.hardness)) errors.hardness = REQUIRED_FIELD_MESSAGES.hardness;
@@ -162,10 +203,10 @@ export function BowelLogForm({ onSubmit }: BowelLogFormProps) {
   const setBowelDraft = useBattleStore((state) => state.setBowelDraft);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const answeredCount = (Object.keys(REQUIRED_FIELD_MESSAGES) as FieldName[]).filter((field) => draft[field] !== undefined).length;
+  const answeredCount = (Object.keys(REQUIRED_FIELD_MESSAGES) as RequiredFieldName[]).filter((field) => draft[field] !== undefined).length;
   const remainingCount = 4 - answeredCount;
 
-  const updateDraft = <T extends FieldName>(field: T, value: BowelLog[T]) => {
+  const updateDraft = <T extends keyof BowelLog>(field: T, value: BowelLog[T]) => {
     setBowelDraft({ ...draft, [field]: value });
     setErrors((current) => ({ ...current, [field]: undefined, submit: undefined }));
   };
@@ -199,7 +240,7 @@ export function BowelLogForm({ onSubmit }: BowelLogFormProps) {
         <div className="shrink-0 text-right" aria-label={`4項目中${answeredCount}項目を選択済み`}>
           <p className="text-sm font-black tabular-nums text-flush-edge">{answeredCount} / 4</p>
           <div className="mt-1 flex justify-end gap-1" aria-hidden="true">
-            {(Object.keys(REQUIRED_FIELD_MESSAGES) as FieldName[]).map((field) => <span key={field} className={`size-1.5 rounded-full ${draft[field] !== undefined ? "bg-flush-pink" : "bg-cotton-pink"}`} />)}
+            {(Object.keys(REQUIRED_FIELD_MESSAGES) as RequiredFieldName[]).map((field) => <span key={field} className={`size-1.5 rounded-full ${draft[field] !== undefined ? "bg-flush-pink" : "bg-cotton-pink"}`} />)}
           </div>
         </div>
       </header>
@@ -210,6 +251,7 @@ export function BowelLogForm({ onSubmit }: BowelLogFormProps) {
         <SegmentedField label="出やすさ" name="ease" options={BOWEL_EASE_OPTIONS} value={draft.ease} error={errors.ease} disabled={isSubmitting} onChange={(value) => updateDraft("ease", value)} />
       </div>
       <ColorField value={draft.color} error={errors.color} disabled={isSubmitting} onChange={(value) => updateDraft("color", value)} />
+      <SymptomsField value={draft.symptoms} disabled={isSubmitting} onChange={(value) => updateDraft("symptoms", value)} />
 
       {errors.submit ? <p role="alert" className="text-sm text-red-600">{errors.submit}</p> : null}
       <div className="pt-1">

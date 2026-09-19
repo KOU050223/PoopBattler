@@ -17,7 +17,7 @@ const report: WeeklyReport = {
   breakdown: {
     hardness: [0, 0, 0, 2, 1, 0, 0],
     amount: { small: 0, normal: 2, large: 1 },
-    color: { brown: 3, dark_brown: 0, yellow: 0, green: 0 },
+    color: { brown: 3, dark_brown: 0, yellow: 0, green: 0, red: 0, black: 0, white_gray: 0, other: 0 },
     ease: { easy: 2, normal: 1, hard: 0 },
   },
   meals: { total: 2, byFoodGroup: { green_yellow_vegetables: 2 } },
@@ -58,7 +58,7 @@ const emptyReport: WeeklyReport = {
   breakdown: {
     hardness: [0, 0, 0, 0, 0, 0, 0],
     amount: { small: 0, normal: 0, large: 0 },
-    color: { brown: 0, dark_brown: 0, yellow: 0, green: 0 },
+    color: { brown: 0, dark_brown: 0, yellow: 0, green: 0, red: 0, black: 0, white_gray: 0, other: 0 },
     ease: { easy: 0, normal: 0, hard: 0 },
   },
   meals: { total: 0, byFoodGroup: {} },
