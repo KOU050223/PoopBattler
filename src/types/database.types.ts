@@ -334,40 +334,39 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      complete_battle:
-        | {
-            Args: {
-              p_amount: string
-              p_battle_id: string
-              p_color: string
-              p_ease: string
-              p_hardness: number
-              p_meal_log_id?: string
-            }
-            Returns: {
-              battle_id: string
-              character_id: string
-              companionship_result: boolean
-              status: Database["public"]["Enums"]["battle_status"]
-            }[]
-          }
-        | {
-            Args: {
-              p_amount: string
-              p_battle_id: string
-              p_color: string
-              p_ease: string
-              p_hardness: number
-              p_meal_log_id?: string
-              p_symptoms?: string[]
-            }
-            Returns: {
-              battle_id: string
-              character_id: string
-              companionship_result: boolean
-              status: Database["public"]["Enums"]["battle_status"]
-            }[]
-          }
+      complete_battle: {
+        Args: {
+          p_amount: string
+          p_battle_id: string
+          p_color: string
+          p_ease: string
+          p_hardness: number
+          p_meal_log_id?: string
+        }
+        Returns: {
+          battle_id: string
+          character_id: string
+          companionship_result: boolean
+          status: Database["public"]["Enums"]["battle_status"]
+        }[]
+      }
+      complete_battle_with_symptoms: {
+        Args: {
+          p_amount: string
+          p_battle_id: string
+          p_color: string
+          p_ease: string
+          p_hardness: number
+          p_meal_log_id?: string
+          p_symptoms?: string[]
+        }
+        Returns: {
+          battle_id: string
+          character_id: string
+          companionship_result: boolean
+          status: Database["public"]["Enums"]["battle_status"]
+        }[]
+      }
       has_unique_text_array_elements: {
         Args: { p_values: string[] }
         Returns: boolean

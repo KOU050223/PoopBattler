@@ -55,6 +55,7 @@ comment on column public.bowel_logs.symptoms is
 -- 新しい7引数版を内部実装にする。旧6引数のpublic関数は下で空配列を渡す互換窓口として残す。
 drop function if exists private.complete_battle(uuid, smallint, text, text, text, uuid, text[]);
 drop function if exists public.complete_battle(uuid, smallint, text, text, text, uuid, text[]);
+drop function if exists public.complete_battle_with_symptoms(uuid, smallint, text, text, text, uuid, text[]);
 
 create function private.complete_battle(
   p_battle_id uuid,
@@ -173,7 +174,7 @@ begin
 end;
 $$;
 
-create function public.complete_battle(
+create function public.complete_battle_with_symptoms(
   p_battle_id uuid,
   p_hardness smallint,
   p_amount text,
@@ -204,6 +205,6 @@ as $$
 $$;
 
 revoke all on function private.complete_battle(uuid, smallint, text, text, text, uuid, text[]) from public, anon, authenticated;
-revoke all on function public.complete_battle(uuid, smallint, text, text, text, uuid, text[]) from public, anon, authenticated;
+revoke all on function public.complete_battle_with_symptoms(uuid, smallint, text, text, text, uuid, text[]) from public, anon, authenticated;
 grant execute on function private.complete_battle(uuid, smallint, text, text, text, uuid, text[]) to authenticated;
-grant execute on function public.complete_battle(uuid, smallint, text, text, text, uuid, text[]) to authenticated;
+grant execute on function public.complete_battle_with_symptoms(uuid, smallint, text, text, text, uuid, text[]) to authenticated;

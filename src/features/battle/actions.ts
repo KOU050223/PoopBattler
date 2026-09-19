@@ -200,7 +200,7 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     ...(input.mealLogId ? { p_meal_log_id: input.mealLogId } : {}),
     p_symptoms: input.bowelLog.symptoms ?? [],
   };
-  const { data, error } = await supabase.rpc("complete_battle", rpcInput);
+  const { data, error } = await supabase.rpc("complete_battle_with_symptoms", rpcInput);
   const result = data?.[0];
 
   if (
