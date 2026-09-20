@@ -8,8 +8,10 @@ describe("meal food groups", () => {
     expect(MEAL_FOOD_GROUP_OPTIONS.map((group) => group.value)).toContain("light_colored_vegetables");
     expect(MEAL_FOOD_GROUP_OPTIONS.map((group) => group.value)).toContain("mushrooms");
     expect(MEAL_FOOD_GROUP_OPTIONS.map((group) => group.value)).toContain("seaweed");
+    expect(MEAL_FOOD_GROUP_OPTIONS.map((group) => group.value)).toEqual(expect.arrayContaining(["caffeine", "legumes", "whole_grains"]));
     expect(isMealFoodGroup("fish")).toBe(true);
     expect(isMealFoodGroup("not-a-food-group")).toBe(false);
     expect(getMealFoodGroupLabel("green_yellow_vegetables")).toBe("緑黄色野菜");
+    expect(getMealFoodGroupLabel("caffeine")).toBe("コーヒー・カフェイン");
   });
 });

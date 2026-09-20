@@ -29,7 +29,7 @@ describe("createWeeklyReport", () => {
       recordedDays: 2,
       countChangeFromPreviousWeek: 2,
       averageHardness: 5,
-      stableRate: 67,
+      stableRate: 33,
     });
     expect(report.breakdown.hardness).toEqual([0, 0, 0, 1, 1, 1, 0]);
     expect(report.breakdown.amount).toEqual({ small: 1, normal: 1, large: 1 });

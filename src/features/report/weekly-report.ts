@@ -1,10 +1,11 @@
 import { createReportAnalysis, type ReportAnalysis } from "./report-analysis";
+import { getBowelHardnessGroup, type BowelColor } from "@/features/bowel-log/bowel-log.types";
 
 export type ReportBowelLog = {
   loggedAt: string;
   hardness: number;
   amount: "small" | "normal" | "large";
-  color: "brown" | "dark_brown" | "yellow" | "green";
+  color: BowelColor;
   ease: "easy" | "normal" | "hard";
 };
 
@@ -88,7 +89,7 @@ export function createWeeklyReport({
   const currentMealLogs = mealLogs.filter((log) => isInRange(log.eatenAt, startsAt, endsAt));
   const hardness = [0, 0, 0, 0, 0, 0, 0] as WeeklyReport["breakdown"]["hardness"];
   const amount = emptyCounts(["small", "normal", "large"] as const);
-  const color = emptyCounts(["brown", "dark_brown", "yellow", "green"] as const);
+  const color = emptyCounts(["brown", "dark_brown", "yellow", "green", "red", "black", "white_gray", "other"] as const);
   const ease = emptyCounts(["easy", "normal", "hard"] as const);
 
   for (const log of currentBowelLogs) {
@@ -104,7 +105,7 @@ export function createWeeklyReport({
     : round(currentBowelLogs.reduce((total, log) => total + log.hardness, 0) / bowelCount);
   const stableRate = bowelCount === 0
     ? null
-    : Math.round((currentBowelLogs.filter((log) => log.hardness >= 3 && log.hardness <= 5).length / bowelCount) * 100);
+    : Math.round((currentBowelLogs.filter((log) => getBowelHardnessGroup(log.hardness) === "well_formed").length / bowelCount) * 100);
   const relatedByFoodGroup = new Map<string, ReportBowelLog[]>();
 
   const relationshipMealLogs = mealLogs.filter((log) => isInRange(log.eatenAt, relationshipMealStartsAt, endsAt));

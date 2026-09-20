@@ -17,7 +17,7 @@ type HistoryRow = {
   companionship_result: boolean | null;
   meal_logs: { food_groups: string[] } | null;
   characters: { id: string; name: string; attribute: "curry" } | null;
-  bowel_logs: { hardness: number; amount: string; color: string; ease: string } | null;
+  bowel_logs: { hardness: number; amount: string; color: string; ease: string; symptoms?: string[] } | null;
 };
 
 function createSupabase({
@@ -78,7 +78,7 @@ describe("getBattleHistoryAction", () => {
         companionshipResult: false,
         mealFoodGroups: null,
         enemy: rows[0].characters,
-        bowelLog: rows[0].bowel_logs,
+        bowelLog: { ...rows[0].bowel_logs, symptoms: [] },
       },
       {
         battleId: rows[1].id,
@@ -86,7 +86,7 @@ describe("getBattleHistoryAction", () => {
         companionshipResult: true,
         mealFoodGroups: ["fruit"],
         enemy: rows[1].characters,
-        bowelLog: rows[1].bowel_logs,
+        bowelLog: { ...rows[1].bowel_logs, symptoms: [] },
       },
     ]);
     expect(supabase.userEq).toHaveBeenCalledWith("user_id", user.id);

@@ -195,9 +195,12 @@ export async function completeBattleAction(input: unknown): Promise<CompleteBatt
     p_amount: input.bowelLog.amount,
     p_color: input.bowelLog.color,
     p_ease: input.bowelLog.ease,
+    // 旧クライアントの復元済みドラフトには症状が無いので、空配列へ正規化する。
+    // 新しいRPC契約は常に両方の任意値を明示するため、オーバーロード解決が曖昧にならない。
     ...(input.mealLogId ? { p_meal_log_id: input.mealLogId } : {}),
+    p_symptoms: input.bowelLog.symptoms ?? [],
   };
-  const { data, error } = await supabase.rpc("complete_battle", rpcInput);
+  const { data, error } = await supabase.rpc("complete_battle_with_symptoms", rpcInput);
   const result = data?.[0];
 
   if (

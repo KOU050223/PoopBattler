@@ -93,7 +93,7 @@
     "bowelCount": "排便回数",
     "recordDays": "記録日数",
     "averageHardness": "平均の硬さ",
-    "stableRate": "3から5の割合",
+    "stableRate": "Type 3から4の割合",
     "times": "{count}回",
     "days": "{count}日",
     "comparedLastWeek": "先週比 {count}回",

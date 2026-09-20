@@ -35,7 +35,7 @@ export async function getBattleHistoryAction(): Promise<BattleHistoryLog[]> {
       companionship_result,
       meal_logs!battle_results_meal_log_id_fkey(food_groups),
       characters!battle_results_enemy_character_id_fkey(id, name, attribute),
-      bowel_logs(hardness, amount, color, ease)
+      bowel_logs(hardness, amount, color, ease, symptoms)
     `)
     .eq("user_id", user.id)
     .eq("status", "completed")
@@ -72,6 +72,7 @@ export async function getBattleHistoryAction(): Promise<BattleHistoryLog[]> {
         amount: bowel.amount as BowelLog["amount"],
         color: bowel.color as BowelLog["color"],
         ease: bowel.ease as BowelLog["ease"],
+        symptoms: (bowel.symptoms ?? []) as NonNullable<BowelLog["symptoms"]>,
       },
     }];
   });
