@@ -1,0 +1,4 @@
+{
+    "devin.implicitContext.enabled": true,
+    "devin.defaultMode": "bypass"
+}
