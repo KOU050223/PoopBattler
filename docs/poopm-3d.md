@@ -12,11 +12,11 @@ GLB は `scripts/poopm-3d/build_poopm_base.py` が生成する。Blender を手�
 /Applications/Blender.app/Contents/MacOS/Blender --background --python scripts/poopm-3d/build_poopm_base.py
 ```
 
-顔はメッシュに入れない。胴体前面に貼る透明テクスチャのフェイスプレートで表現し、個体差はテクスチャ差し替えで出す。テクスチャは2D版と同じ `/assets/poopm_parts/eyes|mouth/*.png` をそのまま使い、GLBにはダミーテクスチャのプレートだけ入れる。眉毛は目パーツのPNGに含まれる（`poopm_eye_*.png` 参照）。
+顔はメッシュに入れない。胴体前面に貼る透明テクスチャのフェイスプレートで表現し、個体差はテクスチャ差し替えで出す。テクスチャは2D版と同じ `/assets/poopm_parts/eyes|mouth/*.png` をそのまま使い、GLBのプレートには既定外見（`DEFAULT_APPEARANCE`）の `poopm_eye_a.png` / `poopm_mouth_a.png` を仮テクスチャとして焼き込み、単体のプレビューでも顔が出るようにする。眉毛は目パーツのPNGに含まれる（`poopm_eye_*.png` 参照）。
 
 頭アクセサリも `poopm_base.glb` には含めない。`public/assets/poopm_3d/head_acc_<id>.glb` として個別出力し、実行時にロードして `head_acc` ノードへアタッチする。ベースGLBを肥大化させず、追加はファイルを置くだけで済む形にする。
 
-Blender 側は `-Y` を正面にモデリングし、アーマチュアはデフォームボーンのみを glTF エクスポートする前提。
+Blender 側は `-Y` を正面にモデリングし、アーマチュアはデフォームボーンのみを glTF エクスポートする前提。ソケット用の `b_face` / `b_head_acc` もウエイトを持たないデフォームボーンにして、書き出しで落ちないようにする。
 
 ## 固定と可変
 
@@ -47,7 +47,7 @@ Blender 側は `-Y` を正面にモデリングし、アーマチュアはデフ
 - `b_body1` → `b_body2` → `b_body3` — 胴体3段それぞれを担う脊椎チェーン。スクワッシュ&ストレッチと前屈・反り用
 - `b_head` — カールを含む頭頂部。`b_body3` の子
 - `b_head_acc` — `head_acc` のソケット。`b_head` の子として頭の揺れに追従させる
-- `b_face` — フェイスプレートのソケット。`b_head` の子として頭の揺れに顔を追従させる
+- `b_face` — フェイスプレートのソケット。`b_body2` の子として胴体の屈伸・スクワッシュに顔を追従させる。`b_head`（カールの根元）の子にすると、頭が前傾したとき支点より下にある顔が後ろへ回り込んで胴体にめり込むため、頭の揺れには追従させない
 - 腕: `b_upperarm_{L,R}` → `b_forearm_{L,R}` → `b_hand_{L,R}` → `b_finger{a,b,c}_{L,R}`
 - 脚: `b_thigh_{L,R}` → `b_shin_{L,R}` → `b_foot_{L,R}`
 
