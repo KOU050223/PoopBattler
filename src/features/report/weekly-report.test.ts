@@ -30,6 +30,30 @@ describe("createWeeklyReport", () => {
       countChangeFromPreviousWeek: 2,
       averageHardness: 5,
       stableRate: 33,
+      metrics: {
+        bowelCount: 3,
+        shape: {
+          hard: { count: 0, rate: 0 },
+          well_formed: { count: 1, rate: 33 },
+          soft: { count: 2, rate: 67 },
+        },
+        easyRate: 33,
+        hardRate: 33,
+      },
+    });
+    expect(report.comparison).toEqual({
+      current: report.summary.metrics,
+      pastFourWeeks: {
+        bowelCount: 1,
+        shape: {
+          hard: { count: 1, rate: 100 },
+          well_formed: { count: 0, rate: 0 },
+          soft: { count: 0, rate: 0 },
+        },
+        easyRate: 0,
+        hardRate: 100,
+      },
+      pastFourWeekAverageBowelCount: 0.3,
     });
     expect(report.breakdown.hardness).toEqual([0, 0, 0, 1, 1, 1, 0]);
     expect(report.breakdown.amount).toEqual({ small: 1, normal: 1, large: 1 });
@@ -64,5 +88,32 @@ describe("createWeeklyReport", () => {
 
     expect(report.meals).toEqual({ total: 0, byFoodGroup: {} });
     expect(report.mealRelationships).toEqual([{ foodGroup: "fruit", relatedBowelCount: 1, averageHardness: 4 }]);
+  });
+
+  it("Typeの境界値と記録0件を、誤って0%として扱わない", () => {
+    const populated = createWeeklyReport({
+      now: "2026-09-04T12:00:00.000Z",
+      bowelLogs: [
+        { loggedAt: "2026-09-01T00:00:00.000Z", hardness: 2, amount: "small", color: "brown", ease: "easy" },
+        { loggedAt: "2026-09-01T01:00:00.000Z", hardness: 3, amount: "normal", color: "brown", ease: "normal" },
+        { loggedAt: "2026-09-01T02:00:00.000Z", hardness: 4, amount: "normal", color: "brown", ease: "hard" },
+        { loggedAt: "2026-09-01T03:00:00.000Z", hardness: 5, amount: "large", color: "brown", ease: "normal" },
+      ],
+      mealLogs: [],
+    });
+    const empty = createWeeklyReport({ now: "2026-09-04T12:00:00.000Z", bowelLogs: [], mealLogs: [] });
+
+    expect(populated.summary.metrics.shape).toEqual({
+      hard: { count: 1, rate: 25 },
+      well_formed: { count: 2, rate: 50 },
+      soft: { count: 1, rate: 25 },
+    });
+    expect(populated.summary.metrics).toMatchObject({ easyRate: 25, hardRate: 25 });
+    expect(empty.summary.metrics).toEqual({
+      bowelCount: 0,
+      shape: { hard: { count: 0, rate: null }, well_formed: { count: 0, rate: null }, soft: { count: 0, rate: null } },
+      easyRate: null,
+      hardRate: null,
+    });
   });
 });

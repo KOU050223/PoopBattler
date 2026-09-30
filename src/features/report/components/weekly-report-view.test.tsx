@@ -13,7 +13,19 @@ import type { WeeklyReport } from "../weekly-report";
 
 const report: WeeklyReport = {
   range: { startsAt: "2026-08-30T15:00:00.000Z", endsAt: "2026-09-04T12:00:00.000Z" },
-  summary: { bowelCount: 3, recordedDays: 2, countChangeFromPreviousWeek: 1, averageHardness: 4.5, stableRate: 67 },
+  summary: {
+    bowelCount: 3,
+    recordedDays: 2,
+    countChangeFromPreviousWeek: 1,
+    averageHardness: 4.5,
+    stableRate: 67,
+    metrics: { bowelCount: 3, shape: { hard: { count: 0, rate: 0 }, well_formed: { count: 2, rate: 67 }, soft: { count: 1, rate: 33 } }, easyRate: 67, hardRate: 0 },
+  },
+  comparison: {
+    current: { bowelCount: 3, shape: { hard: { count: 0, rate: 0 }, well_formed: { count: 2, rate: 67 }, soft: { count: 1, rate: 33 } }, easyRate: 67, hardRate: 0 },
+    pastFourWeeks: { bowelCount: 8, shape: { hard: { count: 2, rate: 25 }, well_formed: { count: 4, rate: 50 }, soft: { count: 2, rate: 25 } }, easyRate: 50, hardRate: 25 },
+    pastFourWeekAverageBowelCount: 2,
+  },
   breakdown: {
     hardness: [0, 0, 0, 2, 1, 0, 0],
     amount: { small: 0, normal: 2, large: 1 },
@@ -32,12 +44,15 @@ const report: WeeklyReport = {
     ],
     weekdayCounts: { mon: 1, tue: 0, wed: 2, thu: 0, fri: 0, sat: 0, sun: 0 },
     timeOfDayCounts: { morning: 2, afternoon: 0, evening: 1, night: 0 },
+    weeklyTrend: [],
     fourWeekTrend: [
       { weekStartsAt: "2026-08-09T15:00:00.000Z", bowelCount: 5, averageHardness: 4 },
       { weekStartsAt: "2026-08-16T15:00:00.000Z", bowelCount: 2, averageHardness: 3 },
       { weekStartsAt: "2026-08-23T15:00:00.000Z", bowelCount: 7, averageHardness: 4.2 },
       { weekStartsAt: "2026-08-30T15:00:00.000Z", bowelCount: 3, averageHardness: 4.5 },
     ],
+    intervalHours: [24, 48],
+    medianIntervalHours: 36,
     mealFoodGroupAnalyses: [
       {
         foodGroup: "green_yellow_vegetables",
@@ -54,7 +69,12 @@ const report: WeeklyReport = {
 /** 週の途中や記録0件でも図が壊れないことを見るための、すべて空のレポート。 */
 const emptyReport: WeeklyReport = {
   range: report.range,
-  summary: { bowelCount: 0, recordedDays: 0, countChangeFromPreviousWeek: 0, averageHardness: null, stableRate: null },
+  summary: { bowelCount: 0, recordedDays: 0, countChangeFromPreviousWeek: 0, averageHardness: null, stableRate: null, metrics: { bowelCount: 0, shape: { hard: { count: 0, rate: null }, well_formed: { count: 0, rate: null }, soft: { count: 0, rate: null } }, easyRate: null, hardRate: null } },
+  comparison: {
+    current: { bowelCount: 0, shape: { hard: { count: 0, rate: null }, well_formed: { count: 0, rate: null }, soft: { count: 0, rate: null } }, easyRate: null, hardRate: null },
+    pastFourWeeks: { bowelCount: 0, shape: { hard: { count: 0, rate: null }, well_formed: { count: 0, rate: null }, soft: { count: 0, rate: null } }, easyRate: null, hardRate: null },
+    pastFourWeekAverageBowelCount: 0,
+  },
   breakdown: {
     hardness: [0, 0, 0, 0, 0, 0, 0],
     amount: { small: 0, normal: 0, large: 0 },
@@ -67,7 +87,10 @@ const emptyReport: WeeklyReport = {
     dailyCounts: [],
     weekdayCounts: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 },
     timeOfDayCounts: { morning: 0, afternoon: 0, evening: 0, night: 0 },
+    weeklyTrend: [],
     fourWeekTrend: [],
+    intervalHours: [],
+    medianIntervalHours: null,
     mealFoodGroupAnalyses: [],
   },
 };

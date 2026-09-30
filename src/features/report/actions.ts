@@ -65,7 +65,8 @@ export async function getWeeklyReportAction(now = new Date().toISOString()): Pro
     };
   }
 
-  const fourWeekStartsAt = new Date(range.previousStartsAt.getTime() - 2 * 7 * 24 * 60 * 60 * 1000);
+  // 今週との比較用に、今週を除く直近4週間も同時に取得する。
+  const fourWeekStartsAt = new Date(range.startsAt.getTime() - 4 * 7 * 24 * 60 * 60 * 1000);
   const [bowelResult, mealResult] = await Promise.all([
     supabase
       .from("bowel_logs")
@@ -94,7 +95,7 @@ export async function getWeeklyReportAction(now = new Date().toISOString()): Pro
         loggedAt: log.logged_at,
         hardness: log.hardness,
         amount: log.amount as "small" | "normal" | "large",
-        color: log.color as "brown" | "dark_brown" | "yellow" | "green",
+        color: log.color as "brown" | "dark_brown" | "yellow" | "green" | "red" | "black" | "white_gray" | "other",
         ease: log.ease as "easy" | "normal" | "hard",
       })),
       mealLogs: mealResult.data.map((log) => ({ eatenAt: log.eaten_at, foodGroups: log.food_groups })),

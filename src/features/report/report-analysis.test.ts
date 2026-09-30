@@ -30,6 +30,9 @@ describe("createReportAnalysis", () => {
       { weekStartsAt: "2026-08-23T15:00:00.000Z", bowelCount: 1, averageHardness: 3 },
       { weekStartsAt: "2026-08-30T15:00:00.000Z", bowelCount: 2, averageHardness: 5 },
     ]);
+    expect(analysis.weeklyTrend.map((week) => week.metrics.shape.well_formed.rate)).toEqual([null, 0, 100, 50]);
+    expect(analysis.intervalHours).toEqual([168, 117.5, 50.5]);
+    expect(analysis.medianIntervalHours).toBe(117.5);
   });
 
   it("食品群は5件以上の記録かつ3件以上の関連がある場合だけ分析対象にする", () => {
@@ -65,5 +68,24 @@ describe("createReportAnalysis", () => {
     });
 
     expect(analysis.mealFoodGroupAnalyses).toEqual([]);
+  });
+
+  it("排便間隔の中央値は偶数件・同時刻を含めても時系列順に求め、推移は週数を拡張できる", () => {
+    const analysis = createReportAnalysis({
+      now: "2026-09-04T12:00:00.000Z",
+      bowelLogs: [
+        { loggedAt: "2026-08-10T00:00:00.000Z", hardness: 3 },
+        { loggedAt: "2026-08-11T00:00:00.000Z", hardness: 4 },
+        { loggedAt: "2026-08-11T00:00:00.000Z", hardness: 5 },
+        { loggedAt: "2026-08-13T00:00:00.000Z", hardness: 2 },
+        { loggedAt: "2026-08-16T00:00:00.000Z", hardness: 7 },
+      ],
+      mealLogs: [],
+      trendWeekCount: 8,
+    });
+
+    expect(analysis.intervalHours).toEqual([24, 0, 48, 72]);
+    expect(analysis.medianIntervalHours).toBe(36);
+    expect(analysis.weeklyTrend).toHaveLength(8);
   });
 });

@@ -99,9 +99,9 @@ describe("getWeeklyReportAction（権利あり）", () => {
     });
     expect(supabase.subscriptionEq).toHaveBeenCalledWith("user_id", user.id);
     expect(supabase.bowelEq).toHaveBeenCalledWith("user_id", user.id);
-    expect(supabase.bowelGte).toHaveBeenCalledWith("logged_at", "2026-08-09T15:00:00.000Z");
+    expect(supabase.bowelGte).toHaveBeenCalledWith("logged_at", "2026-08-02T15:00:00.000Z");
     expect(supabase.mealEq).toHaveBeenCalledWith("user_id", user.id);
-    expect(supabase.mealGte).toHaveBeenCalledWith("eaten_at", "2026-08-09T15:00:00.000Z");
+    expect(supabase.mealGte).toHaveBeenCalledWith("eaten_at", "2026-08-02T15:00:00.000Z");
   });
 
   it("試用中の購読でもレポートを返す", async () => {
