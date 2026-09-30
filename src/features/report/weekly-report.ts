@@ -1,4 +1,5 @@
 import { createReportAnalysis, type ReportAnalysis } from "./report-analysis";
+import { createBowelPeriodMetrics, type BowelPeriodMetrics } from "./bowel-metrics";
 import { getBowelHardnessGroup, type BowelColor } from "@/features/bowel-log/bowel-log.types";
 
 export type ReportBowelLog = {
@@ -24,6 +25,15 @@ export type WeeklyReport = {
     countChangeFromPreviousWeek: number;
     averageHardness: number | null;
     stableRate: number | null;
+    /** Type 1〜2 / 3〜4 / 5〜7 と出しやすさ。以後のUIはこちらを主指標にする。 */
+    metrics: BowelPeriodMetrics;
+  };
+  comparison: {
+    current: BowelPeriodMetrics;
+    /** 今週を含めない直近4週間の集計。 */
+    pastFourWeeks: BowelPeriodMetrics;
+    /** 回数だけは週あたりの平均で比較する。 */
+    pastFourWeekAverageBowelCount: number;
   };
   breakdown: {
     hardness: [number, number, number, number, number, number, number];
@@ -71,6 +81,10 @@ function round(value: number) {
   return Math.round(value * 10) / 10;
 }
 
+function roundToOneDecimal(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
 export function createWeeklyReport({
   now,
   bowelLogs,
@@ -82,6 +96,11 @@ export function createWeeklyReport({
 }): WeeklyReport {
   const { startsAt, endsAt, previousStartsAt, relationshipMealStartsAt } = getWeeklyReportRange(now);
   const currentBowelLogs = bowelLogs.filter((log) => isInRange(log.loggedAt, startsAt, endsAt));
+  const pastFourWeeksStartsAt = new Date(startsAt.getTime() - 4 * WEEK_MS);
+  const pastFourWeekLogs = bowelLogs.filter((log) => {
+    const time = new Date(log.loggedAt).getTime();
+    return time >= pastFourWeeksStartsAt.getTime() && time < startsAt.getTime();
+  });
   const previousBowelCount = bowelLogs.filter((log) => {
     const time = new Date(log.loggedAt).getTime();
     return time >= previousStartsAt.getTime() && time < startsAt.getTime();
@@ -100,6 +119,8 @@ export function createWeeklyReport({
   }
 
   const bowelCount = currentBowelLogs.length;
+  const currentMetrics = createBowelPeriodMetrics(currentBowelLogs);
+  const pastFourWeeksMetrics = createBowelPeriodMetrics(pastFourWeekLogs);
   const averageHardness = bowelCount === 0
     ? null
     : round(currentBowelLogs.reduce((total, log) => total + log.hardness, 0) / bowelCount);
@@ -132,6 +153,12 @@ export function createWeeklyReport({
       countChangeFromPreviousWeek: bowelCount - previousBowelCount,
       averageHardness,
       stableRate,
+      metrics: currentMetrics,
+    },
+    comparison: {
+      current: currentMetrics,
+      pastFourWeeks: pastFourWeeksMetrics,
+      pastFourWeekAverageBowelCount: roundToOneDecimal(pastFourWeeksMetrics.bowelCount / 4),
     },
     breakdown: { hardness, amount, color, ease },
     meals: {

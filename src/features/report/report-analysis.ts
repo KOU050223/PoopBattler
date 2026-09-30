@@ -1,7 +1,10 @@
+import { createBowelPeriodMetrics, getBowelIntervalsInHours, median, type BowelPeriodMetrics } from "./bowel-metrics";
+
 export type AnalysisBowelLog = {
   id?: string;
   loggedAt: string;
   hardness: number;
+  ease?: "easy" | "normal" | "hard";
 };
 
 export type AnalysisMealLog = {
@@ -65,7 +68,12 @@ export type ReportAnalysis = {
   dailyCounts: Array<{ date: string; count: number }>;
   weekdayCounts: Record<Weekday, number>;
   timeOfDayCounts: Record<TimeOfDay, number>;
+  /** 表示週数を呼び出し側で増やせる長期推移。 */
+  weeklyTrend: Array<{ weekStartsAt: string; metrics: BowelPeriodMetrics }>;
+  /** 既存UIが移行するまでの互換ビュー。 */
   fourWeekTrend: Array<{ weekStartsAt: string; bowelCount: number; averageHardness: number | null }>;
+  intervalHours: number[];
+  medianIntervalHours: number | null;
   mealFoodGroupAnalyses: Array<{
     foodGroup: string;
     mealCount: number;
@@ -76,7 +84,7 @@ export type ReportAnalysis = {
   }>;
 };
 
-export function createReportAnalysis({ now, bowelLogs, mealLogs }: { now: string; bowelLogs: AnalysisBowelLog[]; mealLogs: AnalysisMealLog[] }): ReportAnalysis {
+export function createReportAnalysis({ now, bowelLogs, mealLogs, trendWeekCount = 4 }: { now: string; bowelLogs: AnalysisBowelLog[]; mealLogs: AnalysisMealLog[]; trendWeekCount?: number }): ReportAnalysis {
   const endsAt = new Date(now);
   const startsAt = startOfJstWeek(endsAt);
   const fourWeekStartsAt = new Date(startsAt.getTime() - 3 * WEEK_MS);
@@ -101,11 +109,20 @@ export function createReportAnalysis({ now, bowelLogs, mealLogs }: { now: string
     const date = new Date(startsAt.getTime() + index * DAY_MS);
     return { date: new Date(date.getTime() + JST_OFFSET_MS).toISOString().slice(0, 10), count: dates.get(new Date(date.getTime() + JST_OFFSET_MS).toISOString().slice(0, 10)) ?? 0 };
   });
-  const fourWeekTrend = Array.from({ length: 4 }, (_, index) => {
-    const weekStartsAt = new Date(fourWeekStartsAt.getTime() + index * WEEK_MS);
+  const trendStartsAt = new Date(startsAt.getTime() - (trendWeekCount - 1) * WEEK_MS);
+  const weeklyTrend = Array.from({ length: trendWeekCount }, (_, index) => {
+    const weekStartsAt = new Date(trendStartsAt.getTime() + index * WEEK_MS);
     const weekEndsAt = new Date(weekStartsAt.getTime() + WEEK_MS - 1);
     const logs = bowelLogs.filter((log) => inRange(log.loggedAt, weekStartsAt, weekEndsAt));
-    return { weekStartsAt: weekStartsAt.toISOString(), bowelCount: logs.length, averageHardness: averageHardness(logs) };
+    return {
+      weekStartsAt: weekStartsAt.toISOString(),
+      metrics: createBowelPeriodMetrics(logs.map((log) => ({ ...log, ease: log.ease ?? "normal" }))),
+    };
+  });
+  const fourWeekTrend = weeklyTrend.map((week) => {
+    const weekEndsAt = new Date(new Date(week.weekStartsAt).getTime() + WEEK_MS - 1);
+    const logs = bowelLogs.filter((log) => inRange(log.loggedAt, new Date(week.weekStartsAt), weekEndsAt));
+    return { weekStartsAt: week.weekStartsAt, bowelCount: week.metrics.bowelCount, averageHardness: averageHardness(logs) };
   });
   const lookbackMeals = mealLogs.filter((meal) => inRange(meal.eatenAt, fourWeekStartsAt, endsAt));
   const lookbackBowelLogs = bowelLogs.filter((log) => inRange(log.loggedAt, fourWeekStartsAt, endsAt));
@@ -127,5 +144,17 @@ export function createReportAnalysis({ now, bowelLogs, mealLogs }: { now: string
     })
     .sort((a, b) => b.mealCount - a.mealCount || a.foodGroup.localeCompare(b.foodGroup));
 
-  return { dailyCounts, weekdayCounts: weekdays, timeOfDayCounts: times, fourWeekTrend, mealFoodGroupAnalyses };
+  const intervalLogs = bowelLogs.filter((log) => inRange(log.loggedAt, fourWeekStartsAt, endsAt));
+  const intervalHours = getBowelIntervalsInHours(intervalLogs);
+
+  return {
+    dailyCounts,
+    weekdayCounts: weekdays,
+    timeOfDayCounts: times,
+    weeklyTrend,
+    fourWeekTrend,
+    intervalHours,
+    medianIntervalHours: median(intervalHours),
+    mealFoodGroupAnalyses,
+  };
 }
