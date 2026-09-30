@@ -42,13 +42,11 @@ export type WeeklyReport = {
     ease: CountBy<ReportBowelLog["ease"]>;
   };
   meals: { total: number; byFoodGroup: Record<string, number> };
-  mealRelationships: Array<{ foodGroup: string; relatedBowelCount: number; averageHardness: number }>;
   analysis: ReportAnalysis;
 };
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 function startOfJstWeek(value: Date) {
   const jst = new Date(value.getTime() + JST_OFFSET_MS);
@@ -64,7 +62,6 @@ export function getWeeklyReportRange(now: string) {
     startsAt,
     endsAt,
     previousStartsAt: new Date(startsAt.getTime() - WEEK_MS),
-    relationshipMealStartsAt: new Date(startsAt.getTime() - DAY_MS),
   };
 }
 
@@ -94,7 +91,7 @@ export function createWeeklyReport({
   bowelLogs: ReportBowelLog[];
   mealLogs: ReportMealLog[];
 }): WeeklyReport {
-  const { startsAt, endsAt, previousStartsAt, relationshipMealStartsAt } = getWeeklyReportRange(now);
+  const { startsAt, endsAt, previousStartsAt } = getWeeklyReportRange(now);
   const currentBowelLogs = bowelLogs.filter((log) => isInRange(log.loggedAt, startsAt, endsAt));
   const pastFourWeeksStartsAt = new Date(startsAt.getTime() - 4 * WEEK_MS);
   const pastFourWeekLogs = bowelLogs.filter((log) => {
@@ -127,23 +124,6 @@ export function createWeeklyReport({
   const stableRate = bowelCount === 0
     ? null
     : Math.round((currentBowelLogs.filter((log) => getBowelHardnessGroup(log.hardness) === "well_formed").length / bowelCount) * 100);
-  const relatedByFoodGroup = new Map<string, ReportBowelLog[]>();
-
-  const relationshipMealLogs = mealLogs.filter((log) => isInRange(log.eatenAt, relationshipMealStartsAt, endsAt));
-  for (const meal of relationshipMealLogs) {
-    const mealTime = new Date(meal.eatenAt).getTime();
-    for (const bowel of currentBowelLogs) {
-      const elapsed = new Date(bowel.loggedAt).getTime() - mealTime;
-      if (elapsed >= 0 && elapsed <= DAY_MS) {
-        for (const foodGroup of meal.foodGroups) {
-          const related = relatedByFoodGroup.get(foodGroup) ?? [];
-          if (!related.some((entry) => entry.loggedAt === bowel.loggedAt)) related.push(bowel);
-          relatedByFoodGroup.set(foodGroup, related);
-        }
-      }
-    }
-  }
-
   const analysis = createReportAnalysis({ now, bowelLogs, mealLogs });
   return {
     range: { startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() },
@@ -165,13 +145,6 @@ export function createWeeklyReport({
       total: currentMealLogs.length,
       byFoodGroup: currentMealLogs.flatMap((meal) => meal.foodGroups).reduce<Record<string, number>>((counts, foodGroup) => ({ ...counts, [foodGroup]: (counts[foodGroup] ?? 0) + 1 }), {}),
     },
-    mealRelationships: [...relatedByFoodGroup.entries()]
-      .map(([foodGroup, related]) => ({
-        foodGroup,
-        relatedBowelCount: related.length,
-        averageHardness: round(related.reduce((total, bowel) => total + bowel.hardness, 0) / related.length),
-      }))
-      .sort((a, b) => b.relatedBowelCount - a.relatedBowelCount || a.foodGroup.localeCompare(b.foodGroup)),
     analysis,
   };
 }

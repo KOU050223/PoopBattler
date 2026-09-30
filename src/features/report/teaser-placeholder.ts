@@ -33,8 +33,6 @@ export type TeaserPlaceholder = {
   dailyCounts: number[];
   /** 4週間の推移（回数と平均の硬さ）。 */
   fourWeekTrend: Array<{ count: number; average: string }>;
-  /** 食品群別分析の行数ぶんのダミー値。 */
-  mealFoodGroups: Array<{ mealCount: number; within24: number; within48: number }>;
   /** 曜日別の記録数（月曜始まりの7件）。 */
   weekdayCounts: number[];
   /** 時間帯の内訳（朝・昼・夕方・夜）。 */
@@ -69,11 +67,6 @@ export function createTeaserPlaceholder(seed: number): TeaserPlaceholder {
     fourWeekTrend: Array.from({ length: 4 }, () => ({
       count: between(4, 15),
       average: (between(25, 52) / 10).toFixed(1),
-    })),
-    mealFoodGroups: Array.from({ length: 3 }, () => ({
-      mealCount: between(5, 18),
-      within24: between(3, 11),
-      within48: between(4, 16),
     })),
     weekdayCounts: Array.from({ length: 7 }, () => between(0, 5)),
     // 割合の帯は合計が0だと描けない。どの成分も必ず1以上にして、

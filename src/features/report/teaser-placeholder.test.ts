@@ -19,7 +19,6 @@ describe("createTeaserPlaceholder", () => {
     expect(placeholder.metrics).toHaveLength(4);
     expect(placeholder.hardnessCounts).toHaveLength(7);
     expect(placeholder.fourWeekTrend).toHaveLength(4);
-    expect(placeholder.mealFoodGroups).toHaveLength(3);
     expect(placeholder.weekdayCounts).toHaveLength(7);
     expect(placeholder.timeOfDayCounts).toHaveLength(4);
     expect(placeholder.colorCounts).toHaveLength(4);
