@@ -172,9 +172,9 @@ src/
 
 見た目の約束は [`poopm.md`](./poopm.md)。コードは `features/poopm/`。バトルと図鑑はここを import する。
 
-パーツは `src/features/poopm/assets/` にリポジトリ同梱する。SVG と PNG は同じ重ね描画に混在してよい。互いに排他ではない。胴体の色変えは SVG の fill が向く。PNG は塗替えしにくいので、色が乗る面（胴体）は SVG にする。
+パーツは `public/assets/poopm_parts/<部位>/` にリポジトリ同梱する。現状は胴体の色変えも含めてすべて PNG。`poopm.assets.test.ts` が TS マップの全パスについてファイルの実在を検査する。
 
-見た目は`characters.id` をキーにした TS マップ（`poopm.appearances.ts`）。キーは seed の `id` と一致させる。`characters.image_key` は読まない。列は残してよい。見た目用の列は足さない。
+見た目は [`poopm.md`](./poopm.md)「個体差の決め方」のとおり、種族（`characters.id`）で色を、個体シードのハッシュで頭・目・口を決める。`poopm.appearances.ts` は種族の代表見た目と色のマップとして残る。`characters.image_key` は読まない。列は残してよい。見た目用の列は足さない。
 
 型は次の3層に分ける。後ろ向きはマップに持たない。
 
