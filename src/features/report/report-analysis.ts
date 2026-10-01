@@ -47,21 +47,76 @@ function inRange(value: string, startsAt: Date, endsAt: Date) {
   return time >= startsAt.getTime() && time <= endsAt.getTime();
 }
 
-function findRelatedBowelLogs(meals: AnalysisMealLog[], bowelLogs: AnalysisBowelLog[], windowMs: number) {
-  const related: AnalysisBowelLog[] = [];
-  const relatedIds = new Set<string>();
-  for (const meal of meals) {
-    const mealTime = new Date(meal.eatenAt).getTime();
-    for (const bowel of bowelLogs) {
-      const elapsed = new Date(bowel.loggedAt).getTime() - mealTime;
-      const bowelId = bowel.id ?? bowel.loggedAt;
-      if (elapsed >= 0 && elapsed <= windowMs && !relatedIds.has(bowelId)) {
-        related.push(bowel);
-        relatedIds.add(bowelId);
-      }
-    }
+/** 食後1〜2日を比較するために必要な、最低限の記録数。 */
+export const MIN_MEAL_SAMPLE_COUNT = 5;
+export const MIN_BOWEL_SAMPLE_COUNT = 3;
+/** 初期値は、食事から24時間後を含み48時間後を含まない。 */
+export const MEAL_BOWEL_ANALYSIS_WINDOW_HOURS = {
+  startsAfterMeal: 24,
+  endsAfterMeal: 48,
+} as const;
+
+export type MealFoodGroupAnalysis = {
+  foodGroup: string;
+  /** 48時間の観測が完了した食事記録のみを数える。 */
+  mealCount: number;
+  /** 対象食品群を食べた24〜48時間後にあった、重複なしの排便記録数。 */
+  targetBowelCount: number;
+  /** 対象期間を除いた通常時の排便記録数。 */
+  baselineBowelCount: number;
+  status: "ready" | "insufficient_samples";
+  target: BowelPeriodMetrics | null;
+  baseline: BowelPeriodMetrics | null;
+  /** Type 3〜4の割合のポイント差（対象期間 - 通常時）。 */
+  wellFormedRatePointDifference: number | null;
+};
+
+function isInMealBowelWindow(meal: AnalysisMealLog, bowel: AnalysisBowelLog) {
+  const elapsed = new Date(bowel.loggedAt).getTime() - new Date(meal.eatenAt).getTime();
+  return elapsed >= MEAL_BOWEL_ANALYSIS_WINDOW_HOURS.startsAfterMeal * 60 * 60 * 1000
+    && elapsed < MEAL_BOWEL_ANALYSIS_WINDOW_HOURS.endsAfterMeal * 60 * 60 * 1000;
+}
+
+function createMealFoodGroupAnalysis(foodGroup: string, meals: AnalysisMealLog[], bowelLogs: AnalysisBowelLog[], endsAt: Date): MealFoodGroupAnalysis {
+  // 48時間分を観測できない食事を混ぜると、直近に入力しただけで割合が下がる。
+  const completedMeals = meals.filter((meal) => new Date(meal.eatenAt).getTime() + MEAL_BOWEL_ANALYSIS_WINDOW_HOURS.endsAfterMeal * 60 * 60 * 1000 <= endsAt.getTime());
+  const targetIndexes = new Set<number>();
+
+  bowelLogs.forEach((bowel, index) => {
+    if (completedMeals.some((meal) => isInMealBowelWindow(meal, bowel))) targetIndexes.add(index);
+  });
+
+  const targetLogs = [...targetIndexes].map((index) => bowelLogs[index]);
+  const baselineLogs = bowelLogs.filter((_, index) => !targetIndexes.has(index));
+  const hasEnoughSamples = completedMeals.length >= MIN_MEAL_SAMPLE_COUNT
+    && targetLogs.length >= MIN_BOWEL_SAMPLE_COUNT
+    && baselineLogs.length >= MIN_BOWEL_SAMPLE_COUNT;
+
+  if (!hasEnoughSamples) {
+    return {
+      foodGroup,
+      mealCount: completedMeals.length,
+      targetBowelCount: targetLogs.length,
+      baselineBowelCount: baselineLogs.length,
+      status: "insufficient_samples",
+      target: null,
+      baseline: null,
+      wellFormedRatePointDifference: null,
+    };
   }
-  return related;
+
+  const target = createBowelPeriodMetrics(targetLogs.map((log) => ({ ...log, ease: log.ease ?? "normal" })));
+  const baseline = createBowelPeriodMetrics(baselineLogs.map((log) => ({ ...log, ease: log.ease ?? "normal" })));
+  return {
+    foodGroup,
+    mealCount: completedMeals.length,
+    targetBowelCount: targetLogs.length,
+    baselineBowelCount: baselineLogs.length,
+    status: "ready",
+    target,
+    baseline,
+    wellFormedRatePointDifference: target.shape.well_formed.rate! - baseline.shape.well_formed.rate!,
+  };
 }
 
 export type ReportAnalysis = {
@@ -74,14 +129,7 @@ export type ReportAnalysis = {
   fourWeekTrend: Array<{ weekStartsAt: string; bowelCount: number; averageHardness: number | null }>;
   intervalHours: number[];
   medianIntervalHours: number | null;
-  mealFoodGroupAnalyses: Array<{
-    foodGroup: string;
-    mealCount: number;
-    relatedWithin24Hours: number;
-    relatedWithin48Hours: number;
-    averageHardnessWithin24Hours: number | null;
-    averageHardnessWithin48Hours: number | null;
-  }>;
+  mealFoodGroupAnalyses: MealFoodGroupAnalysis[];
 };
 
 export function createReportAnalysis({ now, bowelLogs, mealLogs, trendWeekCount = 4 }: { now: string; bowelLogs: AnalysisBowelLog[]; mealLogs: AnalysisMealLog[]; trendWeekCount?: number }): ReportAnalysis {
@@ -128,20 +176,7 @@ export function createReportAnalysis({ now, bowelLogs, mealLogs, trendWeekCount 
   const lookbackBowelLogs = bowelLogs.filter((log) => inRange(log.loggedAt, fourWeekStartsAt, endsAt));
   const mealsByFoodGroup = Map.groupBy(lookbackMeals.flatMap((meal) => meal.foodGroups.map((foodGroup) => ({ ...meal, foodGroup }))), (meal) => meal.foodGroup);
   const mealFoodGroupAnalyses = [...mealsByFoodGroup.entries()]
-    .flatMap(([foodGroup, meals]) => {
-      if (meals.length < 5) return [];
-      const related24 = findRelatedBowelLogs(meals, lookbackBowelLogs, DAY_MS);
-      if (related24.length < 3) return [];
-      const related48 = findRelatedBowelLogs(meals, lookbackBowelLogs, DAY_MS * 2);
-      return [{
-        foodGroup,
-        mealCount: meals.length,
-        relatedWithin24Hours: related24.length,
-        relatedWithin48Hours: related48.length,
-        averageHardnessWithin24Hours: averageHardness(related24),
-        averageHardnessWithin48Hours: averageHardness(related48),
-      }];
-    })
+    .map(([foodGroup, meals]) => createMealFoodGroupAnalysis(foodGroup, meals, lookbackBowelLogs, endsAt))
     .sort((a, b) => b.mealCount - a.mealCount || a.foodGroup.localeCompare(b.foodGroup));
 
   const intervalLogs = bowelLogs.filter((log) => inRange(log.loggedAt, fourWeekStartsAt, endsAt));

@@ -35,39 +35,109 @@ describe("createReportAnalysis", () => {
     expect(analysis.medianIntervalHours).toBe(117.5);
   });
 
-  it("食品群は5件以上の記録かつ3件以上の関連がある場合だけ分析対象にする", () => {
+  it("食品群ごとに食後24〜48時間のType 3〜4割合を通常時とポイント差で比較する", () => {
     const analysis = createReportAnalysis({
       now: "2026-09-04T12:00:00.000Z",
       mealLogs: [
         { eatenAt: "2026-08-10T00:00:00.000Z", foodGroups: ["green_yellow_vegetables"] },
-        { eatenAt: "2026-08-17T00:00:00.000Z", foodGroups: ["green_yellow_vegetables"] },
-        { eatenAt: "2026-08-24T00:00:00.000Z", foodGroups: ["green_yellow_vegetables"] },
-        { eatenAt: "2026-08-31T00:00:00.000Z", foodGroups: ["green_yellow_vegetables"] },
-        { eatenAt: "2026-09-02T00:00:00.000Z", foodGroups: ["green_yellow_vegetables"] },
-        { eatenAt: "2026-09-03T00:00:00.000Z", foodGroups: ["spicy_food"] },
+        { eatenAt: "2026-08-13T00:00:00.000Z", foodGroups: ["green_yellow_vegetables"] },
+        { eatenAt: "2026-08-16T00:00:00.000Z", foodGroups: ["green_yellow_vegetables"] },
+        { eatenAt: "2026-08-19T00:00:00.000Z", foodGroups: ["green_yellow_vegetables"] },
+        { eatenAt: "2026-08-22T00:00:00.000Z", foodGroups: ["green_yellow_vegetables"] },
       ],
       bowelLogs: [
-        { loggedAt: "2026-08-10T06:00:00.000Z", hardness: 4 },
-        { loggedAt: "2026-08-17T06:00:00.000Z", hardness: 5 },
-        { loggedAt: "2026-08-24T06:00:00.000Z", hardness: 4 },
-        { loggedAt: "2026-08-31T06:00:00.000Z", hardness: 5 },
-        { loggedAt: "2026-09-02T06:00:00.000Z", hardness: 6 },
+        { loggedAt: "2026-08-11T06:00:00.000Z", hardness: 3 },
+        { loggedAt: "2026-08-14T06:00:00.000Z", hardness: 4 },
+        { loggedAt: "2026-08-17T06:00:00.000Z", hardness: 4 },
+        { loggedAt: "2026-08-20T06:00:00.000Z", hardness: 3 },
+        { loggedAt: "2026-08-23T06:00:00.000Z", hardness: 5 },
+        { loggedAt: "2026-08-12T00:00:00.000Z", hardness: 2 },
+        { loggedAt: "2026-08-15T00:00:00.000Z", hardness: 6 },
+        { loggedAt: "2026-08-18T00:00:00.000Z", hardness: 2 },
       ],
     });
 
     expect(analysis.mealFoodGroupAnalyses).toEqual([
-      { foodGroup: "green_yellow_vegetables", mealCount: 5, relatedWithin24Hours: 5, relatedWithin48Hours: 5, averageHardnessWithin24Hours: 4.8, averageHardnessWithin48Hours: 4.8 },
+      {
+        foodGroup: "green_yellow_vegetables",
+        mealCount: 5,
+        targetBowelCount: 5,
+        baselineBowelCount: 3,
+        status: "ready",
+        target: { bowelCount: 5, shape: { hard: { count: 0, rate: 0 }, well_formed: { count: 4, rate: 80 }, soft: { count: 1, rate: 20 } }, easyRate: 0, hardRate: 0 },
+        baseline: { bowelCount: 3, shape: { hard: { count: 2, rate: 67 }, well_formed: { count: 0, rate: 0 }, soft: { count: 1, rate: 33 } }, easyRate: 0, hardRate: 0 },
+        wellFormedRatePointDifference: 80,
+      },
     ]);
   });
 
-  it("同じ排便が複数の食事と関連しても、分析の根拠件数には一度だけ数える", () => {
+  it("食事件数・対象排便件数・通常時の記録が最低数に届かない食品群は不足状態で返す", () => {
     const analysis = createReportAnalysis({
       now: "2026-09-04T12:00:00.000Z",
-      mealLogs: Array.from({ length: 5 }, (_, index) => ({ eatenAt: `2026-09-01T0${index}:00:00.000Z`, foodGroups: ["green_yellow_vegetables"] })),
-      bowelLogs: [{ id: "one-bowel", loggedAt: "2026-09-01T06:00:00.000Z", hardness: 4 }],
+      mealLogs: Array.from({ length: 5 }, (_, index) => ({ eatenAt: `2026-08-${10 + index}T00:00:00.000Z`, foodGroups: ["green_yellow_vegetables"] })),
+      bowelLogs: [{ id: "one-bowel", loggedAt: "2026-08-12T06:00:00.000Z", hardness: 4 }],
     });
 
-    expect(analysis.mealFoodGroupAnalyses).toEqual([]);
+    expect(analysis.mealFoodGroupAnalyses).toEqual([
+      {
+        foodGroup: "green_yellow_vegetables",
+        mealCount: 5,
+        targetBowelCount: 1,
+        baselineBowelCount: 0,
+        status: "insufficient_samples",
+        target: null,
+        baseline: null,
+        wellFormedRatePointDifference: null,
+      },
+    ]);
+  });
+
+  it("同じ食品群の複数の食事に該当する排便は対象件数へ一度だけ数える", () => {
+    const analysis = createReportAnalysis({
+      now: "2026-09-04T12:00:00.000Z",
+      mealLogs: Array.from({ length: 5 }, (_, index) => ({ eatenAt: `2026-08-10T0${index}:00:00.000Z`, foodGroups: ["green_yellow_vegetables"] })),
+      bowelLogs: [{ id: "one-bowel", loggedAt: "2026-08-11T06:00:00.000Z", hardness: 4 }],
+    });
+
+    expect(analysis.mealFoodGroupAnalyses[0]).toMatchObject({ targetBowelCount: 1, status: "insufficient_samples" });
+  });
+
+  it("食後24時間ちょうどを対象に含め、48時間ちょうどを通常時として扱う", () => {
+    const mealLogs = ["01", "04", "07", "10", "13"].map((day) => ({ eatenAt: `2026-08-${day}T00:00:00.000Z`, foodGroups: ["fruit"] }));
+    const bowelLogs = ["02", "05", "08", "11", "14"].flatMap((day, index) => [
+      { loggedAt: `2026-08-${day}T00:00:00.000Z`, hardness: 3 },
+      { loggedAt: `2026-08-${String(Number(day) + 1).padStart(2, "0")}T00:00:00.000Z`, hardness: index % 2 === 0 ? 2 : 6 },
+    ]);
+    const analysis = createReportAnalysis({ now: "2026-08-20T00:00:00.000Z", mealLogs, bowelLogs });
+
+    expect(analysis.mealFoodGroupAnalyses[0]).toMatchObject({
+      mealCount: 5,
+      targetBowelCount: 5,
+      baselineBowelCount: 5,
+      status: "ready",
+      wellFormedRatePointDifference: 100,
+    });
+  });
+
+  it("排便記録が0件でも食品群を返し、割合を作らず不足状態にする", () => {
+    const analysis = createReportAnalysis({
+      now: "2026-09-04T12:00:00.000Z",
+      mealLogs: Array.from({ length: 5 }, (_, index) => ({ eatenAt: `2026-08-${10 + index}T00:00:00.000Z`, foodGroups: ["fruit"] })),
+      bowelLogs: [],
+    });
+
+    expect(analysis.mealFoodGroupAnalyses).toEqual([
+      {
+        foodGroup: "fruit",
+        mealCount: 5,
+        targetBowelCount: 0,
+        baselineBowelCount: 0,
+        status: "insufficient_samples",
+        target: null,
+        baseline: null,
+        wellFormedRatePointDifference: null,
+      },
+    ]);
   });
 
   it("排便間隔の中央値は偶数件・同時刻を含めても時系列順に求め、推移は週数を拡張できる", () => {

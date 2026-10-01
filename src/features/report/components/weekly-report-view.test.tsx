@@ -33,7 +33,6 @@ const report: WeeklyReport = {
     ease: { easy: 2, normal: 1, hard: 0 },
   },
   meals: { total: 2, byFoodGroup: { green_yellow_vegetables: 2 } },
-  mealRelationships: [{ foodGroup: "green_yellow_vegetables", relatedBowelCount: 2, averageHardness: 4.5 }],
   analysis: {
     dailyCounts: [
       { date: "2026-08-31", count: 1 },
@@ -53,16 +52,7 @@ const report: WeeklyReport = {
     ],
     intervalHours: [24, 48],
     medianIntervalHours: 36,
-    mealFoodGroupAnalyses: [
-      {
-        foodGroup: "green_yellow_vegetables",
-        mealCount: 6,
-        relatedWithin24Hours: 3,
-        relatedWithin48Hours: 5,
-        averageHardnessWithin24Hours: 4.3,
-        averageHardnessWithin48Hours: 4.1,
-      },
-    ],
+    mealFoodGroupAnalyses: [],
   },
 };
 
@@ -82,7 +72,6 @@ const emptyReport: WeeklyReport = {
     ease: { easy: 0, normal: 0, hard: 0 },
   },
   meals: { total: 0, byFoodGroup: {} },
-  mealRelationships: [],
   analysis: {
     dailyCounts: [],
     weekdayCounts: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 },
@@ -111,11 +100,8 @@ describe("WeeklyReportView", () => {
 
     expect(markup).toContain("今週のうんちレポート");
     expect(markup).toContain("硬さの分布");
-    expect(markup).toContain("食事との記録上の関連");
     expect(markup).toContain("日別の記録");
     expect(markup).toContain("4週間の推移");
-    expect(markup).toContain("食品群別の分析");
-    expect(markup).toContain("緑黄色野菜");
     expect(markup).toContain("色の内訳");
     expect(markup).toContain("時間帯");
   });
@@ -133,8 +119,6 @@ describe("WeeklyReportView", () => {
     expect(markup).toContain("もっとも記録が多い曜日: 水曜日");
     // 4週推移の折れ線。点の座標が計算できていれば polyline が出る。
     expect(markup).toContain("<polyline");
-    expect(markup).toContain("24時間内");
-    expect(markup).toContain("48時間内");
   });
 
   // 全部0の週は、どの図も最大値0で割ることになる。

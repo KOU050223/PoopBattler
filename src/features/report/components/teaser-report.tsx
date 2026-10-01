@@ -1,4 +1,4 @@
-import { CalendarDays, ChartNoAxesCombined, LockKeyhole, Palette, Sparkles, Utensils } from "lucide-react";
+import { CalendarDays, ChartNoAxesCombined, LockKeyhole, Palette, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { AccountStatus } from "@/features/account/account.types";
@@ -222,38 +222,6 @@ function SamplePreview({ placeholder }: { placeholder: ReturnType<typeof createT
         />
       </div>
 
-      <div>
-        <div className="flex items-center gap-2">
-          <Utensils aria-hidden="true" className="size-5 text-flush-edge" />
-          <h3 className={HEADING}>{t("mealFoodGroupAnalysis")}</h3>
-        </div>
-        <ul className="mt-4 space-y-3">
-          {placeholder.mealFoodGroups.map((entry, index) => (
-            <li key={index} className="rounded-xl bg-blush-wash/45 p-3">
-              <p className="text-sm font-medium text-pencil-gray">
-                {t("mealCount", { count: entry.mealCount })}
-              </p>
-              <div className="mt-2.5 space-y-1.5">
-                {[
-                  { label: t("within24"), value: entry.within24, strong: true },
-                  { label: t("within48"), value: entry.within48, strong: false },
-                ].map((row) => (
-                  <div key={row.label} className="flex items-center gap-2">
-                    <p className="w-14 shrink-0 text-[11px] font-medium text-pencil-gray">{row.label}</p>
-                    <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-paper-white">
-                      <div
-                        className={`h-full rounded-full ${row.strong ? "bg-flush-edge" : "bg-cotton-pink"}`}
-                        style={{ width: `${Math.max(4, (row.value / entry.within48) * 100)}%` }}
-                      />
-                    </div>
-                    <p className="w-8 shrink-0 text-right text-[11px] font-black tabular-nums text-charcoal">{row.value}</p>
-                  </div>
-                ))}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
     </div>
   );
 }
