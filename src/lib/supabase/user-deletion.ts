@@ -4,7 +4,7 @@ import type { Database } from "@/types/database.types";
 
 import { getServiceRoleEnvironment } from "./env";
 
-// 退会時の auth.users 削除。削除すると profiles → meal_logs / battle_results /
+// アカウント削除時の auth.users 削除。削除すると profiles → meal_logs / battle_results /
 // bowel_logs / user_characters、および subscriptions が FK の
 // on delete cascade で同一トランザクション内に消える。
 // 削除は auth.admin 経由でしか実行できないため、RLS をバイパスする

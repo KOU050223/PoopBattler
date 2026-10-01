@@ -28,10 +28,10 @@ export type DeleteAccountResult =
   | { status: "error"; message: string };
 
 const DELETE_ACCOUNT_ERROR_MESSAGE =
-  "退会処理を完了できませんでした。時間をおいてもう一度お試しください。";
+  "アカウントの削除を完了できませんでした。時間をおいてもう一度お試しください。";
 
 /**
- * 退会。いまの利用者のアカウントと、それに紐づく全データを削除する。
+ * アカウント削除。いまの利用者のアカウントと、それに紐づく全データを消す。
  *
  * 順序が重要で、Stripe の購読キャンセルを auth.users の削除より先に行う。
  * 先にユーザーを消すと、キャンセルに失敗したとき「DBは消えたのに課金だけ
@@ -63,7 +63,7 @@ export async function deleteAccountAction(): Promise<DeleteAccountResult> {
   }
 
   // Stripe 側の課金経路をすべて閉じる。DB に行がなくても、支払い途中の
-  // Checkout が残っていれば退会後に購読が作られうるため、行の有無ではなく
+  // Checkout が残っていれば削除後に購読が作られうるため、行の有無ではなく
   // ユーザー自身の情報（ID・メール）から Stripe 側を洗う。
   //
   // 鍵の無い環境（unconfigured）では課金経路の存在自体がありえないため、

@@ -12,7 +12,7 @@ type Props = {
   status: AccountStatus;
 };
 
-/** 端末に残った利用者データを消す。失敗しても退会自体は完了済みとする。 */
+/** 端末に残った利用者データを消す。失敗しても削除自体は完了済みとする。 */
 async function clearLocalData() {
   try {
     await deleteAllMealPhotos();
@@ -32,7 +32,7 @@ async function clearLocalData() {
 }
 
 /**
- * 退会（アカウント削除）の導線。
+ * アカウント削除の導線。
  *
  * 確認を2段階にするのは、ログアウトと違って戻れない操作だから。
  * サーバー側でアカウントが消えてから端末内のデータを消す。逆の順序だと
@@ -75,7 +75,7 @@ export function DeleteAccountSection({ status }: Props) {
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-red-300 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/40">
       <div className="flex flex-col gap-1">
-        <p className="font-medium">アカウントを削除する（退会）</p>
+        <p className="font-medium">アカウントを削除する</p>
         <p className="text-sm text-zinc-700 dark:text-zinc-300">
           食事・排便・バトルの記録、図鑑のうんちくん、この端末に保存した食事写真が
           すべて削除されます。プレミアムを購読中の場合は購読も取り消されます。
@@ -96,7 +96,7 @@ export function DeleteAccountSection({ status }: Props) {
               onClick={() => void run()}
               className="min-h-12 flex-1 rounded bg-red-700 px-4 py-2 text-white disabled:opacity-60"
             >
-              {pending ? "削除しています…" : "すべて削除して退会する"}
+              {pending ? "削除しています…" : "すべて削除する"}
             </button>
             <button
               type="button"
@@ -114,7 +114,7 @@ export function DeleteAccountSection({ status }: Props) {
           onClick={() => setConfirming(true)}
           className="min-h-12 rounded border border-red-400 px-4 py-2 text-red-700 dark:border-red-800 dark:text-red-400"
         >
-          退会する
+          アカウントを削除する
         </button>
       )}
 

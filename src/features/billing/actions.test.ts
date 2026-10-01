@@ -14,7 +14,11 @@ vi.mock("stripe", () => ({
   },
 }));
 
-import { createBillingPortalSessionAction, createCheckoutSessionAction } from "./actions";
+import {
+  createBillingPortalSessionAction,
+  createCheckoutSessionAction,
+  getSubscriptionSnapshotAction,
+} from "./actions";
 
 const userId = "00000000-0000-4000-8000-000000000001";
 
@@ -176,5 +180,75 @@ describe("createBillingPortalSessionAction", () => {
 
     await expect(createBillingPortalSessionAction()).resolves.toMatchObject({ status: "error" });
     expect(mocks.portalCreate).not.toHaveBeenCalled();
+  });
+
+  it("戻り先として呼び出し元の画面を使える", async () => {
+    mocks.createClient.mockResolvedValue(createSupabase(linkedUser, { stripe_customer_id: "cus_1" }));
+    mocks.portalCreate.mockResolvedValue({ url: "https://billing.stripe.test/session" });
+
+    await createBillingPortalSessionAction("/account");
+
+    expect(mocks.portalCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ return_url: "https://example.test/account" }),
+    );
+  });
+
+  // return_url は appUrl に連結するため、`//evil.test` のような値を通すと
+  // 外部サイトへの遷移を作れてしまう。
+  it("外部へ抜けうる戻り先は既定の画面に丸める", async () => {
+    mocks.createClient.mockResolvedValue(createSupabase(linkedUser, { stripe_customer_id: "cus_1" }));
+    mocks.portalCreate.mockResolvedValue({ url: "https://billing.stripe.test/session" });
+
+    await createBillingPortalSessionAction("//evil.test");
+
+    expect(mocks.portalCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ return_url: "https://example.test/report" }),
+    );
+  });
+});
+
+describe("getSubscriptionSnapshotAction", () => {
+  const activeSubscription = {
+    status: "active",
+    current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  };
+
+  it("期限内の購読があるユーザーを subscribed と返す", async () => {
+    mocks.createClient.mockResolvedValue(createSupabase(linkedUser, activeSubscription));
+
+    await expect(getSubscriptionSnapshotAction()).resolves.toEqual({ status: "subscribed" });
+  });
+
+  it("購読の無いユーザーを not-subscribed と返す", async () => {
+    mocks.createClient.mockResolvedValue(createSupabase(linkedUser, null));
+
+    await expect(getSubscriptionSnapshotAction()).resolves.toEqual({ status: "not-subscribed" });
+  });
+
+  it("期限切れの購読を subscribed と返さない", async () => {
+    mocks.createClient.mockResolvedValue(
+      createSupabase(linkedUser, { status: "active", current_period_end: "2020-01-01T00:00:00.000Z" }),
+    );
+
+    await expect(getSubscriptionSnapshotAction()).resolves.toEqual({ status: "not-subscribed" });
+  });
+
+  it("未サインインを not-subscribed と誤判定しない", async () => {
+    mocks.createClient.mockResolvedValue(createSupabase(null));
+
+    await expect(getSubscriptionSnapshotAction()).resolves.toEqual({ status: "unknown" });
+  });
+
+  // DBエラーを「未購読」と見なすと、購読中なのに解約導線が消える。
+  it("購読行の読み取りに失敗したら unknown と返す", async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: { message: "db down" } });
+    const eq = vi.fn().mockReturnValue({ maybeSingle });
+    const select = vi.fn().mockReturnValue({ eq });
+    mocks.createClient.mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: linkedUser }, error: null }) },
+      from: vi.fn().mockReturnValue({ select }),
+    });
+
+    await expect(getSubscriptionSnapshotAction()).resolves.toEqual({ status: "unknown" });
   });
 });

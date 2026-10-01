@@ -2,7 +2,7 @@ import Stripe from "stripe";
 
 import { getStripeSecretKey } from "./stripe-env";
 
-// 退会時の課金停止。アカウント削除より先に呼ぶ。
+// アカウント削除時の課金停止。auth.users の削除より先に呼ぶ。
 // DBだけ消して Stripe 側に課金が残る状態を作らないための分界をここに置く。
 
 /**
@@ -82,10 +82,10 @@ export async function cancelSubscriptionNow(subscriptionId: string): Promise<boo
 export type CloseBillingResult = "closed" | "unconfigured" | "failed";
 
 /**
- * 退会前に、そのユーザーの Stripe 側の課金経路をすべて閉じる。
+ * アカウント削除の前に、そのユーザーの Stripe 側の課金経路をすべて閉じる。
  *
  * - 支払い途中で残っている Checkout セッションを expire する。
- *   消し忘れると、退会後に決済が完了して「アカウントの無い購読」ができる。
+ *   消し忘れると、削除後に決済が完了して「アカウントの無い購読」ができる。
  *   （セッションは client_reference_id に auth.users.id を入れて作る）
  * - 見つかる限りの顧客・購読をキャンセルする。DB の subscriptions 行は
  *   Webhook が書いた時点の記録なので、行が無くても Stripe 側に購読が

@@ -107,8 +107,13 @@ export async function createCheckoutSessionAction(): Promise<CheckoutResult> {
  *
  * 顧客IDは自分の subscriptions 行から引く。RLS により本人の行しか読めないため、
  * 他人のポータルは開けない。
+ *
+ * returnPath はポータルからアプリへ戻る先。呼び出し元の画面を渡せるが、
+ * 外部URLになりうる値は受け付けない（appUrl に連結するため `//` 始まりは危険）。
  */
-export async function createBillingPortalSessionAction(): Promise<CheckoutResult> {
+export async function createBillingPortalSessionAction(
+  returnPath: string = "/report",
+): Promise<CheckoutResult> {
   const supabase = await createClient();
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
@@ -133,14 +138,52 @@ export async function createBillingPortalSessionAction(): Promise<CheckoutResult
     return { status: "error", message: UNKNOWN_ERROR_MESSAGE };
   }
 
+  const safePath = returnPath.startsWith("/") && !returnPath.startsWith("//")
+    ? returnPath
+    : "/report";
+
   try {
     const session = await createStripeClient().billingPortal.sessions.create({
       customer: subscription.stripe_customer_id,
-      return_url: `${environment.appUrl}/report`,
+      return_url: `${environment.appUrl}${safePath}`,
     });
 
     return { status: "redirecting", url: session.url };
   } catch {
     return { status: "error", message: UNKNOWN_ERROR_MESSAGE };
   }
+}
+
+export type SubscriptionSnapshot =
+  | { status: "subscribed" }
+  | { status: "not-subscribed" }
+  /** 未サインインや読み取り失敗。「未購読」と誤表示しないため別状態にする。 */
+  | { status: "unknown" };
+
+/**
+ * 本人がいまプレミアムの権利を持つかを返す。アカウント画面の
+ * 「プレミアムを解約する」導線を出すかの判定に使う。
+ *
+ * DBエラーを not-subscribed と見なすと、購読中なのに解約導線が
+ * 消える。unknown に分けて、表示側はその場合セクションを出さない。
+ */
+export async function getSubscriptionSnapshotAction(): Promise<SubscriptionSnapshot> {
+  const supabase = await createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) return { status: "unknown" };
+
+  const { data: subscription, error: subscriptionError } = await supabase
+    .from("subscriptions")
+    .select("status, current_period_end")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (subscriptionError) return { status: "unknown" };
+
+  return {
+    status: hasActiveEntitlement(subscription, new Date())
+      ? "subscribed"
+      : "not-subscribed",
+  };
 }

@@ -21,7 +21,7 @@ export function getStripeEnvironment() {
  * APIキーだけを返す。Checkout の作成以外（購読のキャンセル・取得など）
  * priceId や appUrl を必要としない経路はこちらを使う。
  * getStripeEnvironment で全部を要求すると、販売を止めて STRIPE_PRICE_ID を
- * 外した環境で、既存購読者が退会すらできなくなる。
+ * 外した環境で、既存購読者がアカウント削除すらできなくなる。
  */
 export function getStripeSecretKey() {
   const secretKey = process.env.STRIPE_SECRET_KEY;

@@ -270,6 +270,6 @@ type PoopmFigureProps = {
    `completeBattleAction` に `meal_log_id` を渡して抽選する。未完了バトルのリロード復元。
 6. 過去ログの一覧表示。
 7. Googleアカウント連携、Route Handlerの境界追加、`subscriptions`とRLS、
-   Stripe CheckoutとWebhook、レポート画面と課金ゲート、退会時の削除フロー。
+   Stripe CheckoutとWebhook、レポート画面と課金ゲート、アカウント削除フロー。
    ここは無料部分が一周してから着手する。売る中身（レポート）が動く前に決済だけ作らない。
 8. デモ用の磨き込み。

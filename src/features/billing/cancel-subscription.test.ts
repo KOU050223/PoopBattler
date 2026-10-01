@@ -59,7 +59,7 @@ beforeEach(() => {
 });
 
 describe("cancelSubscriptionNow", () => {
-  // 退会時に DB 側の status を信じると、Webhook 欠落で古い行を
+  // アカウント削除時に DB 側の status を信じると、Webhook 欠落で古い行を
   // 「canceled」と読み違えて課金が残る。必ず Stripe へ取りにいく。
   it("請求を起こしうる status の購読をキャンセルする", async () => {
     mocks.retrieve.mockResolvedValue({ id: subscriptionId, status: "active" });
@@ -85,7 +85,7 @@ describe("cancelSubscriptionNow", () => {
 
       await expect(cancelSubscriptionNow(subscriptionId)).resolves.toBe(true);
       // 終端の購読に cancel を投げると Stripe がエラーを返し、
-      // 退会そのものが失敗扱いになる。
+      // アカウント削除そのものが失敗扱いになる。
       expect(mocks.cancel).not.toHaveBeenCalled();
     },
   );
@@ -120,7 +120,7 @@ describe("cancelSubscriptionNow", () => {
 });
 
 describe("closeUserBilling", () => {
-  // Checkout を開いたまま退会すると、退会後に決済が完了して
+  // Checkout を開いたままアカウント削除すると、アカウント削除後に決済が完了して
   // 「アカウントの無い購読」ができる。open のセッションは先に潰す。
   it("本人の開いているCheckoutセッションを expire する", async () => {
     mocks.sessionsList.mockReturnValue(listOf([

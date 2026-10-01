@@ -25,7 +25,7 @@ describe("DeleteAccountSection", () => {
 
     expect(markup).toContain("食事・排便・バトルの記録");
     expect(markup).toContain("取り消せません");
-    expect(markup).toContain("退会する");
+    expect(markup).toContain("アカウントを削除する");
     // 確認段階の文言は1段目では出さない。
     expect(markup).not.toContain("本当に削除しますか");
   });
@@ -37,6 +37,6 @@ describe("DeleteAccountSection", () => {
       />,
     );
 
-    expect(markup).toContain("退会する");
+    expect(markup).toContain("アカウントを削除する");
   });
 });

@@ -1167,10 +1167,10 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 退会（auth.users の DELETE）でユーザー固有の行がすべて消えること
+-- アカウント削除（auth.users の DELETE）でユーザー固有の行がすべて消えること
 -- ---------------------------------------------------------------------------
 -- GoTrue の admin.deleteUser も内部的には auth.users への DELETE なので、
--- ここでの検査は本番の退会経路と同じカスケードを見る。
+-- ここでの検査は本番のアカウント削除経路と同じカスケードを見る。
 --
 -- 対象ユーザーに全テーブルの行を持たせてから auth.users を消し、
 -- 「対象の行はすべて消える（陽性）」と「他人の行は残る（陰性）」を同じ実行で確かめる。
@@ -1186,7 +1186,7 @@ begin
   insert into auth.users (id, instance_id, aud, role, is_anonymous, created_at, updated_at)
   values (target, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', true, now(), now());
 
-  -- 退会で消えるべき全テーブルの行を持たせる。
+  -- アカウント削除で消えるべき全テーブルの行を持たせる。
   -- battle は completed にする。active の部分ユニークインデックスと
   -- 衝突しないためと、消し忘れが起きやすい中間状態ではない通常形で検査するため。
   insert into public.meal_logs (id, user_id, image_path, tag, food_groups)
@@ -1204,7 +1204,7 @@ begin
   insert into public.subscriptions (user_id, stripe_customer_id, stripe_subscription_id, status, current_period_end)
   values (target, 'cus_delete', 'sub_delete', 'active', now() + interval '30 days');
 
-  -- 本番の退会処理（admin.deleteUser）と同じ、auth.users への DELETE。
+  -- 本番のアカウント削除処理（admin.deleteUser）と同じ、auth.users への DELETE。
   delete from auth.users where id = target;
 
   -- 対象ユーザーの行が全テーブルから消えたこと。

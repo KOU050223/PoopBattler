@@ -79,7 +79,7 @@ describe("runTransaction の接続解放", () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
-  // 退会時の全削除も同じ runTransaction を通る。clear 経路でも
+  // アカウント削除時の全削除も同じ runTransaction を通る。clear 経路でも
   // 接続を閉じないと、次の DATABASE_VERSION 更新が onblocked で止まる。
   it("全削除でも接続を閉じる", async () => {
     const close = stubIndexedDB("complete");

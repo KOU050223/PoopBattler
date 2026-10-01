@@ -50,7 +50,7 @@ describe("deleteUserCompletely", () => {
   });
 
   // サービスロールキーが未設定でも throw を呼び出し側へ漏らさない。
-  // 退会の成否は戻り値だけで判断できる形にする。
+  // アカウント削除の成否は戻り値だけで判断できる形にする。
   it("接続情報が無くても error として返す", async () => {
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 

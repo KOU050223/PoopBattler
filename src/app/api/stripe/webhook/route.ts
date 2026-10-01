@@ -98,10 +98,10 @@ export async function POST(request: Request) {
       });
 
   if (result.status === "error") {
-    // 退会済みユーザーの購読イベントは、auth.users 削除の cascade で
+    // アカウント削除済みユーザーの購読イベントは、auth.users 削除の cascade で
     // subscriptions に行を置けず FK 違反（23503）になる。
     // 「アカウントは無いのに課金だけ残る」状態を作らないため、
-    // 購読そのものを止めてから受領する（退会処理の最後の防線）。
+    // 購読そのものを止めてから受領する（アカウント削除処理の最後の防線）。
     if (result.reason === "23503" && outcome.kind === "upsert") {
       const canceled = await cancelSubscriptionNow(outcome.record.stripeSubscriptionId);
       if (canceled) {

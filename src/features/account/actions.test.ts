@@ -113,7 +113,7 @@ describe("deleteAccountAction", () => {
       .toBeLessThan(mocks.deleteUser.mock.invocationCallOrder[0]);
   });
 
-  // Checkout を開いたまま退会すると、退会後に決済が完了して
+  // Checkout を開いたままアカウント削除すると、アカウント削除後に決済が完了して
   // アカウントの無い購読ができる。削除前にセッションを潰す。
   it("支払い途中のCheckoutを expire してから削除する", async () => {
     mocks.createClient.mockResolvedValue(createSupabase(signedInUser));
@@ -156,7 +156,7 @@ describe("deleteAccountAction", () => {
   });
 
   // 鍵の無い環境では Checkout も購読も作りえないため、
-  // 購読履歴の無いユーザーの退会を Stripe の設定有無で塞がない。
+  // 購読履歴の無いユーザーのアカウント削除を Stripe の設定有無で塞がない。
   it("Stripe 未設定でも購読履歴の無いユーザーは削除できる", async () => {
     delete process.env.STRIPE_SECRET_KEY;
     mocks.createClient.mockResolvedValue(createSupabase(signedInUser));
