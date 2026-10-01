@@ -1166,5 +1166,67 @@ begin
 end;
 $$;
 
+-- ---------------------------------------------------------------------------
+-- 退会（auth.users の DELETE）でユーザー固有の行がすべて消えること
+-- ---------------------------------------------------------------------------
+-- GoTrue の admin.deleteUser も内部的には auth.users への DELETE なので、
+-- ここでの検査は本番の退会経路と同じカスケードを見る。
+--
+-- 対象ユーザーに全テーブルの行を持たせてから auth.users を消し、
+-- 「対象の行はすべて消える（陽性）」と「他人の行は残る（陰性）」を同じ実行で確かめる。
+do $$
+declare
+  target uuid := gen_random_uuid();
+  meal uuid := gen_random_uuid();
+  battle uuid := gen_random_uuid();
+  -- 陰性側の確認に使う。become() 前の postgres ロールで取っておく。
+  survivor uuid := pg_temp.fixture('user_a');
+begin
+  -- 匿名サインインで作られる auth.users の行を模す。トリガーが profiles を作る。
+  insert into auth.users (id, instance_id, aud, role, is_anonymous, created_at, updated_at)
+  values (target, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', true, now(), now());
+
+  -- 退会で消えるべき全テーブルの行を持たせる。
+  -- battle は completed にする。active の部分ユニークインデックスと
+  -- 衝突しないためと、消し忘れが起きやすい中間状態ではない通常形で検査するため。
+  insert into public.meal_logs (id, user_id, image_path, tag, food_groups)
+  values (meal, target, 'meals/delete.jpg', 'curry', array['rice']);
+
+  insert into public.battle_results (id, user_id, meal_log_id, enemy_character_id, enemy_attribute, status)
+  values (battle, target, meal, 'curry-poop', 'curry', 'completed');
+
+  insert into public.bowel_logs (user_id, battle_result_id, hardness, amount, color, ease)
+  values (target, battle, 4, 'normal', 'brown', 'easy');
+
+  insert into public.user_characters (user_id, character_id, acquired_from_battle_id, hp, power, speed)
+  values (target, 'curry-poop', battle, 260, 24, 18);
+
+  insert into public.subscriptions (user_id, stripe_customer_id, stripe_subscription_id, status, current_period_end)
+  values (target, 'cus_delete', 'sub_delete', 'active', now() + interval '30 days');
+
+  -- 本番の退会処理（admin.deleteUser）と同じ、auth.users への DELETE。
+  delete from auth.users where id = target;
+
+  -- 対象ユーザーの行が全テーブルから消えたこと。
+  if exists (select 1 from public.profiles where id = target)
+    or exists (select 1 from public.meal_logs where user_id = target)
+    or exists (select 1 from public.battle_results where user_id = target)
+    or exists (select 1 from public.bowel_logs where user_id = target)
+    or exists (select 1 from public.user_characters where user_id = target)
+    or exists (select 1 from public.subscriptions where user_id = target) then
+    raise exception 'FAIL: auth.users の削除でユーザー固有の行が残った';
+  end if;
+  raise notice 'ok: auth.users の削除で全テーブルの本人行が消える';
+
+  -- 他人の行が巻き込まれて消えていないこと。
+  if not exists (select 1 from public.profiles where id = survivor)
+    or not exists (select 1 from public.meal_logs where user_id = survivor)
+    or not exists (select 1 from public.subscriptions where user_id = survivor) then
+    raise exception 'FAIL: auth.users の削除で他人の行まで消えた';
+  end if;
+  raise notice 'ok: auth.users の削除は他人の行に波及しない';
+end;
+$$;
+
 -- 検証用データはコミットしない。
 rollback;

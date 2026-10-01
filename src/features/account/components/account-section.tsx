@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { watchAccountStatusFromBrowser } from "@/lib/supabase/account-watch";
 
 import type { AccountStatus } from "../account.types";
+import { DeleteAccountSection } from "./delete-account-section";
 import { GoogleAccountLink } from "./google-account-link";
 
 type Props = {
@@ -31,6 +32,7 @@ export function AccountSection({ initialStatus }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <GoogleAccountLink status={status} />
+      <DeleteAccountSection status={status} />
     </div>
   );
 }

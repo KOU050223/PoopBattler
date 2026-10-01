@@ -89,6 +89,15 @@ export async function deleteMealPhoto(id: string) {
   await runTransaction("readwrite", (store) => store.delete(id));
 }
 
+/**
+ * 退会時に端末内の食事写真をすべて消す。
+ * 画像はサーバーへ送信されずこの端末だけに残るため、アカウント削除と
+ * セットで消さないと、誰の記録か分からない写真だけが端末に残る。
+ */
+export async function deleteAllMealPhotos() {
+  await runTransaction("readwrite", (store) => store.clear());
+}
+
 export function isMealPhotoStorageError(error: unknown): error is MealPhotoStorageError {
   return error instanceof MealPhotoStorageError;
 }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getMealPhoto } from "./meal-photo-storage";
+import { deleteAllMealPhotos, getMealPhoto } from "./meal-photo-storage";
 
 // runTransaction の接続解放を観測する。IndexedDBの実装ではなく
 // 「成功・request失敗・abort のどの経路でも close() が呼ばれるか」だけを見る。
@@ -17,6 +17,16 @@ function stubIndexedDB(outcome: Outcome) {
         objectStore: () => ({
           get: () => {
             const request: Record<string, unknown> = { result: { id: "id", blob: "photo-blob" } };
+            queueMicrotask(() => {
+              const transaction = (openRequest.result as { __tx: Record<string, unknown> }).__tx;
+              if (outcome === "complete") (transaction.oncomplete as () => void)();
+              if (outcome === "request-error") (request.onerror as () => void)();
+              if (outcome === "abort") (transaction.onabort as () => void)();
+            });
+            return request;
+          },
+          clear: () => {
+            const request: Record<string, unknown> = { result: undefined };
             queueMicrotask(() => {
               const transaction = (openRequest.result as { __tx: Record<string, unknown> }).__tx;
               if (outcome === "complete") (transaction.oncomplete as () => void)();
@@ -66,6 +76,14 @@ describe("runTransaction の接続解放", () => {
   it("transactionがabortしても接続を閉じる", async () => {
     const close = stubIndexedDB("abort");
     await expect(getMealPhoto("id")).rejects.toThrow("端末内の画像保存に失敗しました。");
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  // 退会時の全削除も同じ runTransaction を通る。clear 経路でも
+  // 接続を閉じないと、次の DATABASE_VERSION 更新が onblocked で止まる。
+  it("全削除でも接続を閉じる", async () => {
+    const close = stubIndexedDB("complete");
+    await expect(deleteAllMealPhotos()).resolves.toBeUndefined();
     expect(close).toHaveBeenCalledTimes(1);
   });
 });
