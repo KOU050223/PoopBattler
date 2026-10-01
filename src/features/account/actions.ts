@@ -1,6 +1,6 @@
 "use server";
 
-import { cancelSubscriptionNow } from "@/features/billing/cancel-subscription";
+import { closeUserBilling } from "@/features/billing/cancel-subscription";
 import { createClient } from "@/lib/supabase/server";
 import { deleteUserCompletely } from "@/lib/supabase/user-deletion";
 
@@ -54,7 +54,7 @@ export async function deleteAccountAction(): Promise<DeleteAccountResult> {
   // 購読の有無を本人の行で確認する。SELECT ポリシーにより他人の行は読めない。
   const { data: subscription, error: subscriptionError } = await supabase
     .from("subscriptions")
-    .select("stripe_subscription_id")
+    .select("stripe_customer_id, stripe_subscription_id")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -62,11 +62,21 @@ export async function deleteAccountAction(): Promise<DeleteAccountResult> {
     return { status: "error", message: DELETE_ACCOUNT_ERROR_MESSAGE };
   }
 
-  if (subscription?.stripe_subscription_id) {
-    const cancelled = await cancelSubscriptionNow(subscription.stripe_subscription_id);
-    if (!cancelled) {
-      return { status: "error", message: DELETE_ACCOUNT_ERROR_MESSAGE };
-    }
+  // Stripe 側の課金経路をすべて閉じる。DB に行がなくても、支払い途中の
+  // Checkout が残っていれば退会後に購読が作られうるため、行の有無ではなく
+  // ユーザー自身の情報（ID・メール）から Stripe 側を洗う。
+  //
+  // 鍵の無い環境（unconfigured）では課金経路の存在自体がありえないため、
+  // 購読行が無いユーザーはそのまま削除に進める。行があるのに鍵が無い場合は
+  // 課金を確認できないので中止する。
+  const billing = await closeUserBilling({
+    userId: user.id,
+    email: user.email ?? null,
+    stripeCustomerId: subscription?.stripe_customer_id ?? null,
+    stripeSubscriptionId: subscription?.stripe_subscription_id ?? null,
+  });
+  if (billing === "failed" || (billing === "unconfigured" && subscription)) {
+    return { status: "error", message: DELETE_ACCOUNT_ERROR_MESSAGE };
   }
 
   const deletion = await deleteUserCompletely(user.id);

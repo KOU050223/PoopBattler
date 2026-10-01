@@ -5,6 +5,10 @@ const mocks = vi.hoisted(() => ({
   deleteUser: vi.fn(),
   retrieve: vi.fn(),
   cancel: vi.fn(),
+  subscriptionsList: vi.fn(),
+  sessionsList: vi.fn(),
+  sessionsExpire: vi.fn(),
+  customersList: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
@@ -17,7 +21,15 @@ vi.mock("@/lib/supabase/user-deletion", () => ({
 
 vi.mock("stripe", () => ({
   default: class {
-    subscriptions = { retrieve: mocks.retrieve, cancel: mocks.cancel };
+    subscriptions = {
+      retrieve: mocks.retrieve,
+      cancel: mocks.cancel,
+      list: mocks.subscriptionsList,
+    };
+    checkout = {
+      sessions: { list: mocks.sessionsList, expire: mocks.sessionsExpire },
+    };
+    customers = { list: mocks.customersList };
   },
 }));
 
@@ -43,14 +55,28 @@ function createSupabase(
   };
 }
 
+/** Stripe SDK の auto-pagination と同じ、async iterable な list の戻り値。 */
+function listOf<T>(items: T[]) {
+  return {
+    async *[Symbol.asyncIterator]() {
+      yield* items;
+    },
+  };
+}
+
 beforeEach(() => {
-  vi.clearAllMocks();
+  // clearAllMocks は呼び出し履歴だけを消し、mockRejectedValue の実装は残る。
+  // 前のテストの reject が次のテストへ持ち越されると偽の失敗になるため、
+  // 実装ごと戻す resetAllMocks を使う。
+  vi.resetAllMocks();
   process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
-  process.env.STRIPE_PRICE_ID = "price_dummy";
-  process.env.NEXT_PUBLIC_APP_URL = "https://example.test";
 
   mocks.deleteUser.mockResolvedValue({ status: "ok" });
-  mocks.retrieve.mockResolvedValue({ status: "canceled" });
+  mocks.retrieve.mockResolvedValue({ id: "sub_1", status: "canceled" });
+  // 既定は「開いているCheckoutも顧客も購読も無い」状態。
+  mocks.sessionsList.mockReturnValue(listOf([]));
+  mocks.customersList.mockReturnValue(listOf([]));
+  mocks.subscriptionsList.mockReturnValue(listOf([]));
 });
 
 describe("deleteAccountAction", () => {
@@ -66,16 +92,18 @@ describe("deleteAccountAction", () => {
     mocks.createClient.mockResolvedValue(createSupabase(signedInUser));
 
     await expect(deleteAccountAction()).resolves.toEqual({ status: "deleted" });
-    expect(mocks.retrieve).not.toHaveBeenCalled();
     expect(mocks.deleteUser).toHaveBeenCalledWith(userId);
   });
 
   // 「DBだけ消えて Stripe に課金が残る」を防ぐための中核の検査。
   it("購読中のユーザーは Stripe のキャンセルを先に行ってから削除する", async () => {
     mocks.createClient.mockResolvedValue(
-      createSupabase(signedInUser, { stripe_subscription_id: "sub_1" }),
+      createSupabase(signedInUser, {
+        stripe_customer_id: "cus_1",
+        stripe_subscription_id: "sub_1",
+      }),
     );
-    mocks.retrieve.mockResolvedValue({ status: "active" });
+    mocks.subscriptionsList.mockReturnValue(listOf([{ id: "sub_1", status: "active" }]));
 
     await expect(deleteAccountAction()).resolves.toEqual({ status: "deleted" });
 
@@ -85,41 +113,70 @@ describe("deleteAccountAction", () => {
       .toBeLessThan(mocks.deleteUser.mock.invocationCallOrder[0]);
   });
 
-  it("Stripe 側が終端なら cancel せず削除に進む", async () => {
-    mocks.createClient.mockResolvedValue(
-      createSupabase(signedInUser, { stripe_subscription_id: "sub_1" }),
-    );
-    mocks.retrieve.mockResolvedValue({ status: "canceled" });
+  // Checkout を開いたまま退会すると、退会後に決済が完了して
+  // アカウントの無い購読ができる。削除前にセッションを潰す。
+  it("支払い途中のCheckoutを expire してから削除する", async () => {
+    mocks.createClient.mockResolvedValue(createSupabase(signedInUser));
+    mocks.sessionsList.mockReturnValue(listOf([
+      { id: "cs_open", client_reference_id: userId, customer: null },
+    ]));
 
     await expect(deleteAccountAction()).resolves.toEqual({ status: "deleted" });
-    expect(mocks.cancel).not.toHaveBeenCalled();
-    expect(mocks.deleteUser).toHaveBeenCalledWith(userId);
+
+    expect(mocks.sessionsExpire).toHaveBeenCalledWith("cs_open");
+    expect(mocks.sessionsExpire.mock.invocationCallOrder[0])
+      .toBeLessThan(mocks.deleteUser.mock.invocationCallOrder[0]);
   });
 
   // 課金が残るか分からないままユーザーを消すと取り返しがつかない。
   // 失敗時はアカウントを残し、再試行できる状態にする。
-  it("Stripe のキャンセルに失敗したらユーザーを消さない", async () => {
+  it("Stripe 側の停止に失敗したらユーザーを消さない", async () => {
     mocks.createClient.mockResolvedValue(
-      createSupabase(signedInUser, { stripe_subscription_id: "sub_1" }),
+      createSupabase(signedInUser, {
+        stripe_customer_id: "cus_1",
+        stripe_subscription_id: "sub_1",
+      }),
     );
-    mocks.retrieve.mockRejectedValue(new Error("stripe down"));
+    mocks.subscriptionsList.mockReturnValue(listOf([{ id: "sub_1", status: "active" }]));
+    mocks.cancel.mockRejectedValue(new Error("stripe down"));
 
     await expect(deleteAccountAction()).resolves.toMatchObject({ status: "error" });
     expect(mocks.deleteUser).not.toHaveBeenCalled();
   });
 
-  // 1回目の退会でキャンセルまで済んで削除に失敗し、2回目に来た場合。
-  // Stripe 側は canceled なので cancel は飛ばして削除だけをやり直せる。
-  it("キャンセル済みの購読への再試行でも削除まで進む", async () => {
-    mocks.createClient.mockResolvedValue(
-      createSupabase(signedInUser, { stripe_subscription_id: "sub_1" }),
-    );
-    mocks.retrieve.mockRejectedValue(
-      Object.assign(new Error("gone"), { code: "resource_missing" }),
-    );
+  it("Checkout セッションの expire に失敗してもユーザーを消さない", async () => {
+    mocks.createClient.mockResolvedValue(createSupabase(signedInUser));
+    mocks.sessionsList.mockReturnValue(listOf([
+      { id: "cs_open", client_reference_id: userId, customer: null },
+    ]));
+    mocks.sessionsExpire.mockRejectedValue(new Error("stripe down"));
+
+    await expect(deleteAccountAction()).resolves.toMatchObject({ status: "error" });
+    expect(mocks.deleteUser).not.toHaveBeenCalled();
+  });
+
+  // 鍵の無い環境では Checkout も購読も作りえないため、
+  // 購読履歴の無いユーザーの退会を Stripe の設定有無で塞がない。
+  it("Stripe 未設定でも購読履歴の無いユーザーは削除できる", async () => {
+    delete process.env.STRIPE_SECRET_KEY;
+    mocks.createClient.mockResolvedValue(createSupabase(signedInUser));
 
     await expect(deleteAccountAction()).resolves.toEqual({ status: "deleted" });
     expect(mocks.deleteUser).toHaveBeenCalledWith(userId);
+  });
+
+  // 購読行があるのに鍵が無いと、課金が生きているか確認できない。
+  it("購読履歴があるのに Stripe 未設定なら削除を中止する", async () => {
+    delete process.env.STRIPE_SECRET_KEY;
+    mocks.createClient.mockResolvedValue(
+      createSupabase(signedInUser, {
+        stripe_customer_id: "cus_1",
+        stripe_subscription_id: "sub_1",
+      }),
+    );
+
+    await expect(deleteAccountAction()).resolves.toMatchObject({ status: "error" });
+    expect(mocks.deleteUser).not.toHaveBeenCalled();
   });
 
   it("ユーザー削除の失敗を成功として返さない", async () => {
