@@ -150,26 +150,33 @@ export function Poopm3DModel({
     return copy;
   }, [headScene]);
 
+  // 頭を b_root 配下に置くための変換は、クローン直後（mixer 未駆動＝
+  // バインドポーズ）のローカル行列から一度だけ逆算する。交代などで
+  // アニメーション再生中に再計算すると、その瞬間のポーズが変換に
+  // 焼き付いて頭が体からずれたままになる。
+  const headMount = useMemo(() => {
+    const bRoot = cloned.getObjectByName("b_root");
+    if (!bRoot) return null;
+    cloned.updateMatrixWorld(true);
+    return new THREE.Matrix4().copy(bRoot.matrixWorld).invert();
+  }, [cloned]);
+
   // 頭バリアントを稼働リグの b_root の子としてモデル原点に置く。
   // 稼働リグ（poopm_rig）には頭用ソケットが無い。頭ドームの頂点は全て
   // b_root にバインドされているため、b_root の子にすればアニメーションの
   // 頭と同じ変形を受けて追随する。
   useEffect(() => {
+    if (!headMount) return;
     const bRoot = cloned.getObjectByName("b_root");
     if (!bRoot) return;
     const holder = new THREE.Group();
-    cloned.updateWorldMatrix(true, true);
-    const mount = new THREE.Matrix4()
-      .copy(bRoot.matrixWorld)
-      .invert()
-      .multiply(cloned.matrixWorld);
-    mount.decompose(holder.position, holder.quaternion, holder.scale);
+    headMount.decompose(holder.position, holder.quaternion, holder.scale);
     holder.add(clonedHead);
     bRoot.add(holder);
     return () => {
       bRoot.remove(holder);
     };
-  }, [cloned, clonedHead]);
+  }, [cloned, clonedHead, headMount]);
 
   const mixer = useMemo(() => new THREE.AnimationMixer(cloned), [cloned]);
 
