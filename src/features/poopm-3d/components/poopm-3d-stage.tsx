@@ -3,12 +3,22 @@
 import { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { ContactShadows } from "@react-three/drei";
+import { useReducedMotion } from "framer-motion";
 
+import { Poopm3DCameraRig } from "@/features/poopm-3d/components/poopm-3d-camera-rig";
+import { Poopm3DField } from "@/features/poopm-3d/components/poopm-3d-field";
 import {
   Poopm3DModel,
   type Poopm3DAppearance,
   type Poopm3DMotionRequest,
 } from "@/features/poopm-3d/components/poopm-3d-model";
+import {
+  ENEMY_SCALE,
+  PLAYER_SCALE,
+  STAGE_ANCHOR,
+  STAGE_CAMERA_WIDE,
+  STAGE_GROUND_Y,
+} from "@/features/poopm-3d/poopm-3d.camera";
 import type { Poopm3DBattleMotion } from "@/features/poopm-3d/poopm-3d.motion";
 
 export type Poopm3DStageFighter = {
@@ -30,26 +40,28 @@ export function Poopm3DStage({
   speed = 1,
   onMotionFinished,
 }: Poopm3DStageProps) {
+  const reduceMotion = useReducedMotion() ?? false;
   return (
     <Canvas
-      // 2D版と近い斜め見下ろし構図。カメラは固定で OrbitControls は付けない。
-      camera={{ position: [0.15, 3.0, 7.8], fov: 30 }}
+      // 初期値はワイドショット。以降のカメラ制御は CameraRig が持つ。
+      camera={{ position: [...STAGE_CAMERA_WIDE.position], fov: STAGE_CAMERA_WIDE.fov }}
       gl={{ antialias: true, alpha: true }}
       dpr={[1, 2]}
-      onCreated={({ camera }) => camera.lookAt(0, 0.8, -0.4)}
       style={{ background: "transparent" }}
     >
-      <ambientLight intensity={0.85} />
-      <directionalLight position={[3, 5, 4]} intensity={1.5} />
+      <ambientLight intensity={0.7} />
+      <hemisphereLight args={["#cfeaff", "#79b968", 0.5]} />
+      <directionalLight position={[3, 5, 4]} intensity={1.4} />
       <Suspense fallback={null}>
+        <Poopm3DField />
         {/* 敵 = 奥・小さめ、味方 = 手前・大きめ（2D版の遠近感を踏襲） */}
         <Poopm3DModel
           appearance={enemy.appearance}
           motion={enemy.motion}
           facing="front"
           timeScale={speed}
-          position={[0.6, 0, -1.5]}
-          scale={0.82}
+          position={STAGE_ANCHOR.enemy.position}
+          scale={ENEMY_SCALE}
           onMotionFinished={(name) => onMotionFinished?.("enemy", name)}
         />
         <Poopm3DModel
@@ -57,12 +69,12 @@ export function Poopm3DStage({
           motion={player.motion}
           facing="back"
           timeScale={speed}
-          position={[-0.55, 0, 0.7]}
-          scale={1.05}
+          position={STAGE_ANCHOR.player.position}
+          scale={PLAYER_SCALE}
           onMotionFinished={(name) => onMotionFinished?.("player", name)}
         />
         <ContactShadows
-          position={[0, -0.01, -0.2]}
+          position={[0, STAGE_GROUND_Y + 0.012, -0.2]}
           opacity={0.32}
           scale={7}
           blur={2.4}
@@ -70,6 +82,11 @@ export function Poopm3DStage({
           frames={Infinity}
         />
       </Suspense>
+      <Poopm3DCameraRig
+        player={player.motion}
+        enemy={enemy.motion}
+        reduceMotion={reduceMotion}
+      />
     </Canvas>
   );
 }
