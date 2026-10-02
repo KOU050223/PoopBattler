@@ -17,9 +17,19 @@ describe("PremiumSection", () => {
       <PremiumSection status={signedIn} subscription="subscribed" />,
     );
 
-    expect(markup).toContain("プレミアムを管理・解約する");
+    expect(markup).toContain("プレミアムを解約する");
     // 解約とアカウント削除を混同させないため、記録が残ることを明示する。
-    expect(markup).toContain("アカウントや記録は残ります");
+    expect(markup).toContain("記録やアカウントは残り");
+    // 確認段階の文言は1段目では出さない。
+    expect(markup).not.toContain("プレミアムを解約しますか");
+  });
+
+  it("支払い方法や請求履歴は管理ページへの導線を出す", () => {
+    const markup = renderToStaticMarkup(
+      <PremiumSection status={signedIn} subscription="subscribed" />,
+    );
+
+    expect(markup).toContain("支払い方法・請求履歴");
   });
 
   it("購読していない利用者には何も出さない", () => {

@@ -6,7 +6,7 @@ import { toAccountStatus } from "@/features/account/account.types";
 import { hasActiveEntitlement } from "@/features/report/report-access";
 import { createClient } from "@/lib/supabase/server";
 
-import { getStripeEnvironment } from "./stripe-env";
+import { getStripeEnvironment, getStripeSecretKey } from "./stripe-env";
 
 // レポート分析の購入と、購入後の管理（解約・支払い方法の変更）。
 //
@@ -151,6 +151,68 @@ export async function createBillingPortalSessionAction(
     return { status: "redirecting", url: session.url };
   } catch {
     return { status: "error", message: UNKNOWN_ERROR_MESSAGE };
+  }
+}
+
+export type CancelPremiumResult =
+  /** 期間末での解約を予約できた。periodEnd まではプレミアムが使える。 */
+  | { status: "scheduled"; periodEnd: string | null }
+  /** 権利のある購読が無い（未購読・解約済み・期限切れ）。 */
+  | { status: "not-subscribed" }
+  | { status: "error"; message: string };
+
+const CANCEL_ERROR_MESSAGE =
+  "解約処理を完了できませんでした。時間をおいてもう一度お試しください。";
+
+/**
+ * プレミアムの解約。Stripe 側に「期間末で止める」を予約する。
+ *
+ * 即時キャンセル（subscriptions.cancel）ではなく cancel_at_period_end に
+ * するのは、支払い済みの期間まで権利を残すため。すぐ止めると
+ * 「払ったのに期間途中で使えない」になる。
+ *
+ * 実際に権利が切れるのは期間末に届く customer.subscription.deleted で
+ * Webhook が status を canceled に書き換えたあと。記録・アカウントは
+ * 解約しても消えない（消すのはアカウント削除の役目）。
+ */
+export async function cancelPremiumAction(): Promise<CancelPremiumResult> {
+  const supabase = await createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { status: "error", message: "ログイン状態を確認できませんでした。もう一度お試しください。" };
+  }
+
+  const { data: subscription, error: subscriptionError } = await supabase
+    .from("subscriptions")
+    .select("status, current_period_end, stripe_subscription_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (subscriptionError) {
+    return { status: "error", message: CANCEL_ERROR_MESSAGE };
+  }
+
+  if (!subscription || !hasActiveEntitlement(subscription, new Date())) {
+    return { status: "not-subscribed" };
+  }
+
+  let stripe: Stripe;
+  try {
+    // 解約に priceId や appUrl は要らない。販売停止後の環境でも
+    // 既存購読者が解約できるよう secret key だけを要求する。
+    stripe = new Stripe(getStripeSecretKey());
+  } catch {
+    return { status: "error", message: CANCEL_ERROR_MESSAGE };
+  }
+
+  try {
+    await stripe.subscriptions.update(subscription.stripe_subscription_id, {
+      cancel_at_period_end: true,
+    });
+    return { status: "scheduled", periodEnd: subscription.current_period_end };
+  } catch {
+    return { status: "error", message: CANCEL_ERROR_MESSAGE };
   }
 }
 

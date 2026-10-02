@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   checkoutCreate: vi.fn(),
   portalCreate: vi.fn(),
+  subscriptionUpdate: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
@@ -11,10 +12,12 @@ vi.mock("stripe", () => ({
   default: class {
     checkout = { sessions: { create: mocks.checkoutCreate } };
     billingPortal = { sessions: { create: mocks.portalCreate } };
+    subscriptions = { update: mocks.subscriptionUpdate };
   },
 }));
 
 import {
+  cancelPremiumAction,
   createBillingPortalSessionAction,
   createCheckoutSessionAction,
   getSubscriptionSnapshotAction,
@@ -54,7 +57,10 @@ function createSupabase(
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  // clearAllMocks は呼び出し履歴だけを消し、mockRejectedValue の実装は残る。
+  // 前のテストの reject が次のテストへ持ち越されると偽の失敗になるため、
+  // 実装ごと戻す resetAllMocks を使う。
+  vi.resetAllMocks();
   process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
   process.env.STRIPE_PRICE_ID = "price_dummy";
   process.env.NEXT_PUBLIC_APP_URL = "https://example.test";
@@ -250,5 +256,71 @@ describe("getSubscriptionSnapshotAction", () => {
     });
 
     await expect(getSubscriptionSnapshotAction()).resolves.toEqual({ status: "unknown" });
+  });
+});
+
+describe("cancelPremiumAction", () => {
+  const activeSubscription = {
+    status: "active",
+    current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    stripe_subscription_id: "sub_1",
+  };
+
+  // 払い済みの期間は残す。即時 cancel だと期間途中で権利が消えて
+  // 「払ったのに使えない」になる。
+  it("期間末での解約を予約する（即時キャンセルではない）", async () => {
+    mocks.createClient.mockResolvedValue(createSupabase(linkedUser, activeSubscription));
+
+    await expect(cancelPremiumAction()).resolves.toMatchObject({
+      status: "scheduled",
+      periodEnd: activeSubscription.current_period_end,
+    });
+    expect(mocks.subscriptionUpdate).toHaveBeenCalledWith("sub_1", {
+      cancel_at_period_end: true,
+    });
+  });
+
+  it("購読の無いユーザーは not-subscribed と返し Stripe を触らない", async () => {
+    mocks.createClient.mockResolvedValue(createSupabase(linkedUser, null));
+
+    await expect(cancelPremiumAction()).resolves.toEqual({ status: "not-subscribed" });
+    expect(mocks.subscriptionUpdate).not.toHaveBeenCalled();
+  });
+
+  it("期限切れの購読には解約を予約しない", async () => {
+    mocks.createClient.mockResolvedValue(
+      createSupabase(linkedUser, {
+        ...activeSubscription,
+        current_period_end: "2020-01-01T00:00:00.000Z",
+      }),
+    );
+
+    await expect(cancelPremiumAction()).resolves.toEqual({ status: "not-subscribed" });
+    expect(mocks.subscriptionUpdate).not.toHaveBeenCalled();
+  });
+
+  it("未サインインでは解約しない", async () => {
+    mocks.createClient.mockResolvedValue(createSupabase(null));
+
+    await expect(cancelPremiumAction()).resolves.toMatchObject({ status: "error" });
+    expect(mocks.subscriptionUpdate).not.toHaveBeenCalled();
+  });
+
+  // 解約に必要なのは secret key だけ。販売停止後（priceId 等を外した環境）でも
+  // 購読者は解約できなければならない。
+  it("Checkout 用の設定が無くても解約できる", async () => {
+    delete process.env.STRIPE_PRICE_ID;
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    mocks.createClient.mockResolvedValue(createSupabase(linkedUser, activeSubscription));
+
+    await expect(cancelPremiumAction()).resolves.toMatchObject({ status: "scheduled" });
+    expect(mocks.subscriptionUpdate).toHaveBeenCalled();
+  });
+
+  it("Stripe 側の失敗を成功として返さない", async () => {
+    mocks.createClient.mockResolvedValue(createSupabase(linkedUser, activeSubscription));
+    mocks.subscriptionUpdate.mockRejectedValue(new Error("stripe down"));
+
+    await expect(cancelPremiumAction()).resolves.toMatchObject({ status: "error" });
   });
 });
