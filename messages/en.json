@@ -134,7 +134,6 @@
     "linkRequiredDescription": "Without linking, you cannot restore your purchase when you change devices.",
     "linkAccount": "Link your Google account",
     "purchaseSuccess": "Thank you for your purchase. It may take a moment to appear.",
-    "purchaseCanceled": "The purchase was canceled.",
-    "manageSubscription": "Manage subscription"
+    "purchaseCanceled": "The purchase was canceled."
   }
 }

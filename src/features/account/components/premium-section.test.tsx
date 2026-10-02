@@ -32,6 +32,18 @@ describe("PremiumSection", () => {
     expect(markup).toContain("支払い方法・請求履歴");
   });
 
+  // 支払いに失敗した人が購入画面に取り残されないよう、管理ページへの
+  // 導線だけは出す。権利が無いのに「解約する」は出せない。
+  it("支払い失敗（lapsed）の利用者には支払い確認への導線だけを出す", () => {
+    const markup = renderToStaticMarkup(
+      <PremiumSection status={signedIn} subscription="lapsed" />,
+    );
+
+    expect(markup).toContain("お支払いをご確認ください");
+    expect(markup).toContain("お支払い情報を確認する");
+    expect(markup).not.toContain("プレミアムを解約する");
+  });
+
   it("購読していない利用者には何も出さない", () => {
     expect(
       renderToStaticMarkup(

@@ -25,13 +25,16 @@ function formatPeriodEnd(periodEnd: string | null): string | null {
 }
 
 /**
- * プレミアムの解約・支払い管理の導線。
+ * プレミアムの解約・支払い管理の導線。購読管理はこの画面に集約する。
  *
  * 解約はアプリ内で完結させる。`cancel_at_period_end` を立てるだけなので
  * 即時に権利が切れるわけではなく、支払い済みの期間末まで使える。
  * データは一切消えない（消すのはアカウント削除の役目）。
  *
  * 支払い方法の変更や請求履歴は Stripe 顧客ポータルへ委ねる。
+ * lapsed（行はあるが権利なし＝支払い失敗など）の利用者には解約ではなく
+ * 支払いの修正が必要なので、ポータルへの導線だけを出す。
+ * この導線が無いと、支払い失敗した人が Stripe へ辿り着く手段が画面から消える。
  *
  * 購読していない利用者には何も出さない。読み取りに失敗したとき（unknown）も
  * 「購読していません」と誤表示しないよう出さない。
@@ -91,7 +94,38 @@ export function PremiumSection({ status, subscription }: Props) {
     }
   }, []);
 
-  if (!status.signedIn || subscription !== "subscribed") return null;
+  if (!status.signedIn || (subscription !== "subscribed" && subscription !== "lapsed")) {
+    return null;
+  }
+
+  if (subscription === "lapsed") {
+    return (
+      <section className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
+        <div className="flex flex-col gap-1">
+          <p className="font-medium">お支払いをご確認ください</p>
+          <p className="text-sm text-zinc-700 dark:text-zinc-300">
+            プレミアムのお支払いが確認できていません。記録やアカウントは残っています。
+            支払い方法の確認・変更はStripeの管理ページで行えます。
+          </p>
+        </div>
+
+        <button
+          type="button"
+          disabled={pending !== null}
+          onClick={() => void openPortal()}
+          className="min-h-12 rounded bg-zinc-900 px-4 py-2 text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-black"
+        >
+          {pending === "portal" ? "管理ページを開いています…" : "お支払い情報を確認する"}
+        </button>
+
+        {message && (
+          <p aria-live="polite" className="text-sm text-red-700 dark:text-red-400">
+            {message}
+          </p>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">

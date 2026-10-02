@@ -1,8 +1,6 @@
 import { ChartNoAxesCombined, Clock, Palette, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
-import { ManageSubscriptionLink } from "./manage-subscription-link";
-
 import { BarChart } from "./charts/bar-chart";
 import { ShareBar } from "./charts/share-bar";
 import { TrendLine } from "./charts/trend-line";
@@ -53,7 +51,6 @@ export function WeeklyReportView({ report, notice = null }: Props) {
         </p>
       ) : null}
       <PremiumReport report={report} />
-      <ManageSubscriptionLink />
     </div>
   );
 }

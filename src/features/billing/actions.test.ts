@@ -236,7 +236,20 @@ describe("getSubscriptionSnapshotAction", () => {
       createSupabase(linkedUser, { status: "active", current_period_end: "2020-01-01T00:00:00.000Z" }),
     );
 
-    await expect(getSubscriptionSnapshotAction()).resolves.toEqual({ status: "not-subscribed" });
+    await expect(getSubscriptionSnapshotAction()).resolves.toEqual({ status: "lapsed" });
+  });
+
+  // 支払いに失敗した人は購読の行を持つ。ここを not-subscribed と見なすと
+  // 支払い方法を直す導線が画面から消える。
+  it("行はあるが権利の無い購読を lapsed と返す", async () => {
+    mocks.createClient.mockResolvedValue(
+      createSupabase(linkedUser, {
+        status: "past_due",
+        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      }),
+    );
+
+    await expect(getSubscriptionSnapshotAction()).resolves.toEqual({ status: "lapsed" });
   });
 
   it("未サインインを not-subscribed と誤判定しない", async () => {

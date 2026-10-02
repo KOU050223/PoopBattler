@@ -218,13 +218,18 @@ export async function cancelPremiumAction(): Promise<CancelPremiumResult> {
 
 export type SubscriptionSnapshot =
   | { status: "subscribed" }
+  /**
+   * 購読の行はあるが権利が無い（支払い失敗・期限切れなど）。
+   * この人に必要なのは購入ではなく支払い方法の修正なので、
+   * not-subscribed と分けて管理画面への導線を出せるようにする。
+   */
+  | { status: "lapsed" }
   | { status: "not-subscribed" }
   /** 未サインインや読み取り失敗。「未購読」と誤表示しないため別状態にする。 */
   | { status: "unknown" };
 
 /**
- * 本人がいまプレミアムの権利を持つかを返す。アカウント画面の
- * 「プレミアムを解約する」導線を出すかの判定に使う。
+ * 本人の購読状態を返す。アカウント画面のプレミアム管理導線の出し分けに使う。
  *
  * DBエラーを not-subscribed と見なすと、購読中なのに解約導線が
  * 消える。unknown に分けて、表示側はその場合セクションを出さない。
@@ -242,10 +247,11 @@ export async function getSubscriptionSnapshotAction(): Promise<SubscriptionSnaps
     .maybeSingle();
 
   if (subscriptionError) return { status: "unknown" };
+  if (!subscription) return { status: "not-subscribed" };
 
   return {
     status: hasActiveEntitlement(subscription, new Date())
       ? "subscribed"
-      : "not-subscribed",
+      : "lapsed",
   };
 }
