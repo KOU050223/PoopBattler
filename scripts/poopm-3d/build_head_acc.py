@@ -1,8 +1,8 @@
 """うんちくん 3D 頭アクセサリ (head_acc_hat-*.glb) を生成する。
 
 仕様は docs/poopm-3d.md「バリアント追加の手順」。実行時にベースモデルの
-`head_acc` ノード（`b_head_acc` ソケット配下）へアタッチされる前提で、
-**原点 = 最上段ローブの接地点、-Y が正面**としてモデリングする。
+`head_acc` ノード（ソケット）へアタッチされる前提で、
+**原点 = うずまき頂部の接地点、-Y が正面**としてモデリングする。
 
     /Applications/Blender.app/Contents/MacOS/Blender --background \\
         --python scripts/poopm-3d/build_head_acc.py

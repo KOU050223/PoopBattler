@@ -58,8 +58,8 @@ def seat_for(acc_id, top):
 
 
 def roots(objs):
-    ids = set(map(id, objs))
-    return [o for o in objs if o.parent is None or id(o.parent) not in ids]
+    names = {o.name for o in objs}
+    return [o for o in objs if o.parent is None or o.parent.name not in names]
 
 
 def add_camera(name, loc, look_at, ortho=0.55):
