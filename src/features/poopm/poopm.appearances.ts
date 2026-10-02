@@ -1,7 +1,7 @@
 import type { PoopmAppearance } from "@/features/poopm/poopm.types";
 
 export const DEFAULT_APPEARANCE: PoopmAppearance = {
-  head: "hat-a",
+  head: "none",
   eyes: "eye-a",
   mouth: "mouth-a",
   color: "a",

@@ -33,6 +33,8 @@ export const BODY_PNG: Record<BodyColorId, PoopmAssetPath> = {
 };
 
 export const HEAD_PNG: Record<HeadId, PoopmAssetPath> = {
+  // 素頭（アクセなし）。透過PNGなので2Dでは何も描かれない。
+  none: `${ASSET_ROOT}/hat/poopm_hat_none.png`,
   "hat-a": `${ASSET_ROOT}/hat/poopm_hat_a.png`,
   "hat-b": `${ASSET_ROOT}/hat/poopm_hat_b.png`,
   "hat-c": `${ASSET_ROOT}/hat/poopm_hat_c.png`,

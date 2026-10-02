@@ -25,9 +25,8 @@ import {
   type MouthId,
 } from "@/features/poopm/poopm.types";
 
-// GLB に残る編集残骸（arm_L_old / *_bak / ICO球.001 / poopm_rig.001 など）を
-// 描かないよう、表示するメッシュのノード名をホワイトリストで限定する。
-// ブラックリストにすると将来の残骸が黙って映り込むため。
+// 表示するメッシュのノード名をホワイトリストで限定する。再エクスポートで
+// 編集残骸が混じっても黙って映り込まないよう、ブラックリストにはしない。
 const VISIBLE_MESH_NODES = new Set([
   "body",
   "eye",
@@ -152,9 +151,9 @@ export function Poopm3DModel({
   }, [headScene]);
 
   // 頭バリアントを稼働リグの b_root の子としてモデル原点に置く。
-  // 稼働リグ（poopm_rig / skin 0）には頭用ソケットが無く、b_head_acc は
-  // 未使用の残骸リグ側にある。頭ドームの頂点は全て b_root にバインドされている
-  // ため、b_root の子にすればアニメーションの頭と同じ変形を受けて追随する。
+  // 稼働リグ（poopm_rig）には頭用ソケットが無い。頭ドームの頂点は全て
+  // b_root にバインドされているため、b_root の子にすればアニメーションの
+  // 頭と同じ変形を受けて追随する。
   useEffect(() => {
     const bRoot = cloned.getObjectByName("b_root");
     if (!bRoot) return;

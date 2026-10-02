@@ -8,8 +8,9 @@ import type {
 
 export const POOPM_3D_GLB = "/assets/poopm_3d/poopm_base.glb";
 
-// 頭ごと差し替えるバリアントGLB（頭ドーム＋アクセサリ一体、ベースと同じモデル空間）。
-// head_acc_<id>.glb のソケット方式は使わない（理由は docs/poopm-3d.md の既知の問題参照）。
+// 頭ごと差し替えるバリアントGLB（頭ドーム＋カール＋アクセサリ一体、ベースと同じモデル空間）。
+// ベースは頭を持たないため素頭を含む全 HeadId がこの方式で、"none" がアクセなしの素頭。
+// head_acc_<id>.glb のソケット方式は使わない（理由は docs/poopm-3d.md 参照）。
 export function poopm3DHeadVarGlb(head: HeadId): string {
   return `/assets/poopm_3d/head_var_${head}.glb`;
 }

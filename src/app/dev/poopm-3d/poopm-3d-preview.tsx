@@ -68,7 +68,7 @@ function OptionRow<T extends string>({
 
 export function Poopm3DPreview() {
   const [appearances, setAppearances] = useState<Record<Side, Poopm3DAppearance>>({
-    player: { color: "a", eyes: "eye-a", mouth: "mouth-a", head: "hat-a" },
+    player: { color: "a", eyes: "eye-a", mouth: "mouth-a", head: "none" },
     enemy: { color: "orange", eyes: "eye-g", mouth: "mouth-g", head: "hat-c" },
   });
   const [motions, setMotions] = useState<
