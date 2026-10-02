@@ -14,7 +14,18 @@ GLB は `scripts/poopm-3d/build_poopm_base.py` が生成する。Blender を手�
 
 顔はメッシュに入れない。胴体前面に貼る透明テクスチャのフェイスプレートで表現し、個体差はテクスチャ差し替えで出す。テクスチャは2D版と同じ `/assets/poopm_parts/eyes|mouth/*.png` をそのまま使い、GLBのプレートには既定外見（`DEFAULT_APPEARANCE`）の `poopm_eye_a.png` / `poopm_mouth_a.png` を仮テクスチャとして焼き込み、単体のプレビューでも顔が出るようにする。眉毛は目パーツのPNGに含まれる（`poopm_eye_*.png` 参照）。
 
-頭アクセサリも `poopm_base.glb` には含めない。`public/assets/poopm_3d/head_acc_<id>.glb` として個別出力し、実行時にロードして `head_acc` ノードへアタッチする。ベースGLBを肥大化させず、追加はファイルを置くだけで済む形にする。
+頭アクセサリも `poopm_base.glb` には含めない。`public/assets/poopm_3d/head_acc_<id>.glb`（`<id>` は `hat-a` などのパーツID）として個別出力し、実行時にロードして `head_acc` ノードへアタッチする。ベースGLBを肥大化させず、追加はファイルを置くだけで済む形にする。
+
+アクセサリGLBは `scripts/poopm-3d/build_head_acc.py` が生成する。原点 = ソケット接地点、-Y が正面。プレビューは `render_head_acc_preview.py` で `scripts/poopm-3d/out/` にレンダリングできる。
+
+`head_var_<id>.glb` は頭ごと差し替えるバリアント（hat-a リーフ / hat-b 王冠 / hat-c 野球帽 / hat-d すっぽん / hat-e ゴーグル / hat-f デイジー）。頭ドーム＋アクセサリを1メッシュにまとめた手作り品で、ベースモデルと同じモデル空間座標（原点 = キャラ原点）に収まる。実行時は `head` ノードを差し替えて使う。ドーム部分は `poopm_body` マテリアルのため色違い対応に巻き込まれる。
+
+```bash
+/Applications/Blender.app/Contents/MacOS/Blender --background --python scripts/poopm-3d/build_head_acc.py
+/Applications/Blender.app/Contents/MacOS/Blender --background --python scripts/poopm-3d/render_head_acc_preview.py
+```
+
+> 既知の問題: 現行 `poopm_base.glb` の稼働リグには `b_head_acc` が無く、`head_acc` ノードは書き出し時の残骸リグ（別アーマチュア）に付いて浮いた位置にある。実行時にアタッチする前に、ベースモデル側のソケットを整備する必要がある。
 
 Blender 側は `-Y` を正面にモデリングし、アーマチュアはデフォームボーンのみを glTF エクスポートする前提。ソケット用の `b_face` / `b_head_acc` もウエイトを持たないデフォームボーンにして、書き出しで落ちないようにする。
 
