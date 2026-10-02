@@ -12,6 +12,7 @@ import type { Poopm3DAppearance } from "@/features/poopm-3d/components/poopm-3d-
 import {
   BODY_COLOR_IDS,
   EYE_IDS,
+  HEAD_IDS,
   MOUTH_IDS,
 } from "@/features/poopm/poopm.types";
 
@@ -67,8 +68,8 @@ function OptionRow<T extends string>({
 
 export function Poopm3DPreview() {
   const [appearances, setAppearances] = useState<Record<Side, Poopm3DAppearance>>({
-    player: { color: "a", eyes: "eye-a", mouth: "mouth-a" },
-    enemy: { color: "orange", eyes: "eye-g", mouth: "mouth-g" },
+    player: { color: "a", eyes: "eye-a", mouth: "mouth-a", head: "hat-a" },
+    enemy: { color: "orange", eyes: "eye-g", mouth: "mouth-g", head: "hat-c" },
   });
   const [motions, setMotions] = useState<
     Record<Side, Poopm3DStageProps["player"]["motion"]>
@@ -132,6 +133,17 @@ export function Poopm3DPreview() {
             options={POOPM_3D_BATTLE_MOTIONS}
             value={motions[side].name}
             onSelect={(motion) => playMotion(side, motion)}
+          />
+          <OptionRow
+            label="頭"
+            options={HEAD_IDS}
+            value={appearances[side].head}
+            onSelect={(head) =>
+              setAppearances((prev) => ({
+                ...prev,
+                [side]: { ...prev[side], head },
+              }))
+            }
           />
           <OptionRow
             label="体色"

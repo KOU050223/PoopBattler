@@ -6,10 +6,15 @@ import { describe, expect, it } from "vitest";
 import {
   POOPM_3D_GLB,
   poopm3DEyeTexture,
+  poopm3DHeadVarGlb,
   poopm3DMouthTexture,
 } from "@/features/poopm-3d/poopm-3d.assets";
 import { DEFAULT_APPEARANCE } from "@/features/poopm/poopm.appearances";
-import { EYE_IDS, MOUTH_IDS } from "@/features/poopm/poopm.types";
+import {
+  EYE_IDS,
+  HEAD_IDS,
+  MOUTH_IDS,
+} from "@/features/poopm/poopm.types";
 
 describe("poopm-3d assets", () => {
   it("ベースGLBが public 配下にある", () => {
@@ -23,6 +28,13 @@ describe("poopm-3d assets", () => {
     }
     for (const mouth of MOUTH_IDS) {
       const path = poopm3DMouthTexture(mouth);
+      expect(existsSync(join(process.cwd(), "public", path)), path).toBe(true);
+    }
+  });
+
+  it("参照する頭バリアントGLBがすべて public 配下にある", () => {
+    for (const head of HEAD_IDS) {
+      const path = poopm3DHeadVarGlb(head);
       expect(existsSync(join(process.cwd(), "public", path)), path).toBe(true);
     }
   });

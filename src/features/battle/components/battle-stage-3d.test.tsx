@@ -5,11 +5,16 @@ import { BattleStage3D } from "@/features/battle/components/battle-stage-3d";
 
 const PROPS = {
   player: {
-    appearance: { color: "a", eyes: "eye-a", mouth: "mouth-a" },
+    appearance: { color: "a", eyes: "eye-a", mouth: "mouth-a", head: "hat-a" },
     motion: { name: "idle", nonce: 0 },
   },
   enemy: {
-    appearance: { color: "orange", eyes: "eye-g", mouth: "mouth-g" },
+    appearance: {
+      color: "orange",
+      eyes: "eye-g",
+      mouth: "mouth-g",
+      head: "hat-c",
+    },
     motion: { name: "idle", nonce: 0 },
   },
   speed: 1,

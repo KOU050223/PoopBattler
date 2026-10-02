@@ -10,16 +10,19 @@ import {
   POOPM_3D_BODY_COLORS,
   POOPM_3D_GLB,
   poopm3DEyeTexture,
+  poopm3DHeadVarGlb,
   poopm3DMouthTexture,
 } from "@/features/poopm-3d/poopm-3d.assets";
 import {
   poopm3DMotionSpec,
   type Poopm3DBattleMotion,
 } from "@/features/poopm-3d/poopm-3d.motion";
-import type {
-  BodyColorId,
-  EyeId,
-  MouthId,
+import {
+  HEAD_IDS,
+  type BodyColorId,
+  type EyeId,
+  type HeadId,
+  type MouthId,
 } from "@/features/poopm/poopm.types";
 
 // GLB に残る編集残骸（arm_L_old / *_bak / ICO球.001 / poopm_rig.001 など）を
@@ -43,6 +46,7 @@ export type Poopm3DAppearance = {
   color: BodyColorId;
   eyes: EyeId;
   mouth: MouthId;
+  head: HeadId;
 };
 
 export type Poopm3DMotionRequest = {
@@ -104,6 +108,7 @@ export function Poopm3DModel({
   onMotionFinished,
 }: Poopm3DModelProps) {
   const { scene, animations } = useGLTF(POOPM_3D_GLB);
+  const { scene: headScene } = useGLTF(poopm3DHeadVarGlb(appearance.head));
   const eyeTexture = useMemo(
     () => loadFaceTexture(poopm3DEyeTexture(appearance.eyes)),
     [appearance.eyes],
@@ -130,13 +135,52 @@ export function Poopm3DModel({
     return copy;
   }, [scene]);
 
+  // 頭バリアントも個体ごとにクローンする（体色の上書きが個体間で共有されないよう
+  // ベース同様マテリアルも複製する）。非スキンメッシュなので clone で十分だが、
+  // ベースと手順を揃えるため SkeletonUtils.clone を使う。
+  const clonedHead = useMemo(() => {
+    const copy = SkeletonUtils.clone(headScene);
+    copy.traverse((object: THREE.Object3D) => {
+      const mesh = object as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.frustumCulled = false;
+      mesh.material = Array.isArray(mesh.material)
+        ? mesh.material.map((material) => material.clone())
+        : mesh.material.clone();
+    });
+    return copy;
+  }, [headScene]);
+
+  // 頭バリアントを稼働リグの b_root の子としてモデル原点に置く。
+  // 稼働リグ（poopm_rig / skin 0）には頭用ソケットが無く、b_head_acc は
+  // 未使用の残骸リグ側にある。頭ドームの頂点は全て b_root にバインドされている
+  // ため、b_root の子にすればアニメーションの頭と同じ変形を受けて追随する。
+  useEffect(() => {
+    const bRoot = cloned.getObjectByName("b_root");
+    if (!bRoot) return;
+    const holder = new THREE.Group();
+    cloned.updateWorldMatrix(true, true);
+    const mount = new THREE.Matrix4()
+      .copy(bRoot.matrixWorld)
+      .invert()
+      .multiply(cloned.matrixWorld);
+    mount.decompose(holder.position, holder.quaternion, holder.scale);
+    holder.add(clonedHead);
+    bRoot.add(holder);
+    return () => {
+      bRoot.remove(holder);
+    };
+  }, [cloned, clonedHead]);
+
   const mixer = useMemo(() => new THREE.AnimationMixer(cloned), [cloned]);
 
   // 体色・フェイステクスチャの差し替え。クローン済みマテリアルにだけ効く。
+  // 頭バリアントのドームも poopm_body マテリアルなので同じ色を書き込む。
   useEffect(() => {
-    const bodyMaterial = findMaterial(cloned, "poopm_body");
-    bodyMaterial?.color.set(POOPM_3D_BODY_COLORS[appearance.color]);
-  }, [cloned, appearance.color]);
+    const color = POOPM_3D_BODY_COLORS[appearance.color];
+    findMaterial(cloned, "poopm_body")?.color.set(color);
+    findMaterial(clonedHead, "poopm_body")?.color.set(color);
+  }, [cloned, clonedHead, appearance.color]);
 
   useEffect(() => {
     const apply = (materialName: string, texture: THREE.Texture) => {
@@ -212,3 +256,6 @@ export function Poopm3DModel({
 }
 
 useGLTF.preload(POOPM_3D_GLB);
+for (const head of HEAD_IDS) {
+  useGLTF.preload(poopm3DHeadVarGlb(head));
+}

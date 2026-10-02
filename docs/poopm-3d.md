@@ -18,14 +18,14 @@ GLB は `scripts/poopm-3d/build_poopm_base.py` が生成する。Blender を手�
 
 アクセサリGLBは `scripts/poopm-3d/build_head_acc.py` が生成する。原点 = ソケット接地点、-Y が正面。プレビューは `render_head_acc_preview.py` で `scripts/poopm-3d/out/` にレンダリングできる。
 
-`head_var_<id>.glb` は頭ごと差し替えるバリアント（hat-a リーフ / hat-b 王冠 / hat-c 野球帽 / hat-d すっぽん / hat-e ゴーグル / hat-f デイジー）。頭ドーム＋アクセサリを1メッシュにまとめた手作り品で、ベースモデルと同じモデル空間座標（原点 = キャラ原点）に収まる。実行時は `head` ノードを差し替えて使う。ドーム部分は `poopm_body` マテリアルのため色違い対応に巻き込まれる。
+`head_var_<id>.glb` は頭ごと差し替えるバリアント（hat-a リーフ / hat-b 王冠 / hat-c 野球帽 / hat-d すっぽん / hat-e ゴーグル / hat-f デイジー）。頭ドーム＋アクセサリを1メッシュにまとめた手作り品で、ベースモデルと同じモデル空間座標（原点 = キャラ原点）に収まる。ベースの `body` は頭まで1メッシュに焼かれていて部分非表示にできないため、実行時は差し替えではなく稼働リグの `b_root` 配下に被せて表示する（既知の問題参照）。ドーム部分は `poopm_body` マテリアルのため色違い対応に巻き込まれる。
 
 ```bash
 /Applications/Blender.app/Contents/MacOS/Blender --background --python scripts/poopm-3d/build_head_acc.py
 /Applications/Blender.app/Contents/MacOS/Blender --background --python scripts/poopm-3d/render_head_acc_preview.py
 ```
 
-> 既知の問題: 現行 `poopm_base.glb` の稼働リグには `b_head_acc` が無く、`head_acc` ノードは書き出し時の残骸リグ（別アーマチュア）に付いて浮いた位置にある。実行時にアタッチする前に、ベースモデル側のソケットを整備する必要がある。
+> 既知の問題: `b_head_acc` は存在するが未使用の残骸リグ（`poopm_rig.001`）側にあり、アニメーションの対象外かつ描画される頭頂より上に浮いているため、ソケット方式（`head_acc_<id>.glb` のボーンアタッチ）は現行GLBでは使えない。代わりに実行時は `head_var_<id>.glb`（頭ドーム一体型）を稼働リグの `b_root` の子としてモデル原点に配置する。頭ドームの頂点は全て `b_root` にバインドされているため、これでアニメーションに正しく追随する。ドーム部分はベースの頭と同一形状・同一 `poopm_body` 色で二重描画は視認されないが、hat-c / hat-d のようにドームを途中で切ったバリアントではベースのカール先端が帽子から少しはみ出る。完全に消すにはベースGLB側で頭メッシュを分離する再生成が必要。
 
 Blender 側は `-Y` を正面にモデリングし、アーマチュアはデフォームボーンのみを glTF エクスポートする前提。ソケット用の `b_face` / `b_head_acc` もウエイトを持たないデフォームボーンにして、書き出しで落ちないようにする。
 
@@ -37,7 +37,7 @@ Blender 側は `-Y` を正面にモデリングし、アーマチュアはデフ
 | --- | --- | --- |
 | 胴体 | 固定 | 閉じたドーム状ローブの3段積層 + 先端のカール。単一メッシュ `body`、マテリアル `poopm_body` |
 | 手足 | 固定 | 細い棒状の腕脚に関節。手は掌なしの小枝状3本指、足は豆形の扁平楕円。マテリアル `poopm_limb`（胴体より濃い焦茶で固定）。スキンしてリグで動かす |
-| 頭アクセサリ | 可変 | 別GLBを個体ごとにロードして `head_acc` にアタッチ |
+| 頭アクセサリ | 可変 | `head_var_<id>.glb` を個体ごとにロードして稼働リグの `b_root` 配下に配置 |
 | 目・口 | 可変 | フェイスプレート `eye` / `mouth` のテクスチャを個体ごとに差し替え |
 | 色 | 可変 | 胴体マテリアル `poopm_body` の baseColor を個体ごとに上書き。`poopm_limb` は変えない（色変化は胴体だけに効く） |
 
@@ -93,13 +93,13 @@ Blender 側は `-Y` を正面にモデリングし、アーマチュアはデフ
 
 ## 実行時の利用
 
-戦闘画面（`/battle`）のキャラ描画は react-three-fiber で `poopm_base.glb` を表示する。`src/features/poopm-3d/` の `Poopm3DStage`（Canvas + ライト + 床影）に味方・敵それぞれの外見（`Poopm3DAppearance` = 体色・目・口）とモーションを渡す。体色は `poopm_body` マテリアルの baseColor、目・口はフェイスプレートのテクスチャを `EYES_PNG` / `MOUTH_PNG` の PNG で差し替える。モーションはモーション名（`POOPM_3D_BATTLE_MOTIONS`）+ nonce を渡し、モーション名 → クリップ・ループ・フェード時間の対応は `poopm-3d.motion.ts`、バトルの状態差分からモーションを決める状態機械は `battle-stage-motion.ts` が持つ。表示確認は `/dev/poopm-3d`（開発環境のみ）。
+戦闘画面（`/battle`）のキャラ描画は react-three-fiber で `poopm_base.glb` を表示する。`src/features/poopm-3d/` の `Poopm3DStage`（Canvas + ライト + 床影）に味方・敵それぞれの外見（`Poopm3DAppearance` = 体色・目・口・頭）とモーションを渡す。体色は `poopm_body` マテリアルの baseColor、目・口はフェイスプレートのテクスチャを `EYES_PNG` / `MOUTH_PNG` の PNG で差し替え、頭は `head_var_<id>.glb` を `b_root` 配下に配置する。モーションはモーション名（`POOPM_3D_BATTLE_MOTIONS`）+ nonce を渡し、モーション名 → クリップ・ループ・フェード時間の対応は `poopm-3d.motion.ts`、バトルの状態差分からモーションを決める状態機械は `battle-stage-motion.ts` が持つ。表示確認は `/dev/poopm-3d`（開発環境のみ）。
 
 GLB には編集残骸のノード（`arm_L_old` や `*_bak`、`poopm_rig.001` など）が残っている。実行時はメッシュノードをホワイトリスト（`poopm-3d-model.tsx` の `VISIBLE_MESH_NODES`）で絞って表示するので、新しい残骸を追加しても映り込まない。
 
 ## バリアント追加の手順
 
 1. 目・口は新しいPNGを `/assets/poopm_parts/eyes|mouth/` に追加し、実行時にプレートのテクスチャを差し替える。モデルは変更しない
-2. 頭アクセサリは `head_acc_<id>.glb` として別GLB出力し、実行時に `head_acc` ノード（`b_head_acc` 配下）へアタッチする。ソケットの原点・向きに合わせてモデリングする
+2. 頭アクセサリは `head_var_<id>.glb`（頭ドーム＋アクセサリ一体、モデル空間座標）として別GLB出力する。実行時は `b_root` 配下に配置され、ソケットの原点・向きではなくベースの頭ドームに被さる形でモデリングする。`head_acc_<id>.glb`（ソケット方式）は現行ベースGLBでは使えない（既知の問題参照）
 3. `poopm.appearances.ts` 側のパーツIDと対応付ける
 4. 胴体色はモデルを増やさず `poopm_body` の色違いで対応する
