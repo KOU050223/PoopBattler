@@ -18,6 +18,8 @@ GLB は `scripts/poopm-3d/build_poopm_base.py` が生成する。Blender を手�
 
 アクセサリGLBは `scripts/poopm-3d/build_head_acc.py` が生成する。原点 = ソケット接地点、-Y が正面。プレビューは `render_head_acc_preview.py` で `scripts/poopm-3d/out/` にレンダリングできる。
 
+`head_var_<id>.glb` は頭ごと差し替えるバリアント（hat-a リーフ / hat-b 王冠 / hat-c 野球帽 / hat-d すっぽん / hat-e ゴーグル / hat-f デイジー）。頭ドーム＋アクセサリを1メッシュにまとめた手作り品で、ベースモデルと同じモデル空間座標（原点 = キャラ原点）に収まる。実行時は `head` ノードを差し替えて使う。ドーム部分は `poopm_body` マテリアルのため色違い対応に巻き込まれる。
+
 ```bash
 /Applications/Blender.app/Contents/MacOS/Blender --background --python scripts/poopm-3d/build_head_acc.py
 /Applications/Blender.app/Contents/MacOS/Blender --background --python scripts/poopm-3d/render_head_acc_preview.py
