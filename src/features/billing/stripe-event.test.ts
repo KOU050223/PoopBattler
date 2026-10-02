@@ -49,6 +49,7 @@ describe("resolveStripeEvent（購入）", () => {
         stripeSubscriptionId: "sub_1",
         status: "active",
         currentPeriodEnd: new Date(1790000000 * 1000).toISOString(),
+        cancelAtPeriodEnd: false,
       },
     });
   });
@@ -120,8 +121,51 @@ describe("resolveStripeEvent（購読の更新）", () => {
       stripeSubscriptionId: undefined,
       status: "active",
       currentPeriodEnd: new Date(1790000000 * 1000).toISOString(),
+      cancelAtPeriodEnd: false,
       eventCreatedAt: new Date(EVENT_CREATED * 1000).toISOString(),
     });
+  });
+
+  // status は期間末まで active のまま変わらないため、解約予約は
+  // cancel_at_period_end を別に同期しないと画面に反映されない。
+  it("期間末解約の予約を cancelAtPeriodEnd として取り出す", () => {
+    const outcome = resolveStripeEvent(
+      subscriptionEvent("customer.subscription.updated", {
+        customer: "cus_1",
+        status: "active",
+        cancel_at_period_end: true,
+        current_period_end: 1790000000,
+      }),
+    );
+
+    expect(outcome).toMatchObject({ status: "active", cancelAtPeriodEnd: true });
+  });
+
+  // ポータル等で予約を取り消すと Stripe は false の updated を送る。
+  // true のまま残すと、予約を取り消したのに「解約されます」と出続ける。
+  it("予約の取り消しを false として取り出す", () => {
+    const outcome = resolveStripeEvent(
+      subscriptionEvent("customer.subscription.updated", {
+        customer: "cus_1",
+        status: "active",
+        cancel_at_period_end: false,
+        current_period_end: 1790000000,
+      }),
+    );
+
+    expect(outcome).toMatchObject({ cancelAtPeriodEnd: false });
+  });
+
+  it("購読の消失では予約フラグを false に倒す", () => {
+    const outcome = resolveStripeEvent(
+      subscriptionEvent("customer.subscription.deleted", {
+        customer: "cus_1",
+        status: "active",
+        cancel_at_period_end: true,
+      }),
+    );
+
+    expect(outcome).toMatchObject({ status: "canceled", cancelAtPeriodEnd: false });
   });
 
   // 新しいAPIバージョンでは期限が items 側にある。片方だけを読むと

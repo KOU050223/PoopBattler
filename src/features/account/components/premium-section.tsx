@@ -12,7 +12,7 @@ import type { AccountStatus } from "../account.types";
 
 type Props = {
   status: AccountStatus;
-  subscription: SubscriptionSnapshot["status"];
+  subscription: SubscriptionSnapshot;
 };
 
 type Pending = "cancel" | "portal" | null;
@@ -44,7 +44,14 @@ export function PremiumSection({ status, subscription }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState("");
   const [scheduledUntil, setScheduledUntil] = useState<string | null>(null);
-  const [scheduled, setScheduled] = useState(false);
+
+  // DBに残った予約と、この画面で立てたばかりの予約の両方を見る。
+  // cancel_at_period_end は期間末まで status が active のままなので、
+  // これを見ないと再訪問時に「解約する」が出続ける。
+  const scheduled =
+    (subscription.status === "subscribed" && subscription.cancelAtPeriodEnd)
+    || scheduledUntil !== null;
+  const subscriptionStatus = subscription.status;
 
   const openPortal = useCallback(async () => {
     setPending("portal");
@@ -76,7 +83,6 @@ export function PremiumSection({ status, subscription }: Props) {
       if (result.status === "scheduled") {
         setPending(null);
         setConfirming(false);
-        setScheduled(true);
         setScheduledUntil(formatPeriodEnd(result.periodEnd));
         return;
       }
@@ -94,11 +100,11 @@ export function PremiumSection({ status, subscription }: Props) {
     }
   }, []);
 
-  if (!status.signedIn || (subscription !== "subscribed" && subscription !== "lapsed")) {
+  if (!status.signedIn || (subscriptionStatus !== "subscribed" && subscriptionStatus !== "lapsed")) {
     return null;
   }
 
-  if (subscription === "lapsed") {
+  if (subscriptionStatus === "lapsed") {
     return (
       <section className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
         <div className="flex flex-col gap-1">
@@ -130,10 +136,12 @@ export function PremiumSection({ status, subscription }: Props) {
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex flex-col gap-1">
-        <p className="font-medium">プレミアムをご利用中です</p>
+        <p className="font-medium">
+          {scheduled ? "解約の予約ができています" : "プレミアムをご利用中です"}
+        </p>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {scheduled
-            ? `${scheduledUntil ?? "次の請求日"} に解約されます。それまではプレミアムをご利用いただけます。`
+            ? `${scheduledUntil ?? formatPeriodEnd(subscription.status === "subscribed" ? subscription.periodEnd : null) ?? "次の請求日"} に解約されます。それまではプレミアムをご利用いただけます。`
             : "解約すると次回以降の請求が止まります。記録やアカウントは残り、期間の終わりまでは引き続き使えます。"}
         </p>
       </div>

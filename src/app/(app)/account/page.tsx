@@ -36,7 +36,7 @@ export default async function AccountPage({
         errorCode={readAuthErrorCode(params)}
       />
 
-      <AccountSection initialStatus={accountStatus} subscription={subscription.status} />
+      <AccountSection initialStatus={accountStatus} subscription={subscription} />
     </>
   );
 }

@@ -185,7 +185,7 @@ export async function cancelPremiumAction(): Promise<CancelPremiumResult> {
 
   const { data: subscription, error: subscriptionError } = await supabase
     .from("subscriptions")
-    .select("status, current_period_end, stripe_subscription_id")
+    .select("status, current_period_end, stripe_subscription_id, cancel_at_period_end")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -195,6 +195,11 @@ export async function cancelPremiumAction(): Promise<CancelPremiumResult> {
 
   if (!subscription || !hasActiveEntitlement(subscription, new Date())) {
     return { status: "not-subscribed" };
+  }
+
+  // Webhook 反映済みの行に対して再度解約を押されても、Stripe を二度触らない。
+  if (subscription.cancel_at_period_end) {
+    return { status: "scheduled", periodEnd: subscription.current_period_end };
   }
 
   let stripe: Stripe;
@@ -217,7 +222,16 @@ export async function cancelPremiumAction(): Promise<CancelPremiumResult> {
 }
 
 export type SubscriptionSnapshot =
-  | { status: "subscribed" }
+  | {
+      status: "subscribed";
+      /**
+       * 期間末解約の予約済みか。Stripe は予約後も期間末まで status を
+       * active のまま返すため、これを見ないと画面に「解約する」が出続ける。
+       */
+      cancelAtPeriodEnd: boolean;
+      /** 解約予約済みのときに「いつまで使えるか」を表示するために使う。 */
+      periodEnd: string | null;
+    }
   /**
    * 購読の行はあるが権利が無い（支払い失敗・期限切れなど）。
    * この人に必要なのは購入ではなく支払い方法の修正なので、
@@ -242,16 +256,17 @@ export async function getSubscriptionSnapshotAction(): Promise<SubscriptionSnaps
 
   const { data: subscription, error: subscriptionError } = await supabase
     .from("subscriptions")
-    .select("status, current_period_end")
+    .select("status, current_period_end, cancel_at_period_end")
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (subscriptionError) return { status: "unknown" };
   if (!subscription) return { status: "not-subscribed" };
+  if (!hasActiveEntitlement(subscription, new Date())) return { status: "lapsed" };
 
   return {
-    status: hasActiveEntitlement(subscription, new Date())
-      ? "subscribed"
-      : "lapsed",
+    status: "subscribed",
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    periodEnd: subscription.current_period_end,
   };
 }

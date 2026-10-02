@@ -217,12 +217,31 @@ describe("getSubscriptionSnapshotAction", () => {
   const activeSubscription = {
     status: "active",
     current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    cancel_at_period_end: false,
   };
 
   it("期限内の購読があるユーザーを subscribed と返す", async () => {
     mocks.createClient.mockResolvedValue(createSupabase(linkedUser, activeSubscription));
 
-    await expect(getSubscriptionSnapshotAction()).resolves.toEqual({ status: "subscribed" });
+    await expect(getSubscriptionSnapshotAction()).resolves.toEqual({
+      status: "subscribed",
+      cancelAtPeriodEnd: false,
+      periodEnd: activeSubscription.current_period_end,
+    });
+  });
+
+  // 期間末解約の予約は status には現れない（期間末まで active のまま）。
+  // このフラグを落とすと、画面に「解約する」が出続ける。
+  it("解約予約済みの購読は cancelAtPeriodEnd と期限を返す", async () => {
+    mocks.createClient.mockResolvedValue(
+      createSupabase(linkedUser, { ...activeSubscription, cancel_at_period_end: true }),
+    );
+
+    await expect(getSubscriptionSnapshotAction()).resolves.toEqual({
+      status: "subscribed",
+      cancelAtPeriodEnd: true,
+      periodEnd: activeSubscription.current_period_end,
+    });
   });
 
   it("購読の無いユーザーを not-subscribed と返す", async () => {
@@ -277,6 +296,7 @@ describe("cancelPremiumAction", () => {
     status: "active",
     current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     stripe_subscription_id: "sub_1",
+    cancel_at_period_end: false,
   };
 
   // 払い済みの期間は残す。即時 cancel だと期間途中で権利が消えて
@@ -291,6 +311,20 @@ describe("cancelPremiumAction", () => {
     expect(mocks.subscriptionUpdate).toHaveBeenCalledWith("sub_1", {
       cancel_at_period_end: true,
     });
+  });
+
+  // 予約済みの行に再度解約を押されても Stripe を二度触らない。
+  // Webhook の反映済み状態がそのまま答えになる。
+  it("すでに解約予約済みなら Stripe を呼ばず予約済みを返す", async () => {
+    mocks.createClient.mockResolvedValue(
+      createSupabase(linkedUser, { ...activeSubscription, cancel_at_period_end: true }),
+    );
+
+    await expect(cancelPremiumAction()).resolves.toMatchObject({
+      status: "scheduled",
+      periodEnd: activeSubscription.current_period_end,
+    });
+    expect(mocks.subscriptionUpdate).not.toHaveBeenCalled();
   });
 
   it("購読の無いユーザーは not-subscribed と返し Stripe を触らない", async () => {

@@ -18,7 +18,7 @@ type Props = {
    */
   initialStatus: AccountStatus;
   /** サーバー側で読んだ購読状態。プレミアム解約の導線を出すかに使う。 */
-  subscription: SubscriptionSnapshot["status"];
+  subscription: SubscriptionSnapshot;
 };
 
 /**

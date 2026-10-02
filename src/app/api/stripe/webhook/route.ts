@@ -94,6 +94,7 @@ export async function POST(request: Request) {
         stripeSubscriptionId: outcome.stripeSubscriptionId,
         status: outcome.status,
         currentPeriodEnd: outcome.currentPeriodEnd,
+        cancelAtPeriodEnd: outcome.cancelAtPeriodEnd,
         eventCreatedAt: outcome.eventCreatedAt,
       });
 
