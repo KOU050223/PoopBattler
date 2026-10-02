@@ -91,6 +91,12 @@ Blender 側は `-Y` を正面にモデリングし、アーマチュアはデフ
 - 手は掌を持たない小枝状で、短い3本の指が扇状に開く。足は接地する豆形の扁平楕円。細さと短さは2Dのシルエット優先を継承し、服や靴は足さない
 - 後ろ姿は2D同様に別パーツを用意しない。フェイスプレートを非表示にし、頭だけ左右反転する。正面から使う前提
 
+## 実行時の利用
+
+戦闘画面（`/battle`）のキャラ描画は react-three-fiber で `poopm_base.glb` を表示する。`src/features/poopm-3d/` の `Poopm3DStage`（Canvas + ライト + 床影）に味方・敵それぞれの外見（`Poopm3DAppearance` = 体色・目・口）とモーションを渡す。体色は `poopm_body` マテリアルの baseColor、目・口はフェイスプレートのテクスチャを `EYES_PNG` / `MOUTH_PNG` の PNG で差し替える。モーションはモーション名（`POOPM_3D_BATTLE_MOTIONS`）+ nonce を渡し、モーション名 → クリップ・ループ・フェード時間の対応は `poopm-3d.motion.ts`、バトルの状態差分からモーションを決める状態機械は `battle-stage-motion.ts` が持つ。表示確認は `/dev/poopm-3d`（開発環境のみ）。
+
+GLB には編集残骸のノード（`arm_L_old` や `*_bak`、`poopm_rig.001` など）が残っている。実行時はメッシュノードをホワイトリスト（`poopm-3d-model.tsx` の `VISIBLE_MESH_NODES`）で絞って表示するので、新しい残骸を追加しても映り込まない。
+
 ## バリアント追加の手順
 
 1. 目・口は新しいPNGを `/assets/poopm_parts/eyes|mouth/` に追加し、実行時にプレートのテクスチャを差し替える。モデルは変更しない
