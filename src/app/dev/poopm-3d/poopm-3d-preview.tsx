@@ -3,6 +3,8 @@
 import { useCallback, useState } from "react";
 import dynamic from "next/dynamic";
 
+import type { CompleteBattleResult } from "@/features/battle/actions";
+import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
 import type { Poopm3DStageProps } from "@/features/poopm-3d/components/poopm-3d-stage";
 import {
   POOPM_3D_BATTLE_MOTIONS,
@@ -31,6 +33,21 @@ const Poopm3DGacha = dynamic(
     ),
   { ssr: false, loading: () => null },
 );
+
+const DEMO_RESULT: Extract<CompleteBattleResult, { success: true }> = {
+  success: true,
+  battleId: "00000000-0000-4000-8000-000000000001",
+  companionshipResult: true,
+  acquiredCharacter: {
+    id: "curry-poop",
+    name: "カレーうんちくん",
+    attribute: "curry",
+    rarity: "common",
+  },
+  completedAt: "2026-10-03T04:00:00.000Z",
+  usedMealLog: true,
+  isFirstCompletedBattle: false,
+};
 
 const SIDES = ["player", "enemy"] as const;
 type Side = (typeof SIDES)[number];
@@ -155,6 +172,11 @@ export function Poopm3DPreview() {
         >
           這い出しを再生（敵の外見を使用）
         </button>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-bold text-charcoal">仲間になった結果画面</h2>
+        <BattleCompletionResult result={DEMO_RESULT} />
       </section>
 
       {SIDES.map((side) => (

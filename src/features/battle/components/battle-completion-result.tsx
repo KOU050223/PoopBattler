@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { ATTRIBUTE_LABELS } from "@/features/battle/battle.constants";
 import type { CompleteBattleResult } from "@/features/battle/actions";
-import { PoopmFigure } from "@/features/poopm/components/poopm-figure";
+import { PoopmFigure3D } from "@/features/poopm-3d/components/poopm-figure-3d";
 import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
 import { PwaInstallPromotion } from "@/features/pwa/components/pwa-install-promotion";
 import { mutedTextClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
@@ -34,9 +34,8 @@ export function BattleCompletionResult({ result }: { result: CompletionSuccess }
 
       {character ? (
         <div className="flex w-full items-center gap-4 rounded-xl bg-blush-wash p-4 text-left">
-          <PoopmFigure
+          <PoopmFigure3D
             appearance={appearanceForCharacter(character.id)}
-            facing="front"
             motion="idle"
             label={character.name}
             className="h-24 w-24 shrink-0"
