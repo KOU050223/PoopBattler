@@ -6,7 +6,7 @@ import { toAccountStatus } from "@/features/account/account.types";
 import { hasActiveEntitlement } from "@/features/report/report-access";
 import { createClient } from "@/lib/supabase/server";
 
-import { getStripeEnvironment } from "./stripe-env";
+import { getStripeEnvironment, getStripeSecretKey } from "./stripe-env";
 
 // レポート分析の購入と、購入後の管理（解約・支払い方法の変更）。
 //
@@ -107,8 +107,13 @@ export async function createCheckoutSessionAction(): Promise<CheckoutResult> {
  *
  * 顧客IDは自分の subscriptions 行から引く。RLS により本人の行しか読めないため、
  * 他人のポータルは開けない。
+ *
+ * returnPath はポータルからアプリへ戻る先。呼び出し元の画面を渡せるが、
+ * 外部URLになりうる値は受け付けない（appUrl に連結するため `//` 始まりは危険）。
  */
-export async function createBillingPortalSessionAction(): Promise<CheckoutResult> {
+export async function createBillingPortalSessionAction(
+  returnPath: string = "/report",
+): Promise<CheckoutResult> {
   const supabase = await createClient();
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
@@ -133,14 +138,135 @@ export async function createBillingPortalSessionAction(): Promise<CheckoutResult
     return { status: "error", message: UNKNOWN_ERROR_MESSAGE };
   }
 
+  const safePath = returnPath.startsWith("/") && !returnPath.startsWith("//")
+    ? returnPath
+    : "/report";
+
   try {
     const session = await createStripeClient().billingPortal.sessions.create({
       customer: subscription.stripe_customer_id,
-      return_url: `${environment.appUrl}/report`,
+      return_url: `${environment.appUrl}${safePath}`,
     });
 
     return { status: "redirecting", url: session.url };
   } catch {
     return { status: "error", message: UNKNOWN_ERROR_MESSAGE };
   }
+}
+
+export type CancelPremiumResult =
+  /** 期間末での解約を予約できた。periodEnd まではプレミアムが使える。 */
+  | { status: "scheduled"; periodEnd: string | null }
+  /** 権利のある購読が無い（未購読・解約済み・期限切れ）。 */
+  | { status: "not-subscribed" }
+  | { status: "error"; message: string };
+
+const CANCEL_ERROR_MESSAGE =
+  "解約処理を完了できませんでした。時間をおいてもう一度お試しください。";
+
+/**
+ * プレミアムの解約。Stripe 側に「期間末で止める」を予約する。
+ *
+ * 即時キャンセル（subscriptions.cancel）ではなく cancel_at_period_end に
+ * するのは、支払い済みの期間まで権利を残すため。すぐ止めると
+ * 「払ったのに期間途中で使えない」になる。
+ *
+ * 実際に権利が切れるのは期間末に届く customer.subscription.deleted で
+ * Webhook が status を canceled に書き換えたあと。記録・アカウントは
+ * 解約しても消えない（消すのはアカウント削除の役目）。
+ */
+export async function cancelPremiumAction(): Promise<CancelPremiumResult> {
+  const supabase = await createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { status: "error", message: "ログイン状態を確認できませんでした。もう一度お試しください。" };
+  }
+
+  const { data: subscription, error: subscriptionError } = await supabase
+    .from("subscriptions")
+    .select("status, current_period_end, stripe_subscription_id, cancel_at_period_end")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (subscriptionError) {
+    return { status: "error", message: CANCEL_ERROR_MESSAGE };
+  }
+
+  if (!subscription || !hasActiveEntitlement(subscription, new Date())) {
+    return { status: "not-subscribed" };
+  }
+
+  // Webhook 反映済みの行に対して再度解約を押されても、Stripe を二度触らない。
+  if (subscription.cancel_at_period_end) {
+    return { status: "scheduled", periodEnd: subscription.current_period_end };
+  }
+
+  let stripe: Stripe;
+  try {
+    // 解約に priceId や appUrl は要らない。販売停止後の環境でも
+    // 既存購読者が解約できるよう secret key だけを要求する。
+    stripe = new Stripe(getStripeSecretKey());
+  } catch {
+    return { status: "error", message: CANCEL_ERROR_MESSAGE };
+  }
+
+  try {
+    await stripe.subscriptions.update(subscription.stripe_subscription_id, {
+      cancel_at_period_end: true,
+    });
+    return { status: "scheduled", periodEnd: subscription.current_period_end };
+  } catch {
+    return { status: "error", message: CANCEL_ERROR_MESSAGE };
+  }
+}
+
+export type SubscriptionSnapshot =
+  | {
+      status: "subscribed";
+      /**
+       * 期間末解約の予約済みか。Stripe は予約後も期間末まで status を
+       * active のまま返すため、これを見ないと画面に「解約する」が出続ける。
+       */
+      cancelAtPeriodEnd: boolean;
+      /** 解約予約済みのときに「いつまで使えるか」を表示するために使う。 */
+      periodEnd: string | null;
+    }
+  /**
+   * 購読の行はあるが権利が無い（支払い失敗・期限切れなど）。
+   * この人に必要なのは購入ではなく支払い方法の修正なので、
+   * not-subscribed と分けて管理画面への導線を出せるようにする。
+   */
+  | { status: "lapsed" }
+  | { status: "not-subscribed" }
+  /** 未サインインや読み取り失敗。「未購読」と誤表示しないため別状態にする。 */
+  | { status: "unknown" };
+
+/**
+ * 本人の購読状態を返す。アカウント画面のプレミアム管理導線の出し分けに使う。
+ *
+ * DBエラーを not-subscribed と見なすと、購読中なのに解約導線が
+ * 消える。unknown に分けて、表示側はその場合セクションを出さない。
+ */
+export async function getSubscriptionSnapshotAction(): Promise<SubscriptionSnapshot> {
+  const supabase = await createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) return { status: "unknown" };
+
+  const { data: subscription, error: subscriptionError } = await supabase
+    .from("subscriptions")
+    .select("status, current_period_end, cancel_at_period_end")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (subscriptionError) return { status: "unknown" };
+  if (!subscription) return { status: "not-subscribed" };
+  if (!hasActiveEntitlement(subscription, new Date())) return { status: "lapsed" };
+
+  return {
+    status: "subscribed",
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    periodEnd: subscription.current_period_end,
+  };
 }

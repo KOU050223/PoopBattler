@@ -134,7 +134,6 @@
     "linkRequiredDescription": "連携しないと、端末を変えたときに購入した権利を復元できません。",
     "linkAccount": "Googleアカウントを連携する",
     "purchaseSuccess": "購入ありがとうございます。反映まで少し時間がかかることがあります。",
-    "purchaseCanceled": "購入は取り消されました。",
-    "manageSubscription": "購読を管理する"
+    "purchaseCanceled": "購入は取り消されました。"
   }
 }
