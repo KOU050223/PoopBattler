@@ -10,6 +10,7 @@ Closes #169
 - `src/features/poopm-3d/components/poopm-3d-blob-shadow.tsx`（新規）— 接地ブロブ影を `poopm-3d-stage.tsx` から抽出して共用化（バトル側の見た目は不変）
 - `src/features/battle/components/gacha-stage-3d.tsx`（新規）— `ssr: false` の動的ラッパー（`battle-stage-3d.tsx` と同じ形）
 - `companionship-ar-stage.tsx` — reveal の `PoopmFigure` を `GachaStage3D` に差し替え。スポーン位置・重力床の傾き・pop 拡大は従来のDOM演出を維持。仲間がいるときだけ staging 中に3Dチャンクと GLB を先読みし、reveal 開始時のロード待ちを防ぐ
+- `companionship-ar.ts` — reduced-motion 時は全フェーズが delay 0 で即 summary まで駆け抜け、抽選結果を確認できなかったのを修正。reveal だけ静止表示で 1.4 秒残す（`revealReduced`）
 - `/dev/poopm-3d` — ガチャ演出の確認欄を追加（仮背景＋再再生ボタン）
 
 外見（体色・目・口・頭）は `appearanceForCharacter` で個体に連動。抽選・投げ入れ・便器検出・フェーズ遷移・失敗時の表示は変更なし。
@@ -28,7 +29,7 @@ Closes #169
 - [ ] reveal の `swap_in`（入場モーション）が「這い出し」として自然に見える
 - [ ] カメラ拒否（静止背景）でも同じ3D reveal が出る
 - [ ] 「結果を見る」で summary へ遷移し、Canvas が閉じてもエラーが出ない（DevTools コンソール確認）
-- [ ] `prefers-reduced-motion` 環境で reveal が即結果表示になり、モーション無しで破綻しない
+- [ ] `prefers-reduced-motion` 環境で演出フェーズはスキップされつつ、reveal の結果（成功/失敗＋静止の3Dモデル）だけ約1.4秒表示されてから summary へ進む
 
 ## 関連
 
