@@ -6,9 +6,11 @@
 
 ## 変更の概要
 
-戦闘後ガチャの reveal フェーズに出す仲間キャラを、2D `PoopmFigure` から
-既存の3D GLBモデル（react-three-fiber `Poopm3DModel`）へ置き換える。
-抽選・投げ入れ・便器検出・重力床の演出は触っていない。
+戦闘後ガチャの reveal で這い出る仲間キャラと、「仲間になった」結果
+カードのキャラを、2D `PoopmFigure` から既存の3D GLBモデル
+（react-three-fiber `Poopm3DModel`）へ置き換える。あわせて
+reduced-motion 時に結果が一瞬で飛ぶ問題を修正（reveal を静止表示で
+1.4秒残す）。抽選・投げ入れ・便器検出・重力床の演出は触っていない。
 
 **変更種別**: 新機能 (Feature)
 
@@ -26,27 +28,41 @@
 | ファイル | 変更種別 | 懸念度 |
 |---------|---------|--------|
 | poopm-3d-gacha.tsx | Added | 🟢 問題なし |
+| poopm-3d-solo.tsx | Added | 🟢 問題なし |
+| poopm-figure-3d.tsx / .test.tsx | Added | 🟢 問題なし |
 | poopm-3d-blob-shadow.tsx | Added | 🟢 問題なし |
 | poopm-3d-stage.tsx | Modified | 🟢 問題なし |
 | gacha-stage-3d.tsx / .test.tsx | Added | 🟢 問題なし |
 | companionship-ar-stage.tsx | Modified | 🟢 問題なし |
+| companionship-ar.ts / .test.ts | Modified | 🟢 問題なし |
+| battle-completion-result.tsx | Modified | 🟢 問題なし |
 | poopm-3d-preview.tsx | Modified | 🟢 問題なし |
 
 ## 詳細レビュー
 
-### poopm-3d-gacha.tsx
+### poopm-3d-gacha.tsx / poopm-3d-solo.tsx
 
 - モーション連鎖 `swap_in → win → idle` は once クリップの `finished`
   イベント駆動。`prev.name === name` のガードで stale 通知を弾く。OK
 - カメラは固定 `[0, 0.7, 6.6]` lookAt `[0, -0.85]`。モデル全高
   （足裏 -2.25〜頭頂 +0.63）が枠内に収まる。/dev で実測確認済み
-- `reduceMotion` 時は `idle` のみ。reveal は delay 0 で即 summary へ
-  進む既存仕様と整合
+- `reduceMotion` 時は `idle` のみ。reveal は静止表示のまま進む仕様と整合
 
 ### poopm-3d-blob-shadow.tsx / poopm-3d-stage.tsx
 
 - `BlobShadow` を `Poopm3DBlobShadow` として抽出。`y` / `size` を
   prop 化したがデフォルトは元の値と同一で、バトル側の見た目は不変
+
+### poopm-figure-3d.tsx / battle-completion-result.tsx
+
+- `PoopmFigure3D` は `role="img"` + `aria-label` を持つ3D版ドロップイン。
+  結果カード（ガチャ経由・直行経路の両方）で `PoopmFigure` を置き換え
+
+### companionship-ar.ts
+
+- `companionshipPhaseDelay`: reduced-motion 時に reveal だけ
+  `revealReduced`(1400ms) を返すよう変更。throw/shake の演出スキップは
+  据え置きで、結果情報だけは確認できるようになった
 
 ### companionship-ar-stage.tsx
 
@@ -60,6 +76,8 @@
 
 - 読み取り側: `GachaStage3D` は `CompanionshipArFrame` の reveal 成功時のみ。
   失敗・未抽選経路は従来通り3Dをマウントしない
+- `PoopmFigure3D` は `BattleCompletionResult`（ガチャ経由の summary と、
+  `battle-screen` の直行経路）で使用。失敗時は非表示のまま
 - `Poopm3DStage`（バトル）・`/dev/poopm-3d` 以外への波及なし
 - 破壊的変更: なし
 
