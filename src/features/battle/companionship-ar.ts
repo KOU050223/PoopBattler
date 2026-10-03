@@ -10,6 +10,9 @@ export const COMPANIONSHIP_PHASE_MS = {
   throw: 900,
   shake: 700,
   reveal: 2200,
+  // reduced-motion では演出フェーズはスキップするが、抽選結果の確認に
+  // 必要な情報なので reveal だけは静止表示として残す。
+  revealReduced: 1400,
 } as const;
 
 export const VIDEO_SHAKE_ANIMATE = {
@@ -123,10 +126,12 @@ export function companionshipPhaseDelay(
   reduceMotion: boolean,
 ): number | null {
   if (phase === "staging" || phase === "summary") return null;
+  if (phase === "reveal") {
+    return reduceMotion ? COMPANIONSHIP_PHASE_MS.revealReduced : COMPANIONSHIP_PHASE_MS.reveal;
+  }
   if (reduceMotion) return 0;
   if (phase === "throw") return COMPANIONSHIP_PHASE_MS.throw;
-  if (phase === "shake") return COMPANIONSHIP_PHASE_MS.shake;
-  return COMPANIONSHIP_PHASE_MS.reveal;
+  return COMPANIONSHIP_PHASE_MS.shake;
 }
 
 export function gachaCameraStatusMessage(status: UserMediaCameraStatus): string | null {
