@@ -69,5 +69,8 @@ describe("CollectionList", () => {
     expect(markup).toContain("選出中");
     expect(markup).toContain("所持キャラクター");
     expect(markup).toContain("252");
+    // 図鑑のフィギュアは3D版。SSRでは role="img" の器だけ出る（Canvasはクライアントで遅延マウント）。
+    expect(markup).toContain('role="img"');
+    expect(markup).toContain('aria-label="カレーうんちくん"');
   });
 });
