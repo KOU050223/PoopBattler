@@ -12,8 +12,7 @@ type Vec3 = [number, number, number];
 const MODEL_FEET_Y = -2.25;
 
 export const PLAYER_SCALE = 1.0;
-// 敵はボス感を出すため味方より一回り大きくする。
-export const ENEMY_SCALE = 1.35;
+export const ENEMY_SCALE = 1.0;
 
 export const SIDE_SCALE: Record<StageSide, number> = {
   player: PLAYER_SCALE,
