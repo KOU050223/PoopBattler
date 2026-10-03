@@ -1,46 +1,119 @@
 # PR レビューレポート
 
 **PR/ブランチ**: guriguri00451/issue-171-gacha-ar-feasibility
-**レビュー日時**: 2026-10-03
-**変更規模**: +55 / -0 / 1ファイル
+**レビュー日時**: 2026-10-03（実装コミット `60e89a3` 追加に伴い更新）
+**変更規模**: +504 / -60 / 15ファイル（main比）
+**コミット**: レポート → PR本文・レビュー下書き → 実装
 
 ## 🎯 変更の概要
 
-issue #171「ガチャ演出AR化検証」の成果物として、検証結果レポート `docs/gacha-ar-feasibility.md` を新規追加するドキュメントのみの変更。
+issue #171「ガチャ演出AR化検証」。検証レポートに加え、検証で実現可能と判断したPlan（床法線の確定＋画像認識座標からの這い出し）を既存の擬似AR演出へ実装した。
 
-**変更種別**: ドキュメント
+- 重力ベクトル3成分を床法線として3Dシーンへ反映（DOM 2D `rotate` を廃止し、`Poopm3DSolo` の `gravityUp` でモデル＋床影を足裏ピボットで傾ける）
+- 便器検出を summary まで継続し、reveal 中は `hit` 座標へ出現位置を追従（見失い時は投げ入れ先に留まる）
+- `ToiletSight.sizeFraction`（bbox高さ/表示高さ）からモデルスケールを推定（0.6〜1.8にクランプ）
+
+**変更種別**: 新機能 (Feature) + ドキュメント + テスト
 
 ## ✅ マージ判定
 
-> **APPROVE**
+> **APPROVE（実機目視確認を条件に推奨）**
 
-コード変更なし。記述内容はコードベースと照合済みで、以下は事実と一致している。
-
-- `useGravityFloorAngle` が重力の画面平面投影角のみを使い z（ピッチ）を捨てている（`use-gravity-floor.ts` / `companionship-gravity.ts`）
-- 便器検出が staging フェーズでのみ有効で、reveal 中は `heldTarget` に固定される（`companionship-ar-stage.tsx:382-386`）
-- reveal モデルが固定サイズ `h-56 w-56`（同:301）
-- iOS のモーション権限がバトル中の `use-special-motion` → `requestMotionPermission` で取得済み
-- `getSettings()` がFOVを返さないこと、iOS Safari が `immersive-ar` 非対応なことは外部仕様として確認済み
+型・テスト・lint・buildは全通過。dev プレビュー（`/dev/poopm-3d`）で重力プリセットによる傾き追従を目視確認済み。残るリスクは実機依存（カメラ・DeviceMotion・COCO-SSDの実環境挙動）で、コードレビューでは潰せない領域のため実機チェックリストをPR本文に残した。
 
 ## 📁 変更ファイル一覧
 
-| ファイル | 変更種別 | +行 | -行 | 懸念度 |
-|---------|---------|-----|-----|--------|
-| docs/gacha-ar-feasibility.md | Added | +55 | - | 🟢 問題なし |
+| ファイル | 変更種別 | 懸念度 |
+|---------|---------|--------|
+| docs/gacha-ar-feasibility.md | Added→Modified | 🟢 |
+| docs/pr/, docs/reviews/ | Added | 🟢 |
+| companionship-gravity.ts | Modified (+`gravityUpVec`/`smoothGravityVec3`) | 🟢 |
+| use-gravity-floor.ts | Modified (`useGravityFloorAngle`→`useGravityFloor`) | 🟢 |
+| toilet-detection.ts | Modified (`sizeFraction` 追加) | 🟢 |
+| companionship-ar.ts | Modified (`gachaRevealScale`/`resolveRevealTarget`) | 🟢 |
+| companionship-ar-stage.tsx | Modified (再アンカー・スケール・gravityUp配線) | 🟡 |
+| poopm-3d-solo.tsx | Modified (`GravityAligned` 追加) | 🟡 |
+| poopm-3d-gacha.tsx | Modified (prop透過のみ) | 🟢 |
+| poopm-3d-preview.tsx | Modified (傾きプリセット) | 🟢 dev画面 |
+| 各 .test.ts(x) | Modified | 🟢 |
+
+## 🔍 詳細レビュー
+
+### companionship-ar-stage.tsx
+
+#### 変更の意図
+reveal中の出現位置を「投げ入れ時の固定点」から「いま写っている便器bbox」へ切り替え、検出途切れ時は投げ入れ値へフォールバック。DOM回転を3D側へ移譲。
+
+#### 確認した点
+
+- `detectEnabled` を `phase !== "summary"` に拡大し、reveal中も検出が回る。`resolveRevealTarget` は `hit` のみ追従し `low`/`none` はフォールバック — 低スコアbboxへの意図しないジャンプを防いでいる
+- `heldScale` をスワイプ開始・スキップ時に確定し、render中のref読みを避けた設計（`react-hooks` lint 適合）
+- 出現位置は framer-motion の `left/top` アニメーション（0.3s easeOut）で平滑化し、`translate(-50%,-100%)` は内側divのTailwindクラスへ分離。transform競合を回避している
+- `spawnTarget ?? throwTarget` で prop 省略時は従来動作 — Frame側は後方互換
+
+#### 指摘事項（軽微・対応不要レベル）
+
+**[🟡 S-1] reveal中の検出コスト** — COCO-SSD推論（450ms間隔）がthrow/shake/reveal中も走る。reveal自体が約2秒＋モデル推論は軽量なので実害は薄いが、低スペック端末での発熱・フレーム落ちは実機で要観察。
+
+**[🟡 S-2] `sizeFraction` はbbox高さのみ** — 縦長に半分隠れた便器などで過小推定になる可能性。クランプ（0.6〜1.8）で実害は限定的。
+
+### poopm-3d-solo.tsx
+
+#### 変更の意図
+`GravityAligned` グループでモデル+床影を床法線へ回転。ピボットは `STAGE_GROUND_Y`（足裏接地高さ）に置き、モデル位置を `-STAGE_GROUND_Y` で相殺して足元を回転軸にしている。
+
+#### 確認した点
+
+- `setFromUnitVectors` + `slerp(0.25)` でフレーム毎に平滑追従。`up=null` は恒等姿勢へ戻る
+- 床影 `Poopm3DBlobShadow` に `y={0}` を渡しグループ原点（=床面）に配置。影も床法線に乗る
+- devプレビューで目視確認: 「左に傾け」で頭部がup方向へ傾き、「見下ろし」(z+) でカメラ側へ前倒しになり頭頂が見える — 符号・軸ともに期待どおり
 
 ## ⚠️ 影響範囲
 
-なし（ドキュメントのみ）。破壊的変更なし。
+**このPRの変更が影響する箇所**:
+
+- `CompanionshipArFrame` — 新prop（`spawnTarget`/`gravityUp`/`modelScale`）はすべて省略可。既存の直接利用（テスト等）に破壊なし
+- `Poopm3DSolo` — `gravityUp` 省略可。バトルステージ等の既存利用は無変更で直立のまま
+- `useGravityFloorAngle` の改名 — 呼び出しは `companionship-ar-stage.tsx` のみで更新済み（`grep` で残件なし確認）
+- `ToiletSight.sizeFraction` は必須フィールド追加。生成は `toiletSightFromDetection` に集約されており、テストfixtureも更新済み
+
+**破壊的変更**: なし（公開API・DB・ルーティング不変）
 
 ## 🧪 テスト確認
 
-コード変更がないためテスト実行は不要。lefthook の lint もスキップ対象だった。
+| テスト項目 | 状態 |
+|-----------|------|
+| `npm run typecheck` | ✅ 通過 |
+| `npm run test` | ✅ 76ファイル / 463件 全通過 |
+| `npm run lint` | ✅ エラー0（既存 `<img>` 警告1件のみ・無関係） |
+| `npm run build` | ✅ 成功 |
+| dev実機目視（/dev/poopm-3d 傾きプリセット） | ✅ 傾き・前倒しともに期待どおり |
+| 実機（HTTPS+カメラ+DeviceMotion） | ❓ 未確認 — PR本文にチェックリスト記載 |
+
+追加テスト: `gravityUpVec`（正規化・欠損・ノルム不足）、`smoothGravityVec3`、`gachaRevealScale`（クランプ境界・非hit）、`resolveRevealTarget`（hit/low/none）、`sizeFraction` 算出、`data-spawn-*`/`data-model-scale` 属性。
 
 ## 💬 レビューコメント（コピペ用）
 
 ```
-レビューしました。ドキュメントのみの追加で、記述は現行コードと外部仕様（WebXR非対応・FOV非公開）と照合済みです。マージOKです。
+レビューしました。
+
+床法線の3D化・reveal中の再アンカー・bboxスケール連動ともに、フォールバック
+（センサー欠損→直立、検出途切れ→投げ入れ位置）が適切に残っています。
+テスト・lint・build・devプレビュー目視は全通過。
+
+実機依存の挙動（検出精度・モーション権限・傾きの体感）はコード上確認できない
+ため、マージ前に実機チェックリストの確認をお願いします。
+
+詳細: docs/reviews/pr_review_guriguri00451_issue-171-gacha-ar-feasibility_20261003.md
 ```
+
+## ✅ チェックリスト
+
+- [x] Critical issueなし
+- [x] テストが追加・更新されている
+- [x] 破壊的変更なし
+- [x] セルフレビュー済み（dev プレビューで傾き追従を目視確認）
+- [ ] 実機検証（人間が実施）
 
 ---
 *Generated by Devin / pr-review skill*
