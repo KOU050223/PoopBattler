@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "framer-motion";
 import { readBattleSpeed, subscribeBattleSpeed, writeBattleSpeed } from "@/features/battle/battle-speed";
@@ -18,7 +18,6 @@ import { usesCompanionshipAr } from "@/features/battle/companionship-ar";
 import {
   ATTRIBUTE_LABELS,
   DEFAULT_BATTLE_SPEED,
-  HIT_MOTION_MS,
   SPECIAL_GAUGE_MAX,
   matchupTone,
   nextBattleSpeed,
@@ -29,7 +28,14 @@ import {
 import { resolveBattleScreenView } from "@/features/battle/battle-screen-view";
 import { BattleControls } from "@/features/battle/components/battle-controls";
 import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
-import { BattleFigure } from "@/features/battle/components/battle-figure";
+import { BattleStage3D } from "@/features/battle/components/battle-stage-3d";
+import {
+  advanceBattleStage,
+  initialBattleStageState,
+  observeBattleStage,
+  reduceBattleStage,
+} from "@/features/battle/components/battle-stage-motion";
+import { ChargeSwirl } from "@/features/battle/components/charge-swirl";
 import { BattleOutcomeOverlay } from "@/features/battle/components/battle-outcome-overlay";
 import { useBattleWakeLock } from "@/features/battle/hooks/use-battle-wake-lock";
 import { useSpecialMotion } from "@/features/battle/hooks/use-special-motion";
@@ -37,6 +43,8 @@ import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import { captionTextClass, mutedTextClass, primaryButtonClass, stancePillClass } from "@/lib/ui-classes";
 import { signInAnonymouslyFromBrowser } from "@/lib/supabase/anonymous-session";
+import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
+import type { BattleSnapshot } from "@/features/battle/battle.types";
 import { useBattleStore } from "@/stores/battle-store";
 
 const MATCHUP_LABEL = {
@@ -166,11 +174,11 @@ export function BattleScreen() {
     { success: true }
   > | null>(null);
   const [mealPhotoId, setMealPhotoId] = useState<string | null>(null);
-  const [playerMotion, setPlayerMotion] = useState<"idle" | "hit" | "attack">(
-    "idle",
-  );
-  const [enemyMotion, setEnemyMotion] = useState<"idle" | "hit" | "attack">(
-    "idle",
+  const [stageState, setStageState] = useState(() =>
+    reduceBattleStage(
+      initialBattleStageState(),
+      observeBattleStage(useBattleStore.getState()),
+    ),
   );
   const [playerHitFlashKey, setPlayerHitFlashKey] = useState(0);
   const [enemyHitFlashKey, setEnemyHitFlashKey] = useState(0);
@@ -212,6 +220,7 @@ export function BattleScreen() {
     return () => window.clearInterval(timer);
   }, [snapshot.status, showRestore, speed]);
 
+  // HPバーの被弾フラッシュ（DOM側の演出）。
   useEffect(() => {
     const enemyHp = snapshot.enemy?.hp;
     const playerHp = snapshot.party?.[snapshot.activeIndex]?.hp;
@@ -225,21 +234,28 @@ export function BattleScreen() {
     }
     if (enemyHp < previous.enemy) {
       setEnemyHitFlashKey((key) => key + 1);
-      setEnemyMotion("hit");
-      setPlayerMotion("attack");
     } else if (playerHp < previous.player) {
       setPlayerHitFlashKey((key) => key + 1);
-      setPlayerMotion("hit");
-      setEnemyMotion("attack");
-    } else {
-      return;
     }
-    const timer = window.setTimeout(() => {
-      setPlayerMotion("idle");
-      setEnemyMotion("idle");
-    }, scaleByBattleSpeed(HIT_MOTION_MS, speed));
-    return () => window.clearTimeout(timer);
-  }, [snapshot.activeIndex, snapshot.enemy?.hp, snapshot.party, speed]);
+  }, [snapshot.activeIndex, snapshot.enemy?.hp, snapshot.party]);
+
+  // 3Dステージのモーション状態機械。ストア更新（外部システムのイベント）を
+  // subscribe して、スナップショットの差分から両者のモーションを決める
+  // （ko→swap_in の順序づけもここ）。
+  useEffect(() => {
+    return useBattleStore.subscribe((state: BattleSnapshot) => {
+      setStageState((prev) =>
+        reduceBattleStage(prev, observeBattleStage(state)),
+      );
+    });
+  }, []);
+
+  const handleStageMotionFinished = useCallback(
+    (side: "player" | "enemy") => {
+      setStageState((prev) => advanceBattleStage(prev, side));
+    },
+    [],
+  );
 
   async function startBattle() {
     setStarting(true);
@@ -375,6 +391,9 @@ export function BattleScreen() {
     snapshot.enemy
   ) {
     const member = snapshot.party[snapshot.activeIndex];
+    // ko再生中は退場したメンバーを表示し続ける（displayedIndex が遅れる）。
+    const displayedMember =
+      snapshot.party[stageState.displayedIndex] ?? member;
     const tone = matchupTone(member.attribute, snapshot.enemy.attribute);
     return (
       <>
@@ -395,45 +414,45 @@ export function BattleScreen() {
             ×{speed}
           </button>
         </div>
-        <div className="relative flex min-h-72 flex-col justify-between overflow-hidden rounded-2xl border-2 border-faded-gray bg-paper-white px-4 py-5 shadow-raised-gray">
-          <div className="flex flex-col items-end gap-2 pl-16">
-            <HpBar
-              current={snapshot.enemy.hp}
-              max={snapshot.enemy.maxHp}
-              label={snapshot.enemy.name ?? "てき"}
-              side="enemy"
-              hitFlashKey={enemyHitFlashKey}
-              speed={speed}
-            />
-            <BattleFigure
-              characterId={snapshot.enemy.characterId}
-              attribute={snapshot.enemy.attribute}
-              facing="front"
-              motion={enemyMotion}
-              label={snapshot.enemy.name ?? "てき"}
-              depth="far"
-              speed={speed}
-            />
-          </div>
-          <div className="flex flex-col items-start gap-2 pr-16">
-            <BattleFigure
-              characterId={member.characterId}
-              attribute={member.attribute}
-              facing="back"
-              motion={playerMotion}
-              label={member.name ?? "味方"}
-              depth="near"
-              speed={speed}
-              charging={snapshot.playerStance === "special"}
-            />
-            <HpBar
-              current={member.hp}
-              max={member.maxHp}
-              label={member.name ?? "味方"}
-              side="ally"
-              hitFlashKey={playerHitFlashKey}
-              speed={speed}
-            />
+        <div className="relative min-h-80 overflow-hidden rounded-2xl border-2 border-faded-gray bg-paper-white shadow-raised-gray">
+          <BattleStage3D
+            player={{
+              appearance: appearanceForCharacter(displayedMember.characterId),
+              motion: stageState.player,
+            }}
+            enemy={{
+              appearance: appearanceForCharacter(snapshot.enemy.characterId),
+              motion: stageState.enemy,
+            }}
+            speed={speed}
+            onMotionFinished={handleStageMotionFinished}
+          />
+          {snapshot.playerStance === "special" ? (
+            <div className="absolute bottom-10 left-5 z-10 h-32 w-32">
+              <ChargeSwirl speed={speed} />
+            </div>
+          ) : null}
+          <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between px-4 py-5">
+            <div className="flex flex-col items-end gap-2 pl-16">
+              <HpBar
+                current={snapshot.enemy.hp}
+                max={snapshot.enemy.maxHp}
+                label={snapshot.enemy.name ?? "てき"}
+                side="enemy"
+                hitFlashKey={enemyHitFlashKey}
+                speed={speed}
+              />
+            </div>
+            <div className="flex flex-col items-start gap-2 pr-16">
+              <HpBar
+                current={member.hp}
+                max={member.maxHp}
+                label={member.name ?? "味方"}
+                side="ally"
+                hitFlashKey={playerHitFlashKey}
+                speed={speed}
+              />
+            </div>
           </div>
         </div>
         <div className="flex flex-col gap-1">

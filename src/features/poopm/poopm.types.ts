@@ -1,4 +1,12 @@
-export const HEAD_IDS = ["hat-a", "hat-b", "hat-c", "hat-d", "hat-e", "hat-f"] as const;
+export const HEAD_IDS = [
+  "none",
+  "hat-a",
+  "hat-b",
+  "hat-c",
+  "hat-d",
+  "hat-e",
+  "hat-f",
+] as const;
 export type HeadId = (typeof HEAD_IDS)[number];
 
 export const EYE_IDS = [
