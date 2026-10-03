@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
-import { ContactShadows } from "@react-three/drei";
+import * as THREE from "three";
 import { useReducedMotion } from "framer-motion";
 
 import { Poopm3DCameraRig } from "@/features/poopm-3d/components/poopm-3d-camera-rig";
@@ -33,6 +33,36 @@ export type Poopm3DStageProps = {
   speed?: number;
   onMotionFinished?: (side: "player" | "enemy", name: Poopm3DBattleMotion) => void;
 };
+
+// 接地影。drei の ContactShadows は奥行きのある位置で深度パスが空に
+// なる事象があったため、放射グラデの簡易ブロブで置く。フラットな絵柄に
+// も合い、配置の決定論が利く。
+function BlobShadow({ x, z }: { x: number; z: number }) {
+  const texture = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 128;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    const gradient = ctx.createRadialGradient(64, 64, 10, 64, 64, 62);
+    gradient.addColorStop(0, "rgba(45, 70, 40, 0.42)");
+    gradient.addColorStop(0.55, "rgba(45, 70, 40, 0.2)");
+    gradient.addColorStop(1, "rgba(45, 70, 40, 0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(canvas);
+  }, []);
+  if (!texture) return null;
+  return (
+    <mesh
+      rotation-x={-Math.PI / 2}
+      position={[x, STAGE_GROUND_Y + 0.012, z]}
+      renderOrder={1}
+    >
+      <planeGeometry args={[2.8, 2.8]} />
+      <meshBasicMaterial map={texture} transparent depthWrite={false} />
+    </mesh>
+  );
+}
 
 export function Poopm3DStage({
   player,
@@ -73,15 +103,14 @@ export function Poopm3DStage({
           scale={PLAYER_SCALE}
           onMotionFinished={(name) => onMotionFinished?.("player", name)}
         />
-        {/* 両者の中間あたりをカバー。間合いを広げても足元に影が残る範囲にする */}
-        <ContactShadows
-          position={[0.15, STAGE_GROUND_Y + 0.012, -1.5]}
-          opacity={0.32}
-          scale={11}
-          blur={2.4}
-          far={4}
-          frames={Infinity}
-        />
+        {/* 接地影は各キャラの直下に1枚ずつ */}
+        {(["player", "enemy"] as const).map((side) => (
+          <BlobShadow
+            key={side}
+            x={STAGE_ANCHOR[side].position[0]}
+            z={STAGE_ANCHOR[side].position[2]}
+          />
+        ))}
       </Suspense>
       <Poopm3DCameraRig
         player={player.motion}
