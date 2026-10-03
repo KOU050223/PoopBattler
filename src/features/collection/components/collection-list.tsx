@@ -3,10 +3,10 @@
 import Link from "next/link";
 
 import { ATTRIBUTE_LABELS } from "@/features/battle/battle.constants";
-import { PoopmFigure } from "@/features/poopm/components/poopm-figure";
+import { PoopmFigure3D } from "@/features/poopm-3d/components/poopm-figure-3d";
 import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
 import { EmptyState } from "@/components/ui/empty-state";
-import { captionTextClass, cardClass, mutedTextClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
+import { cardClass, mutedTextClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 import {
   COLLECTION_RARITY_LABELS,
@@ -73,13 +73,22 @@ export function CollectionList({
               } ${swapEnabled ? "cursor-pointer" : "cursor-default"}`}
             >
               <div className="flex items-start gap-4">
-                <PoopmFigure
-                  appearance={appearanceForCharacter(character.id)}
-                  facing="front"
-                  motion="idle"
-                  label={character.name}
-                  className="h-20 w-20 shrink-0"
-                />
+                <div className="relative shrink-0">
+                  <PoopmFigure3D
+                    appearance={appearanceForCharacter(character.id)}
+                    motion="idle"
+                    label={character.name}
+                    className="h-20 w-20"
+                  />
+                  {inParty && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute -left-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-paper-white bg-flush-pink text-[13px] font-black leading-none text-paper-white"
+                    >
+                      ✓
+                    </span>
+                  )}
+                </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <div className="flex items-start justify-between gap-3">
                     <p className="min-w-0 font-bold text-charcoal">{character.name}</p>
@@ -87,29 +96,39 @@ export function CollectionList({
                       {COLLECTION_RARITY_LABELS[character.rarity]}
                     </span>
                   </div>
-                  {inParty && (
-                    <p className="text-xs font-bold text-flush-pink">選出中</p>
-                  )}
-                  <dl className={`grid grid-cols-2 gap-2 ${captionTextClass}`}>
-                    <div>
-                      <dt className="text-pencil-gray">属性</dt>
-                      <dd className="font-bold text-charcoal">{ATTRIBUTE_LABELS[character.attribute]}</dd>
+                  {inParty && <span className="sr-only">選出中</span>}
+                  <dl className="flex flex-col gap-2">
+                    {/* 属性・取得はサブ情報なので1行に小さくまとめる */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] leading-[1.3]">
+                      <div className="flex items-baseline gap-1">
+                        <dt className="text-faded-gray">🏷️ 属性</dt>
+                        <dd className="font-medium text-pencil-gray">{ATTRIBUTE_LABELS[character.attribute]}</dd>
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <dt className="text-faded-gray">📅 取得</dt>
+                        <dd className="font-medium text-pencil-gray">{formatAcquiredAt(character.acquiredAt)}</dd>
+                      </div>
                     </div>
-                    <div>
-                      <dt className="text-pencil-gray">取得</dt>
-                      <dd className="font-bold text-charcoal">{formatAcquiredAt(character.acquiredAt)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-pencil-gray">HP</dt>
-                      <dd className="font-bold text-charcoal tabular-nums">{character.hp}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-pencil-gray">攻撃</dt>
-                      <dd className="font-bold text-charcoal tabular-nums">{character.power}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-pencil-gray">速さ</dt>
-                      <dd className="font-bold text-charcoal tabular-nums">{character.speed}</dd>
+                    {/* バトルの数値は主役なので色違いの枠で3列に分けて大きく出す */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="rounded-xl border-2 border-flush-pink bg-blush-wash px-2 py-1.5 text-center">
+                        <dt className="text-xs font-medium text-flush-edge">❤️ HP</dt>
+                        <dd className="text-2xl font-black leading-tight tracking-tight tabular-nums text-flush-edge">
+                          {character.hp}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl border-2 border-night-ink/40 bg-night-ink/5 px-2 py-1.5 text-center">
+                        <dt className="text-xs font-medium text-night-ink">💪 攻撃</dt>
+                        <dd className="text-2xl font-black leading-tight tracking-tight tabular-nums text-night-ink">
+                          {character.power}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl border-2 border-spark-blue/40 bg-spark-blue/10 px-2 py-1.5 text-center">
+                        <dt className="text-xs font-medium text-spark-blue">💨 速さ</dt>
+                        <dd className="text-2xl font-black leading-tight tracking-tight tabular-nums text-spark-blue">
+                          {character.speed}
+                        </dd>
+                      </div>
                     </div>
                   </dl>
                 </div>

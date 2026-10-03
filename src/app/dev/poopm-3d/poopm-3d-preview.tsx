@@ -5,12 +5,14 @@ import dynamic from "next/dynamic";
 
 import type { CompleteBattleResult } from "@/features/battle/actions";
 import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
+import { PoopmFigure3D } from "@/features/poopm-3d/components/poopm-figure-3d";
 import type { Poopm3DStageProps } from "@/features/poopm-3d/components/poopm-3d-stage";
 import {
   POOPM_3D_BATTLE_MOTIONS,
   type Poopm3DBattleMotion,
 } from "@/features/poopm-3d/poopm-3d.motion";
 import type { Poopm3DAppearance } from "@/features/poopm-3d/components/poopm-3d-model";
+import { POOPM_APPEARANCES } from "@/features/poopm/poopm.appearances";
 import {
   BODY_COLOR_IDS,
   EYE_IDS,
@@ -177,6 +179,28 @@ export function Poopm3DPreview() {
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-bold text-charcoal">仲間になった結果画面</h2>
         <BattleCompletionResult result={DEMO_RESULT} />
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-bold text-charcoal">
+          図鑑（カードごとのCanvas・画面外は未マウント）
+        </h2>
+        <ul className="grid grid-cols-4 gap-2">
+          {Object.entries(POOPM_APPEARANCES).map(([id, appearance]) => (
+            <li
+              key={id}
+              className="flex flex-col items-center gap-1 rounded-2xl border-2 border-faded-gray bg-paper-white p-2 shadow-raised-gray"
+            >
+              <PoopmFigure3D
+                appearance={appearance}
+                motion="idle"
+                label={id}
+                className="h-16 w-16"
+              />
+              <p className="text-[11px] font-medium text-pencil-gray">{id}</p>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {SIDES.map((side) => (

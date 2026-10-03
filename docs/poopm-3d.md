@@ -91,6 +91,8 @@ Blender 側は `-Y` を正面にモデリングし、アーマチュアはデフ
 
 実行時はメッシュノードをホワイトリスト（`poopm-3d-model.tsx` の `VISIBLE_MESH_NODES`）で絞って表示する。現行GLBは残骸なしだが、将来の再エクスポートで編集残骸が混じっても映り込まない。
 
+図鑑のようなカード内の単体表示は `PoopmFigure3D`（`poopm-figure-3d.tsx`）を使う。内部の `Poopm3DSolo` はカードごとのCanvasを持つが、`useInView`（framer-motion）で viewport ±500px 内にある分だけマウントし、離れたものは外して WebGL コンテキスト上限（〜16個）を越えないようにしている。カード内にCanvasがあるため、共有Canvas + drei `View` の scissor 描画と違いスクロール時の描画遅延も出ない。SSR では `role="img"` の器だけが出て、Canvasはクライアントで遅延マウントされる。
+
 ## バリアント追加の手順
 
 1. 目・口は新しいPNGを `/assets/poopm_parts/eyes|mouth/` に追加し、実行時にプレートのテクスチャを差し替える。モデルは変更しない

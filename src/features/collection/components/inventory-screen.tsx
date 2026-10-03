@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 
-import { PoopmFigure } from "@/features/poopm/components/poopm-figure";
+import { PoopmFigure3D } from "@/features/poopm-3d/components/poopm-figure-3d";
 import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
 import { captionTextClass, cardClass } from "@/lib/ui-classes";
 
@@ -116,9 +116,8 @@ export function InventoryScreen({ characters }: InventoryScreenProps) {
                       selected ? "border-flush-pink bg-blush-wash" : ""
                     }`}
                   >
-                    <PoopmFigure
+                    <PoopmFigure3D
                       appearance={appearanceForCharacter(character.id)}
-                      facing="front"
                       motion="idle"
                       label={character.name}
                       className="h-16 w-16"
