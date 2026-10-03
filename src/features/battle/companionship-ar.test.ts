@@ -182,7 +182,9 @@ describe("companionshipPhaseDelay", () => {
     expect(companionshipPhaseDelay("shake", false)).toBe(COMPANIONSHIP_PHASE_MS.shake);
     expect(companionshipPhaseDelay("reveal", false)).toBe(COMPANIONSHIP_PHASE_MS.reveal);
     expect(companionshipPhaseDelay("shake", true)).toBe(0);
-    expect(companionshipPhaseDelay("reveal", true)).toBe(0);
+    expect(companionshipPhaseDelay("throw", true)).toBe(0);
+    // reduced-motion でも抽選結果だけは静止表示で確認できる時間を残す
+    expect(companionshipPhaseDelay("reveal", true)).toBe(COMPANIONSHIP_PHASE_MS.revealReduced);
   });
 });
 
