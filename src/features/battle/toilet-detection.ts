@@ -22,8 +22,19 @@ export type OverlayBox = {
 
 export type ToiletSight =
   | { kind: "none" }
-  | { kind: "low"; box: OverlayBox; target: PercentPoint }
-  | { kind: "hit"; box: OverlayBox; target: PercentPoint };
+  | {
+      kind: "low";
+      box: OverlayBox;
+      target: PercentPoint;
+      /** bbox 高さ / 表示高さ。便器までの距離の粗い手がかりとして使う。 */
+      sizeFraction: number;
+    }
+  | {
+      kind: "hit";
+      box: OverlayBox;
+      target: PercentPoint;
+      sizeFraction: number;
+    };
 
 export type PercentPoint = {
   x: number;
@@ -50,8 +61,11 @@ export function toiletSightFromDetection(
 ): ToiletSight {
   if (!detection || !box) return { kind: "none" };
   const target = seatBiasedTarget(box, displayWidth, displayHeight);
-  if (detection.score >= TOILET_ACCEPT_SCORE) return { kind: "hit", box, target };
-  return { kind: "low", box, target };
+  const sizeFraction = displayHeight > 0 ? box.height / displayHeight : 0;
+  if (detection.score >= TOILET_ACCEPT_SCORE) {
+    return { kind: "hit", box, target, sizeFraction };
+  }
+  return { kind: "low", box, target, sizeFraction };
 }
 
 /**

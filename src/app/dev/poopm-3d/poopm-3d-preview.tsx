@@ -36,6 +36,16 @@ const Poopm3DGacha = dynamic(
   { ssr: false, loading: () => null },
 );
 
+// gravityUp の確認用プリセット（カメラ空間での世界の上向き）。
+const TILT_PRESETS = [
+  { id: "upright", label: "直立", up: { x: 0, y: 1, z: 0 } },
+  { id: "tilt-left", label: "左に傾け", up: { x: -0.5, y: 0.86, z: 0 } },
+  { id: "tilt-right", label: "右に傾け", up: { x: 0.5, y: 0.86, z: 0 } },
+  { id: "look-down", label: "見下ろし", up: { x: 0, y: 0.3, z: 0.95 } },
+  { id: "none", label: "重力なし", up: null },
+] as const;
+type TiltPresetId = (typeof TILT_PRESETS)[number]["id"];
+
 const DEMO_RESULT: Extract<CompleteBattleResult, { success: true }> = {
   success: true,
   battleId: "00000000-0000-4000-8000-000000000001",
@@ -106,6 +116,8 @@ export function Poopm3DPreview() {
   });
   const [speed, setSpeed] = useState<1 | 2>(1);
   const [gachaNonce, setGachaNonce] = useState(0);
+  const [tilt, setTilt] = useState<TiltPresetId>("upright");
+  const tiltUp = TILT_PRESETS.find((preset) => preset.id === tilt)?.up ?? null;
 
   const playMotion = useCallback((side: Side, name: Poopm3DBattleMotion) => {
     setMotions((prev) => ({
@@ -163,9 +175,25 @@ export function Poopm3DPreview() {
           />
           <div className="absolute inset-x-0 bottom-[-1rem] flex justify-center">
             <div className="relative h-56 w-56">
-              <Poopm3DGacha key={gachaNonce} appearance={appearances.enemy} />
+              <Poopm3DGacha
+                key={gachaNonce}
+                appearance={appearances.enemy}
+                gravityUp={tiltUp}
+              />
             </div>
           </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {TILT_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={chipClass(tilt === preset.id)}
+              onClick={() => setTilt(preset.id)}
+            >
+              {preset.label}
+            </button>
+          ))}
         </div>
         <button
           type="button"

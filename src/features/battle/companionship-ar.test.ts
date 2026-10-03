@@ -7,11 +7,16 @@ import {
   companionshipPhaseDelay,
   companionshipRevealCopy,
   COMPANIONSHIP_PHASE_MS,
+  gachaRevealScale,
+  GACHA_AR_SCALE_MAX,
+  GACHA_AR_SCALE_MIN,
+  GACHA_AR_SCALE_REF_FRACTION,
   GACHA_SWIPE_MIN_DISTANCE_PX,
   isCameraFallback,
   isLiveCameraOverlay,
   isThrowSwipe,
   nextCompanionshipArPhase,
+  resolveRevealTarget,
   REVEAL_FAIL_COPY,
   REVEAL_SUCCESS_COPY,
   shouldCrawlOut,
@@ -51,6 +56,7 @@ const hitSight = {
   kind: "hit" as const,
   box: { x: 10, y: 20, width: 80, height: 100, score: 0.74 },
   target: { x: 50, y: 72 },
+  sizeFraction: 0.5,
 };
 
 describe("canStartGachaBySwipe", () => {
@@ -130,6 +136,7 @@ describe("canStartGachaBySwipe", () => {
           kind: "low",
           box: { x: 8, y: 8, width: 40, height: 40, score: 0.31 },
           target: { x: 20, y: 30 },
+          sizeFraction: 0.1,
         },
         hasAimPoint: false,
       }),
@@ -143,6 +150,48 @@ describe("canStartGachaBySwipe", () => {
         hasAimPoint: true,
       }),
     ).toBe(true);
+  });
+});
+
+describe("gachaRevealScale", () => {
+  it("hit は bbox 高さ比でスケールし、範囲外はクランプ。非 hit は 1", () => {
+    const scaledSight = { ...hitSight, sizeFraction: GACHA_AR_SCALE_REF_FRACTION };
+    expect(gachaRevealScale(scaledSight)).toBeCloseTo(1);
+    expect(
+      gachaRevealScale({ ...hitSight, sizeFraction: GACHA_AR_SCALE_REF_FRACTION * 0.1 }),
+    ).toBeCloseTo(GACHA_AR_SCALE_MIN);
+    expect(
+      gachaRevealScale({ ...hitSight, sizeFraction: GACHA_AR_SCALE_REF_FRACTION * 4 }),
+    ).toBeCloseTo(GACHA_AR_SCALE_MAX);
+    expect(gachaRevealScale({ kind: "none" })).toBe(1);
+    expect(gachaRevealScale({ ...hitSight, sizeFraction: 0 })).toBe(1);
+    expect(
+      gachaRevealScale({
+        kind: "low",
+        box: hitSight.box,
+        target: hitSight.target,
+        sizeFraction: 0.4,
+      }),
+    ).toBe(1);
+  });
+});
+
+describe("resolveRevealTarget", () => {
+  it("hit 中は検出座標へ追従し、見失ったら fallback に留まる", () => {
+    const fallback = { x: 33, y: 66 };
+    expect(resolveRevealTarget({ sight: hitSight, fallback })).toEqual(hitSight.target);
+    expect(resolveRevealTarget({ sight: { kind: "none" }, fallback })).toEqual(fallback);
+    expect(
+      resolveRevealTarget({
+        sight: {
+          kind: "low",
+          box: hitSight.box,
+          target: { x: 1, y: 2 },
+          sizeFraction: 0.4,
+        },
+        fallback,
+      }),
+    ).toEqual(fallback);
   });
 });
 

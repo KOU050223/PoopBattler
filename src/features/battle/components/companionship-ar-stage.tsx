@@ -11,10 +11,12 @@ import {
   companionshipPhaseDelay,
   companionshipRevealCopy,
   gachaCameraStatusMessage,
+  gachaRevealScale,
   GACHA_SWIPE_MIN_DISTANCE_PX,
   isLiveCameraOverlay,
   isThrowSwipe,
   nextCompanionshipArPhase,
+  resolveRevealTarget,
   shouldCrawlOut,
   shouldPlayThrow,
   VIDEO_SHAKE_ANIMATE,
@@ -22,7 +24,8 @@ import {
   type CompanionshipArPhase,
 } from "@/features/battle/companionship-ar";
 import { useGachaCamera } from "@/features/battle/hooks/use-gacha-camera";
-import { useGravityFloorAngle } from "@/features/battle/hooks/use-gravity-floor";
+import { useGravityFloor } from "@/features/battle/hooks/use-gravity-floor";
+import type { GravityVec3 } from "@/features/battle/companionship-gravity";
 import { useToiletDetection } from "@/features/battle/hooks/use-toilet-detection";
 import {
   DEFAULT_THROW_TARGET,
@@ -52,7 +55,13 @@ export type CompanionshipArFrameProps = {
   toiletSight?: ToiletSight;
   detectionStatus?: ToiletModelStatus;
   throwTarget?: PercentPoint;
+  /** reveal 中の出現位置。便器検出に追従するため throwTarget と分けている。 */
+  spawnTarget?: PercentPoint;
   floorAngleDeg?: number;
+  /** 床法線（カメラ空間の世界の上向き）。3D モデルへそのまま渡す。 */
+  gravityUp?: GravityVec3 | null;
+  /** bbox 高さから推定したモデルスケール。 */
+  modelScale?: number;
   aimPoint?: PercentPoint | null;
   onAim?: (point: PercentPoint) => void;
   onThrowStart?: () => void;
@@ -134,7 +143,10 @@ export function CompanionshipArFrame({
   toiletSight = { kind: "none" },
   detectionStatus = "idle",
   throwTarget = DEFAULT_THROW_TARGET,
+  spawnTarget,
   floorAngleDeg = 0,
+  gravityUp = null,
+  modelScale = 1,
   aimPoint = null,
   onAim,
   onThrowStart,
@@ -158,6 +170,8 @@ export function CompanionshipArFrame({
     usedMealLog: result.usedMealLog,
   });
   const pointerStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
+  // spawnTarget が省略されたら投げ入れ先と同じ点に出す（従来どおり）。
+  const spawn = spawnTarget ?? throwTarget;
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     if (phase !== "staging" || !event.isPrimary) return;
@@ -278,35 +292,40 @@ export function CompanionshipArFrame({
         {phase === "reveal" && acquired ? <RevealConfetti reduceMotion={reduceMotion} /> : null}
 
         {phase === "reveal" && acquired && character ? (
-          <div
+          // left/top をアニメーションして検出 bbox の移動に追従させる。
+          // translate は framer-motion が transform を管理する関係で内側へ逃がす。
+          <motion.div
             className="pointer-events-none absolute z-30"
-            data-spawn-x={throwTarget.x.toFixed(1)}
-            data-spawn-y={throwTarget.y.toFixed(1)}
-            style={{
-              left: `${throwTarget.x}%`,
-              top: `${throwTarget.y}%`,
-              transform: "translate(-50%, -100%)",
-            }}
+            data-spawn-x={spawn.x.toFixed(1)}
+            data-spawn-y={spawn.y.toFixed(1)}
+            initial={false}
+            animate={{ left: `${spawn.x}%`, top: `${spawn.y}%` }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.3, ease: "easeOut" }}
           >
-            <div
-              data-gravity-floor="true"
-              data-gravity-angle={floorAngleDeg.toFixed(1)}
-              style={{ transform: `rotate(${floorAngleDeg}deg)`, transformOrigin: "50% 100%" }}
-            >
-              <motion.div
-                initial={reduceMotion ? false : { scale: 0.72 }}
-                animate={{ scale: 1 }}
-                transition={reduceMotion ? { duration: 0 } : { duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            <div className="-translate-x-1/2 -translate-y-full">
+              <div
+                data-gravity-floor="true"
+                data-gravity-angle={floorAngleDeg.toFixed(1)}
+                data-model-scale={modelScale.toFixed(2)}
+                // 回転は3D側（gravityUp）が担う。ここでは足元基準の大きさだけ。
+                style={{ transform: `scale(${modelScale})`, transformOrigin: "50% 100%" }}
               >
-                <div role="img" aria-label={character.name} className="relative h-56 w-56">
-                  <GachaStage3D
-                    appearance={appearanceForCharacter(character.id)}
-                    reduceMotion={reduceMotion}
-                  />
-                </div>
-              </motion.div>
+                <motion.div
+                  initial={reduceMotion ? false : { scale: 0.72 }}
+                  animate={{ scale: 1 }}
+                  transition={reduceMotion ? { duration: 0 } : { duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <div role="img" aria-label={character.name} className="relative h-56 w-56">
+                    <GachaStage3D
+                      appearance={appearanceForCharacter(character.id)}
+                      reduceMotion={reduceMotion}
+                      gravityUp={gravityUp}
+                    />
+                  </div>
+                </motion.div>
+              </div>
             </div>
-          </div>
+          </motion.div>
         ) : null}
 
         {phase === "reveal" ? (
@@ -372,18 +391,25 @@ export function CompanionshipArStage({
 }) {
   const reduceMotion = useReducedMotion();
   const { stream, status, stop } = useGachaCamera();
-  const floorAngleDeg = useGravityFloorAngle();
+  const { angleDeg: floorAngleDeg, up: gravityUp } = useGravityFloor();
   const videoRef = useRef<HTMLVideoElement>(null);
   const mealPhotoUrl = useMealPhotoUrl(mealPhotoId);
   const [phase, setPhase] = useState<CompanionshipArPhase>("staging");
   const [aimPoint, setAimPoint] = useState<PercentPoint | null>(null);
   const [heldTarget, setHeldTarget] = useState<PercentPoint>(DEFAULT_THROW_TARGET);
   const hasPhoto = shouldPlayThrow(mealPhotoId);
-  const detectEnabled = phase === "staging" && isLiveCameraOverlay(status);
+  // reveal 中も検出を回し続け、投げ入れ先ではなく「いま写っている便器」に
+  // 這い出し位置を追従させる（AR のアンカー再配置に相当）。
+  const detectEnabled = phase !== "summary" && isLiveCameraOverlay(status);
   const { status: detectionStatus, sight } = useToiletDetection(videoRef, detectEnabled);
   const liveTarget = resolveThrowTarget({ sight, tap: aimPoint });
   const liveTargetRef = useRef(liveTarget);
   const throwTarget = phase === "staging" ? liveTarget : heldTarget;
+  // reveal で hit が続く間は検出座標へ追従、見失ったら投げ入れ先に留まる。
+  const spawnTarget = resolveRevealTarget({ sight, fallback: throwTarget });
+  // スケールも同じく、hit 中は検出値・見失ったら投げ入れ時の値を維持する。
+  const [heldScale, setHeldScale] = useState(1);
+  const modelScale = sight.kind === "hit" ? gachaRevealScale(sight) : heldScale;
 
   // 仲間がいるときだけ、staging の間にガチャ3Dのチャンクと GLB を先読みする。
   // reveal 開始時に useGLTF のロード待ちで這い出しが遅れないようにするため。
@@ -423,6 +449,7 @@ export function CompanionshipArStage({
 
   function startThrowFromSwipe() {
     setHeldTarget(liveTargetRef.current);
+    setHeldScale(gachaRevealScale(sight));
     setPhase((current) => nextCompanionshipArPhase(current, hasPhoto, Boolean(reduceMotion)));
   }
 
@@ -435,13 +462,17 @@ export function CompanionshipArStage({
       reduceMotion={Boolean(reduceMotion)}
       onSkip={() => {
         setHeldTarget(liveTargetRef.current);
+        setHeldScale(gachaRevealScale(sight));
         setPhase("summary");
       }}
       videoRef={videoRef}
       toiletSight={sight}
       detectionStatus={detectEnabled || phase !== "staging" ? detectionStatus : "failed"}
       throwTarget={throwTarget}
+      spawnTarget={spawnTarget}
       floorAngleDeg={floorAngleDeg}
+      gravityUp={gravityUp}
+      modelScale={modelScale}
       aimPoint={aimPoint}
       onAim={setAimPoint}
       onThrowStart={startThrowFromSwipe}

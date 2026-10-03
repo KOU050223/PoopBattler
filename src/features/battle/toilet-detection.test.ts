@@ -60,7 +60,11 @@ describe("toiletSightFromDetection", () => {
     expect(toiletSightFromDetection(null, box, 100, 100)).toEqual({ kind: "none" });
     expect(toiletSightFromDetection(toiletHit, null, 100, 100)).toEqual({ kind: "none" });
     expect(toiletLow.score).toBeLessThan(TOILET_ACCEPT_SCORE);
-    if (hit.kind === "hit") expect(hit.box).toEqual(box);
+    if (hit.kind === "hit") {
+      expect(hit.box).toEqual(box);
+      // bbox 高さ / 表示高さ = 距離の手がかり（AR スケール推定用）
+      expect(hit.sizeFraction).toBeCloseTo(0.04);
+    }
     if (low.kind === "low") expect(low.box.score).toBe(toiletLow.score);
   });
 });
@@ -109,13 +113,13 @@ describe("resolveThrowTarget", () => {
     const tap = { x: 12, y: 18 };
     expect(
       resolveThrowTarget({
-        sight: { kind: "hit", box: hitBox, target },
+        sight: { kind: "hit", box: hitBox, target, sizeFraction: 0.25 },
         tap,
       }),
     ).toEqual(target);
     expect(
       resolveThrowTarget({
-        sight: { kind: "low", box: hitBox, target },
+        sight: { kind: "low", box: hitBox, target, sizeFraction: 0.25 },
         tap,
       }),
     ).toEqual(tap);
@@ -151,11 +155,13 @@ describe("toiletDebugCopy", () => {
       kind: "hit",
       box: { x: 0, y: 0, width: 1, height: 1, score: 0.74 },
       target: DEFAULT_THROW_TARGET,
+      sizeFraction: 0.5,
     });
     const low = toiletDebugCopy("ready", {
       kind: "low",
       box: { x: 0, y: 0, width: 1, height: 1, score: 0.31 },
       target: DEFAULT_THROW_TARGET,
+      sizeFraction: 0.1,
     });
     const none = toiletDebugCopy("ready", { kind: "none" });
     expect(hit).toContain("便器を検出");
@@ -174,6 +180,7 @@ describe("toiletDebugCopy", () => {
         kind: "hit",
         box: { x: 0, y: 0, width: 1, height: 1, score: 0.74 },
         target: DEFAULT_THROW_TARGET,
+        sizeFraction: 0.5,
       }, true),
     ).toContain("スワイプして投げ入れてください");
     expect(hit).not.toBe(low);

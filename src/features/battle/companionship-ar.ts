@@ -1,4 +1,8 @@
-import type { ToiletModelStatus, ToiletSight } from "@/features/battle/toilet-detection";
+import type {
+  PercentPoint,
+  ToiletModelStatus,
+  ToiletSight,
+} from "@/features/battle/toilet-detection";
 import type { UserMediaCameraStatus } from "@/lib/user-media-camera";
 
 export type CompanionshipArPhase = "staging" | "throw" | "shake" | "reveal" | "summary";
@@ -30,6 +34,12 @@ export const VIDEO_SHAKE_TRANSITION = {
 export const GACHA_SWIPE_MIN_DISTANCE_PX = 56;
 const GACHA_SWIPE_MAX_ANGLE_RAD = (65 * Math.PI) / 180;
 const GACHA_SWIPE_NEAR_TARGET_PX = 24;
+
+// reveal モデルの見かけサイズを便器の見え方（=距離の手がかり）に連動させる。
+// bbox 高さが表示高さのこの割合のとき scale=1。実機調整前提の仮値。
+export const GACHA_AR_SCALE_REF_FRACTION = 0.5;
+export const GACHA_AR_SCALE_MIN = 0.6;
+export const GACHA_AR_SCALE_MAX = 1.8;
 
 export type PixelPoint = {
   x: number;
@@ -90,6 +100,25 @@ export function clientPointFromPercent(
     x: rect.left + (point.x / 100) * rect.width,
     y: rect.top + (point.y / 100) * rect.height,
   };
+}
+
+/** reveal モデルのスケール。便器が大きく写る＝近いので、モデルも大きくする。 */
+export function gachaRevealScale(sight: ToiletSight): number {
+  if (sight.kind !== "hit" || sight.sizeFraction <= 0) return 1;
+  const scale = sight.sizeFraction / GACHA_AR_SCALE_REF_FRACTION;
+  return Math.min(GACHA_AR_SCALE_MAX, Math.max(GACHA_AR_SCALE_MIN, scale));
+}
+
+/**
+ * reveal 中の出現位置。便器が hit している間は現在の検出座標へ追従し、
+ * 見失った瞬間は直前の位置（fallback）を維持してジャンプを防ぐ。
+ */
+export function resolveRevealTarget(input: {
+  sight: ToiletSight;
+  fallback: PercentPoint;
+}): PercentPoint {
+  if (input.sight.kind === "hit") return input.sight.target;
+  return input.fallback;
 }
 
 export function isThrowSwipe(start: PixelPoint, end: PixelPoint, target: PixelPoint) {
