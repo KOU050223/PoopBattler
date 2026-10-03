@@ -73,10 +73,11 @@ export function Poopm3DStage({
           scale={PLAYER_SCALE}
           onMotionFinished={(name) => onMotionFinished?.("player", name)}
         />
+        {/* 両者の中間あたりをカバー。間合いを広げても足元に影が残る範囲にする */}
         <ContactShadows
-          position={[0, STAGE_GROUND_Y + 0.012, -0.2]}
+          position={[0.15, STAGE_GROUND_Y + 0.012, -1.5]}
           opacity={0.32}
-          scale={7}
+          scale={11}
           blur={2.4}
           far={4}
           frames={Infinity}
