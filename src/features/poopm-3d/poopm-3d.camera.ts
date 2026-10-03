@@ -11,32 +11,51 @@ type Vec3 = [number, number, number];
 // キャラの足裏になる。モデル原点は頭側なので、原点=地面ではなく足先を基準に揃える。
 const MODEL_FEET_Y = -2.25;
 
-export const PLAYER_SCALE = 1.05;
-export const ENEMY_SCALE = 0.82;
+export const PLAYER_SCALE = 1.0;
+// 敵はボス感を出すため味方より一回り大きくする。
+export const ENEMY_SCALE = 1.35;
 
-// ステージの接地面。大きい側（味方）の足裏に合わせ、敵は position.y をずらして
+export const SIDE_SCALE: Record<StageSide, number> = {
+  player: PLAYER_SCALE,
+  enemy: ENEMY_SCALE,
+};
+
+// ステージの接地面。味方の足裏を基準にし、敵は position.y をずらして
 // 同じ面に立たせる（スケールが違うと足裏の高さがずれるため）。
 export const STAGE_GROUND_Y = MODEL_FEET_Y * PLAYER_SCALE;
 
+// モデル空間での注視点。head は顔まわり、body は全身を収める胴中央。
+const MODEL_HEAD_Y = 0.1;
+const MODEL_BODY_Y = -0.85;
+
 // モデルの設置位置。poopm-3d-stage.tsx の <Poopm3DModel position> と常に一致させる。
-// head は注視点に使う顔まわりの高さ、body は全身を収める胴中央の高さ
-// （ともにワールド座標、各個体の scale・設置高込み）。
+// head/body はモデル空間の注視点に scale を掛け設置高を足したワールド座標。
 export const STAGE_ANCHOR: Record<
   StageSide,
   { position: Vec3; head: number; body: number }
 > = {
-  player: { position: [-0.55, 0, 0.7], head: 0.1, body: -0.8 },
+  player: {
+    position: [-0.75, 0, 1.0],
+    head: MODEL_HEAD_Y * PLAYER_SCALE,
+    body: MODEL_BODY_Y * PLAYER_SCALE,
+  },
   enemy: {
-    position: [0.6, STAGE_GROUND_Y - MODEL_FEET_Y * ENEMY_SCALE, -1.5],
-    head: -0.4,
-    body: -1.3,
+    position: [
+      0.9,
+      STAGE_GROUND_Y - MODEL_FEET_Y * ENEMY_SCALE,
+      -2.7,
+    ],
+    head:
+      STAGE_GROUND_Y - MODEL_FEET_Y * ENEMY_SCALE + MODEL_HEAD_Y * ENEMY_SCALE,
+    body:
+      STAGE_GROUND_Y - MODEL_FEET_Y * ENEMY_SCALE + MODEL_BODY_Y * ENEMY_SCALE,
   },
 };
 
 // デフォルトのワイドショット。全キューの帰着先で、Canvas の初期カメラとも一致させる。
 export const STAGE_CAMERA_WIDE = {
-  position: [0.15, 3.0, 7.8],
-  lookAt: [0, -0.8, -0.4],
+  position: [0.15, 3.4, 9.6],
+  lookAt: [0.1, -0.6, -0.8],
   fov: 30,
 } as const;
 
@@ -101,14 +120,18 @@ function pushShot(
 ): StageCameraCue {
   const anchor = STAGE_ANCHOR[side];
   const [dx, dz] = cameraDirection(side);
+  // 大きいキャラほど同じ画角を取るのに距離が要るため、スケール比で伸ばす。
+  const dist = spec.dist * (SIDE_SCALE[side] / PLAYER_SCALE);
   const rad = ((spec.swingDeg ?? 0) * Math.PI) / 180;
   const rx = dx * Math.cos(rad) + dz * Math.sin(rad);
   const rz = -dx * Math.sin(rad) + dz * Math.cos(rad);
   return {
     position: [
-      anchor.position[0] + rx * spec.dist,
-      spec.height,
-      anchor.position[2] + rz * spec.dist,
+      anchor.position[0] + rx * dist,
+      // height は「設置位置からの高さ」として扱い、接地補正で浮いた
+      // 個体（大型の敵）でも顔の高さが追従するようにする。
+      spec.height + anchor.position[1],
+      anchor.position[2] + rz * dist,
     ],
     lookAt: [anchor.position[0], spec.lookY ?? anchor.body, anchor.position[2]],
     fov: spec.fov,
