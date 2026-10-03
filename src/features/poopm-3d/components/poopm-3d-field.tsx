@@ -203,13 +203,13 @@ export function Poopm3DField() {
             <meshStandardMaterial map={grassTexture} roughness={1} />
           </mesh>
           {/* 立ち位置まわりの淡いアリーナ円。ポケモンの円形フィールドっぽさ。
-              中心は両者の中間あたり（player z=1.0 / enemy z=-2.7）。 */}
+              中心は両者の中間あたり（player z=1.4 / enemy z=-4.4）。 */}
           <mesh
             rotation-x={-Math.PI / 2}
-            position={[0, 0.004, -0.85]}
+            position={[0, 0.004, -1.5]}
             scale={[1.25, 1, 1]}
           >
-            <circleGeometry args={[3.4, 40]} />
+            <circleGeometry args={[3.9, 40]} />
             <meshStandardMaterial color="#a3dd93" roughness={1} transparent opacity={0.55} />
           </mesh>
 

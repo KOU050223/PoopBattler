@@ -34,15 +34,15 @@ export const STAGE_ANCHOR: Record<
   { position: Vec3; head: number; body: number }
 > = {
   player: {
-    position: [-0.75, 0, 1.0],
+    position: [-0.8, 0, 1.4],
     head: MODEL_HEAD_Y * PLAYER_SCALE,
     body: MODEL_BODY_Y * PLAYER_SCALE,
   },
   enemy: {
     position: [
-      0.9,
+      1.1,
       STAGE_GROUND_Y - MODEL_FEET_Y * ENEMY_SCALE,
-      -2.7,
+      -4.4,
     ],
     head:
       STAGE_GROUND_Y - MODEL_FEET_Y * ENEMY_SCALE + MODEL_HEAD_Y * ENEMY_SCALE,
@@ -53,8 +53,8 @@ export const STAGE_ANCHOR: Record<
 
 // デフォルトのワイドショット。全キューの帰着先で、Canvas の初期カメラとも一致させる。
 export const STAGE_CAMERA_WIDE = {
-  position: [0.15, 3.4, 9.6],
-  lookAt: [0.1, -0.6, -0.8],
+  position: [0.15, 3.6, 10.6],
+  lookAt: [0.1, -0.6, -1.2],
   fov: 30,
 } as const;
 
