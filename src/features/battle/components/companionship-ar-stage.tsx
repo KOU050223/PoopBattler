@@ -34,7 +34,7 @@ import {
   type ToiletSight,
 } from "@/features/battle/toilet-detection";
 import { getMealPhoto } from "@/features/meal/meal-photo-storage";
-import { PoopmFigure } from "@/features/poopm/components/poopm-figure";
+import { GachaStage3D } from "@/features/battle/components/gacha-stage-3d";
 import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
 import type { UserMediaCameraStatus } from "@/lib/user-media-camera";
 import { captionTextClass, mutedTextClass, secondaryButtonClass } from "@/lib/ui-classes";
@@ -298,13 +298,12 @@ export function CompanionshipArFrame({
                 animate={{ scale: 1 }}
                 transition={reduceMotion ? { duration: 0 } : { duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
               >
-                <PoopmFigure
-                  appearance={appearanceForCharacter(character.id)}
-                  facing="front"
-                  motion="idle"
-                  label={character.name}
-                  className="h-44 w-44"
-                />
+                <div role="img" aria-label={character.name} className="relative h-56 w-56">
+                  <GachaStage3D
+                    appearance={appearanceForCharacter(character.id)}
+                    reduceMotion={reduceMotion}
+                  />
+                </div>
               </motion.div>
             </div>
           </div>
@@ -385,6 +384,13 @@ export function CompanionshipArStage({
   const liveTarget = resolveThrowTarget({ sight, tap: aimPoint });
   const liveTargetRef = useRef(liveTarget);
   const throwTarget = phase === "staging" ? liveTarget : heldTarget;
+
+  // 仲間がいるときだけ、staging の間にガチャ3Dのチャンクと GLB を先読みする。
+  // reveal 開始時に useGLTF のロード待ちで這い出しが遅れないようにするため。
+  useEffect(() => {
+    if (!shouldCrawlOut(result.acquiredCharacter)) return;
+    void import("@/features/poopm-3d/components/poopm-3d-gacha");
+  }, [result.acquiredCharacter]);
 
   useEffect(() => {
     liveTargetRef.current = liveTarget;

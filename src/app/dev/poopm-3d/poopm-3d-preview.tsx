@@ -24,6 +24,14 @@ const Poopm3DStage = dynamic(
   { ssr: false, loading: () => null },
 );
 
+const Poopm3DGacha = dynamic(
+  () =>
+    import("@/features/poopm-3d/components/poopm-3d-gacha").then(
+      (module) => module.Poopm3DGacha,
+    ),
+  { ssr: false, loading: () => null },
+);
+
 const SIDES = ["player", "enemy"] as const;
 type Side = (typeof SIDES)[number];
 
@@ -78,6 +86,7 @@ export function Poopm3DPreview() {
     enemy: { name: "idle", nonce: 0 },
   });
   const [speed, setSpeed] = useState<1 | 2>(1);
+  const [gachaNonce, setGachaNonce] = useState(0);
 
   const playMotion = useCallback((side: Side, name: Poopm3DBattleMotion) => {
     setMotions((prev) => ({
@@ -124,6 +133,29 @@ export function Poopm3DPreview() {
       >
         再生速度 ×{speed}
       </button>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-bold text-charcoal">ガチャ演出（reveal）</h2>
+        <div className="relative h-72 overflow-hidden rounded-2xl border-2 border-faded-gray bg-night-ink shadow-raised-gray">
+          {/* カメラ映像の代わりの仮背景。本番ではこの下に video が敷かれる。 */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-[radial-gradient(circle_at_50%_78%,var(--color-blush-wash)_0%,transparent_42%),linear-gradient(180deg,#1a1d3a_0%,var(--color-night-ink)_100%)]"
+          />
+          <div className="absolute inset-x-0 bottom-[-1rem] flex justify-center">
+            <div className="relative h-56 w-56">
+              <Poopm3DGacha key={gachaNonce} appearance={appearances.enemy} />
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          className={chipClass(false)}
+          onClick={() => setGachaNonce((prev) => prev + 1)}
+        >
+          這い出しを再生（敵の外見を使用）
+        </button>
+      </section>
 
       {SIDES.map((side) => (
         <section key={side} className="flex flex-col gap-3">
