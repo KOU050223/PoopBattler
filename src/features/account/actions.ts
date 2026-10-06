@@ -59,6 +59,12 @@ export async function deleteAccountAction(): Promise<DeleteAccountResult> {
     .maybeSingle();
 
   if (subscriptionError) {
+    // 利用者へは汎用文を返すが、運用側が切り分けられるよう
+    // サーバーログには失敗箇所を残す（battle/actions.ts と同じ形）。
+    console.error("[deleteAccountAction] subscription read failed", {
+      code: subscriptionError.code,
+      message: subscriptionError.message,
+    });
     return { status: "error", message: DELETE_ACCOUNT_ERROR_MESSAGE };
   }
 
@@ -76,11 +82,18 @@ export async function deleteAccountAction(): Promise<DeleteAccountResult> {
     stripeSubscriptionId: subscription?.stripe_subscription_id ?? null,
   });
   if (billing === "failed" || (billing === "unconfigured" && subscription)) {
+    console.error("[deleteAccountAction] billing close failed", {
+      billing,
+      hasSubscription: subscription !== null,
+    });
     return { status: "error", message: DELETE_ACCOUNT_ERROR_MESSAGE };
   }
 
   const deletion = await deleteUserCompletely(user.id);
   if (deletion.status === "error") {
+    console.error("[deleteAccountAction] user deletion failed", {
+      reason: deletion.reason,
+    });
     return { status: "error", message: DELETE_ACCOUNT_ERROR_MESSAGE };
   }
 

@@ -165,7 +165,13 @@ export async function closeUserBilling({
     }
 
     return "closed";
-  } catch {
+  } catch (error) {
+    // failed は「課金が残っているか分からない」で削除を中止する重い失敗。
+    // どの呼び出しで落ちたか分からないと再現できないため、サーバー側の
+    // ログにだけ残す（利用者へは actions 側が汎用文を返す）。
+    console.error("[closeUserBilling] failed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
     return "failed";
   }
 }
