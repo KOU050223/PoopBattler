@@ -31,7 +31,12 @@ export async function deleteUserCompletely(userId: string): Promise<UserDeletion
 
     const { error } = await supabase.auth.admin.deleteUser(userId);
     if (error) {
-      return { status: "error", reason: error.code ?? "delete_failed" };
+      // code が無い失敗（権限不足など）もある。message/status はサーバー
+      // ログにしか出ないので、切り分けられる粒度まで入れる。
+      const detail = [error.code, (error as { status?: number }).status, error.message]
+        .filter((part): part is string | number => part !== undefined && part !== null)
+        .join(": ");
+      return { status: "error", reason: detail || "delete_failed" };
     }
 
     return { status: "ok" };
