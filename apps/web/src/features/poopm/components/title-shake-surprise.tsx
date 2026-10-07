@@ -8,10 +8,10 @@ import { PoopmFigure } from "@/features/poopm/components/poopm-figure";
 import { isTitleShake } from "@/features/poopm/title-shake";
 import {
   inspectMotionPermission,
-  readBrowserMotionEnv,
   requestMotionPermission,
   type MotionPermission,
-} from "@/lib/motion";
+} from "@poopbattler/domain/motion/device-motion";
+import { readBrowserMotionEnv } from "@/lib/motion-env";
 
 const SHAKE_COOLDOWN_MS = 260;
 const MAX_FALLING_CHARACTERS = 5;

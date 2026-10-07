@@ -9,7 +9,7 @@ vi.mock("./purchase-call-to-action", () => ({
 }));
 
 import messages from "../../../../messages/ja.json";
-import type { AccountStatus } from "@/features/account/account.types";
+import type { AccountStatus } from "@poopbattler/domain/account/account.types";
 
 import { TeaserReport } from "./teaser-report";
 

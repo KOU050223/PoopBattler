@@ -7,7 +7,7 @@ import {
   signInWithGoogleFromBrowser,
 } from "@/lib/supabase/google-identity";
 
-import type { AccountStatus } from "../account.types";
+import type { AccountStatus } from "@poopbattler/domain/account/account.types";
 
 type Props = {
   status: AccountStatus;

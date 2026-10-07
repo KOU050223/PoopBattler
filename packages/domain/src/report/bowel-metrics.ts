@@ -1,4 +1,4 @@
-import { getBowelHardnessGroup, type BowelHardnessGroup } from "@/features/bowel-log/bowel-log.types";
+import { getBowelHardnessGroup, type BowelHardnessGroup } from "../records/bowel-log.types";
 
 export type BowelMetricLog = {
   loggedAt: string;

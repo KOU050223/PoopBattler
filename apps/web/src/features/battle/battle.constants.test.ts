@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { STRAIN_REQUIRED_MS } from "@/lib/motion";
+import { STRAIN_REQUIRED_MS } from "@poopbattler/domain/motion/device-motion";
 import {
   AUTO_ATTACK_DAMAGE,
   AUTO_ATTACK_PERIOD_TICKS,

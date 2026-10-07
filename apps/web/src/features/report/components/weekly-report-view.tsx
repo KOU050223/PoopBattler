@@ -5,8 +5,8 @@ import { BarChart } from "./charts/bar-chart";
 import { ShareBar } from "./charts/share-bar";
 import { TrendLine } from "./charts/trend-line";
 
-import { BOWEL_COLOR_LABELS, weekdayLabel, weekdayShortLabel, type BowelColor, type Weekday } from "../report-labels";
-import type { WeeklyReport } from "../weekly-report";
+import { BOWEL_COLOR_LABELS, weekdayLabel, weekdayShortLabel, type BowelColor, type Weekday } from "@poopbattler/domain/report/report-labels";
+import type { WeeklyReport } from "@poopbattler/domain/report/weekly-report";
 
 type Props = {
   report: WeeklyReport;

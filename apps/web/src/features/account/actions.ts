@@ -8,7 +8,7 @@ import {
   SIGNED_OUT_ACCOUNT_STATUS,
   toAccountStatus,
   type AccountStatus,
-} from "./account.types";
+} from "@poopbattler/domain/account/account.types";
 
 /**
  * 現在のユーザーが匿名のままか、Google と連携済みかを返す。

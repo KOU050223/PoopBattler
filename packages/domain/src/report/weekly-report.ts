@@ -1,6 +1,6 @@
 import { createReportAnalysis, type ReportAnalysis } from "./report-analysis";
 import { createBowelPeriodMetrics, type BowelPeriodMetrics } from "./bowel-metrics";
-import { getBowelHardnessGroup, type BowelColor } from "@/features/bowel-log/bowel-log.types";
+import { getBowelHardnessGroup, type BowelColor } from "../records/bowel-log.types";
 
 export type ReportBowelLog = {
   loggedAt: string;

@@ -9,7 +9,7 @@ import { MealPhotoPicker } from "./meal-photo-picker";
 import { MealSaveConfirmationModal } from "./meal-save-confirmation-modal";
 import { MealTagSelector } from "./meal-tag-selector";
 import { deleteMealPhoto, isMealPhotoStorageError, saveMealPhoto } from "@/features/meal/meal-photo-storage";
-import { type MealFoodGroup, type MealLogDraft, type MealLogSaveResult } from "@/features/meal/meal.types";
+import { type MealFoodGroup, type MealLogDraft, type MealLogSaveResult } from "@poopbattler/domain/records/meal.types";
 import { captionTextClass, fieldClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type FieldErrors = Partial<Record<"photo" | "foodGroups" | "eatenAt" | "save", string>>;

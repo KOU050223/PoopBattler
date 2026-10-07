@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 
-import { readAuthErrorCode } from "@/features/account/callback-params";
+import { readAuthErrorCode } from "@poopbattler/domain/account/callback-params";
 import { AuthCallbackNotice } from "@/features/account/components/auth-callback-notice";
 import { TitleShakeSurprise } from "@/features/poopm/components/title-shake-surprise";
 import { primaryButtonClass } from "@/lib/ui-classes";

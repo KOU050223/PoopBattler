@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { getAccountStatusAction } from "@/features/account/actions";
-import { readAuthErrorCode, readAuthLinked } from "@/features/account/callback-params";
+import { readAuthErrorCode, readAuthLinked } from "@poopbattler/domain/account/callback-params";
 import { AccountSection } from "@/features/account/components/account-section";
 import { AuthCallbackNotice } from "@/features/account/components/auth-callback-notice";
 import { getSubscriptionSnapshotAction } from "@/features/billing/actions";

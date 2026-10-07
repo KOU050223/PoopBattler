@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
-import { getMealFoodGroupLabel, type MealFoodGroup } from "@/features/meal/meal.types";
+import { getMealFoodGroupLabel, type MealFoodGroup } from "@poopbattler/domain/records/meal.types";
 import { mutedTextClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type MealSaveConfirmationModalProps = {

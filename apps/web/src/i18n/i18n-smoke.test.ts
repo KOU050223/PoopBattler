@@ -3,8 +3,8 @@ import { createTranslator } from "next-intl";
 
 import englishMessages from "../../messages/en.json";
 import messages from "../../messages/ja.json";
-import { defaultLocale, isSupportedLocale, locales } from "./config";
-import { resolveLocale } from "./resolve-locale";
+import { defaultLocale, isSupportedLocale, locales } from "@poopbattler/domain/i18n/config";
+import { resolveLocale } from "@poopbattler/domain/i18n/resolve-locale";
 
 // `getRequestConfig` 自体は Server Component 専用 API のため vitest からは
 // 直接呼べない（クライアント向け実装に解決されて落ちる）。

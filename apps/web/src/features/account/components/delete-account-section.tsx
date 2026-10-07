@@ -6,7 +6,7 @@ import { deleteAllMealPhotos } from "@/features/meal/meal-photo-storage";
 import { signOutFromBrowser } from "@/lib/supabase/sign-out";
 
 import { deleteAccountAction } from "../actions";
-import type { AccountStatus } from "../account.types";
+import type { AccountStatus } from "@poopbattler/domain/account/account.types";
 
 type Props = {
   status: AccountStatus;

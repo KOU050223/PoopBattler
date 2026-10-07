@@ -1,5 +1,6 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
+import type { SubscriptionRecord } from "@poopbattler/domain/billing/stripe-event";
 import type { Database } from "@/types/database.types";
 
 import { getServiceRoleEnvironment } from "./env";
@@ -13,16 +14,6 @@ import { getServiceRoleEnvironment } from "./env";
 export type SubscriptionWriteResult =
   | { status: "ok" }
   | { status: "error"; reason: string };
-
-export type SubscriptionRecord = {
-  userId: string;
-  stripeCustomerId: string;
-  stripeSubscriptionId: string;
-  status: string;
-  currentPeriodEnd: string | null;
-  /** Stripe の cancel_at_period_end。期間末解約の予約の有無。 */
-  cancelAtPeriodEnd: boolean;
-};
 
 /**
  * サービスロールのクライアントを作る。

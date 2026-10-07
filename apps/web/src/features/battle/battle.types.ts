@@ -1,4 +1,4 @@
-import type { BowelLogDraft } from "@/features/bowel-log/bowel-log.types";
+import type { BowelLogDraft } from "@poopbattler/domain/records/bowel-log.types";
 import type { Database } from "@/types/database.types";
 
 import type {

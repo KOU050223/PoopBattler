@@ -2,8 +2,8 @@
 
 import Stripe from "stripe";
 
-import { toAccountStatus } from "@/features/account/account.types";
-import { hasActiveEntitlement } from "@/features/report/report-access";
+import { toAccountStatus } from "@poopbattler/domain/account/account.types";
+import { hasActiveEntitlement } from "@poopbattler/domain/report/report-access";
 import { createClient } from "@/lib/supabase/server";
 
 import { getStripeEnvironment, getStripeSecretKey } from "./stripe-env";

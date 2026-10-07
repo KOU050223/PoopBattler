@@ -8,11 +8,11 @@ import { useGravityFloor } from "@/features/battle/hooks/use-gravity-floor";
 import type { CompleteBattleResult } from "@/features/battle/actions";
 import {
   inspectMotionPermission,
-  readBrowserMotionEnv,
   requestMotionPermission,
   type MotionEnvironment,
   type MotionPermission,
-} from "@/lib/motion";
+} from "@poopbattler/domain/motion/device-motion";
+import { readBrowserMotionEnv } from "@/lib/motion-env";
 
 const DEMO_RESULT: Extract<CompleteBattleResult, { success: true }> = {
   success: true,

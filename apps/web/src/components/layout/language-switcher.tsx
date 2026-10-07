@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
-import { LOCALE_COOKIE, locales, type Locale } from "@/i18n/config";
+import { LOCALE_COOKIE, locales, type Locale } from "@poopbattler/domain/i18n/config";
 
 export function LanguageSwitcher() {
   const locale = useLocale() as Locale;

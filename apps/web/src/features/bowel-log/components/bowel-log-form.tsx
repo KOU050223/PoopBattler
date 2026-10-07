@@ -14,7 +14,7 @@ import {
   type BowelLog,
   type BowelLogDraft,
   type BowelSymptom,
-} from "../bowel-log.types";
+} from "@poopbattler/domain/records/bowel-log.types";
 import { useBattleStore } from "@/stores/battle-store";
 
 type BowelLogFormProps = {

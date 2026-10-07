@@ -1,4 +1,4 @@
-import type { MotionPermission } from "@/lib/motion";
+import type { MotionPermission } from "@poopbattler/domain/motion/device-motion";
 
 export type SpecialMotionPlan = "noop" | "listen" | "fire-now";
 

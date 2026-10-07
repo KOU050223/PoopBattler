@@ -1,6 +1,6 @@
 "use server";
 
-import { isMealFoodGroup, type MealLogDraft, type MealLogSaveResult } from "./meal.types";
+import { isMealFoodGroup, type MealLogDraft, type MealLogSaveResult } from "@poopbattler/domain/records/meal.types";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 

@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { SIGNED_OUT_ACCOUNT_STATUS } from "../account.types";
+import { SIGNED_OUT_ACCOUNT_STATUS } from "@poopbattler/domain/account/account.types";
 import { GoogleAccountLink } from "./google-account-link";
 
 describe("GoogleAccountLink", () => {

@@ -8,10 +8,10 @@ import {
   createStrainListener,
   inspectMotionPermission,
   motionSkipReason,
-  readBrowserMotionEnv,
   requestMotionPermission,
   type MotionPermission,
-} from "@/lib/motion";
+} from "@poopbattler/domain/motion/device-motion";
+import { readBrowserMotionEnv } from "@/lib/motion-env";
 import { useBattleStore } from "@/stores/battle-store";
 
 export function useSpecialMotion() {

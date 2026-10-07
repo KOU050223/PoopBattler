@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import type { AccountStatus } from "../account.types";
+import type { AccountStatus } from "@poopbattler/domain/account/account.types";
 
 type Props = {
   /** 読み込み中は null。状態が確定するまでは何も断定しない。 */

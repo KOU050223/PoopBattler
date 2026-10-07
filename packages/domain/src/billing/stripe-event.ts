@@ -1,6 +1,40 @@
-import type Stripe from "stripe";
+export type SubscriptionRecord = {
+  userId: string;
+  stripeCustomerId: string;
+  stripeSubscriptionId: string;
+  status: string;
+  currentPeriodEnd: string | null;
+  /** Stripe の cancel_at_period_end。期間末解約の予約の有無。 */
+  cancelAtPeriodEnd: boolean;
+};
 
-import type { SubscriptionRecord } from "@/lib/supabase/subscription-write";
+/**
+ * stripe SDK を domain の依存に入れないための最小構造型。
+ * Stripe.Event / Stripe.Subscription はそのまま代入できる。
+ */
+type StripeIdRef = string | { id: string } | null | undefined;
+
+export type StripeSubscriptionLike = {
+  id: string;
+  status: string;
+  customer: StripeIdRef;
+  cancel_at_period_end?: boolean;
+  current_period_end?: number;
+  items?: { data?: { current_period_end?: number }[] };
+};
+
+type StripeCheckoutSessionLike = {
+  payment_status?: string;
+  client_reference_id?: string | null;
+  customer: StripeIdRef;
+  subscription: StripeIdRef;
+};
+
+export type StripeEventLike = {
+  type: string;
+  created: number;
+  data: { object: unknown };
+};
 
 /**
  * Stripe のイベントから、subscriptions へ書き込む内容を組み立てる。
@@ -33,7 +67,7 @@ function toIsoOrNull(seconds: number | null | undefined): string | null {
   return new Date(seconds * 1000).toISOString();
 }
 
-function idOf(value: string | { id: string } | null | undefined): string | null {
+function idOf(value: StripeIdRef): string | null {
   if (!value) return null;
   return typeof value === "string" ? value : value.id;
 }
@@ -46,16 +80,14 @@ function idOf(value: string | { id: string } | null | undefined): string | null 
  * 片方だけを読むと、APIバージョン次第で期限が null のまま書かれ、
  * hasActiveEntitlement が「権利なし」と判定して課金済みの人が締め出される。
  */
-export function periodEndOf(subscription: Stripe.Subscription): string | null {
-  const direct = toIsoOrNull(
-    (subscription as unknown as { current_period_end?: number }).current_period_end,
-  );
+export function periodEndOf(subscription: StripeSubscriptionLike): string | null {
+  const direct = toIsoOrNull(subscription.current_period_end);
   if (direct) return direct;
 
   const ends =
     subscription.items?.data
       ?.map((item) =>
-        toIsoOrNull((item as unknown as { current_period_end?: number }).current_period_end),
+        toIsoOrNull(item.current_period_end),
       )
       .filter((value): value is string => value !== null) ?? [];
 
@@ -66,12 +98,12 @@ export function periodEndOf(subscription: Stripe.Subscription): string | null {
 }
 
 export function resolveStripeEvent(
-  event: Stripe.Event,
+  event: StripeEventLike,
   /**
    * checkout.session.completed のときに、Route Handler が Stripe から
    * 取得しておいた購読。期限を1イベントで確定させるために使う。
    */
-  expandedSubscription?: Stripe.Subscription | null,
+  expandedSubscription?: StripeSubscriptionLike | null,
 ): StripeEventOutcome {
   // 支払いが確定した Checkout。遅延通知型の支払い方法（コンビニ払い等）では
   // completed が payment_status: "unpaid" のまま先に届き、実際の成否は
@@ -82,7 +114,7 @@ export function resolveStripeEvent(
     event.type === "checkout.session.completed"
     || event.type === "checkout.session.async_payment_succeeded"
   ) {
-    const session = event.data.object as Stripe.Checkout.Session;
+    const session = event.data.object as StripeCheckoutSessionLike;
 
     // 未払いのまま届いた completed では権利を付けない。
     // 後続の async_payment_succeeded を待つ（失敗すればそれも届かない）。
@@ -130,7 +162,7 @@ export function resolveStripeEvent(
   }
 
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
-    const subscription = event.data.object as Stripe.Subscription;
+    const subscription = event.data.object as StripeSubscriptionLike;
     const stripeCustomerId = idOf(subscription.customer);
 
     if (!stripeCustomerId) {
