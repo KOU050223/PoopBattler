@@ -14,3 +14,4 @@
 | 2026-10-07 | T-002b / T-008 | devin x2 | dispatch | dispatched | T-002b=ctx_e5de713c0f92(current) T-008=ctx_8c6da3e6c837(worktree t008-native-battle)。T-005はユーザー承認待ち、T-006はT-002b待ち |
 | 2026-10-07 | T-002b | devin ctx_e5de713c0f92 | 第1段階 | completed | TODO(T-003)0件、532tests維持(web297+domain235)、typecheck/lint/build通過、コミット済 |
 | 2026-10-07 | T-006 | devin | dispatch | dispatched | worktree t006-native-records |
+| 2026-10-07 | T-008 | devin ctx_8c6da3e6c837 | 第1段階 | needs-human-review | マージ済、typecheck/297+235+56tests/lint通過。マージ後にT-002bの型改名(BowelDraft→BowelLogDraft)を指示役が追従。未対応(仕様範囲外): パーティ選出UI(図鑑側)、食事ログ紐づけ・症状入力。確認手順: バトルタブ→バトルを始める→戦闘→勝利→排便4項目→記録して完了(Supabase env要) |
