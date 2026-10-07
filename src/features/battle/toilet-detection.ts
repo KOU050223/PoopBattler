@@ -1,8 +1,11 @@
 export const TOILET_CLASS = "toilet";
 export const TOILET_ACCEPT_SCORE = 0.5;
 export const TOILET_DEBUG_SCORE = 0.15;
-export const TOILET_INFER_INTERVAL_MS = 450;
-export const TOILET_SEAT_BIAS = 0.68;
+// reveal 中の再アンカー追従を優先して短めに回す。推論自体は逐次実行で
+// 端末速度に応じて実効周期は推論時間+この間隔になる。
+export const TOILET_INFER_INTERVAL_MS = 120;
+// bbox 内での出現・投げ入れ基準点。真ん中（中央）に出す。
+export const TOILET_SEAT_BIAS = 0.5;
 
 export type CocoDetection = {
   bbox: [number, number, number, number];

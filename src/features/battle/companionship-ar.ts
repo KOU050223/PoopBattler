@@ -1,3 +1,4 @@
+import { clampPercent } from "@/features/battle/toilet-detection";
 import type {
   PercentPoint,
   ToiletModelStatus,
@@ -13,10 +14,6 @@ export const REVEAL_FAIL_COPY = "失敗";
 export const COMPANIONSHIP_PHASE_MS = {
   throw: 900,
   shake: 700,
-  reveal: 2200,
-  // reduced-motion では演出フェーズはスキップするが、抽選結果の確認に
-  // 必要な情報なので reveal だけは静止表示として残す。
-  revealReduced: 1400,
 } as const;
 
 export const VIDEO_SHAKE_ANIMATE = {
@@ -121,6 +118,38 @@ export function resolveRevealTarget(input: {
   return input.fallback;
 }
 
+// reveal モデルの表示箱（= 224px）。クランプと描画側で同じ値を使う。
+export const REVEAL_MODEL_BOX_PX = 224;
+// モデル箱がステージ実寸を超えると必ず見切れるので、
+// 表示スケール自体も枠に収まるよう抑える（bbox=近い=でかい、の勢いは殺さない程度に）。
+const REVEAL_STAGE_FILL = 0.92;
+
+/** 表示スケールをステージ実寸に収まる範囲へ抑える。 */
+export function clampRevealScale(input: {
+  scale: number;
+  stageWidth: number;
+  stageHeight: number;
+}): number {
+  const { scale, stageWidth, stageHeight } = input;
+  if (stageWidth <= 0 || stageHeight <= 0) return scale;
+  return Math.min(
+    scale,
+    (stageWidth * REVEAL_STAGE_FILL) / REVEAL_MODEL_BOX_PX,
+    (stageHeight * REVEAL_STAGE_FILL) / REVEAL_MODEL_BOX_PX,
+  );
+}
+
+/**
+ * 出現位置（=モデル中心）は検出枠の中心へ正確に合わせる。
+ * 見切れ防止で内側へ寄せると、検出枠が画面端寄りのときにアンカーが
+ * 枠の中心からずれて「立っていない」見た目になるため、位置はクランプしない。
+ * 枠が画面端にあるときモデルの一部が画面外へ出るのは AR として自然なので許容する。
+ */
+export function clampRevealSpawn(input: { target: PercentPoint }): PercentPoint {
+  const { target } = input;
+  return { x: clampPercent(target.x), y: clampPercent(target.y) };
+}
+
 export function isThrowSwipe(start: PixelPoint, end: PixelPoint, target: PixelPoint) {
   const dx = end.x - start.x;
   const dy = end.y - start.y;
@@ -154,10 +183,8 @@ export function companionshipPhaseDelay(
   phase: CompanionshipArPhase,
   reduceMotion: boolean,
 ): number | null {
-  if (phase === "staging" || phase === "summary") return null;
-  if (phase === "reveal") {
-    return reduceMotion ? COMPANIONSHIP_PHASE_MS.revealReduced : COMPANIONSHIP_PHASE_MS.reveal;
-  }
+  // reveal は這い出しをじっくり見られるよう、タップされるまで待機する。
+  if (phase === "staging" || phase === "summary" || phase === "reveal") return null;
   if (reduceMotion) return 0;
   if (phase === "throw") return COMPANIONSHIP_PHASE_MS.throw;
   return COMPANIONSHIP_PHASE_MS.shake;

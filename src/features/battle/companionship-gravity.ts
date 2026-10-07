@@ -13,11 +13,15 @@ export type GravityVec3 = {
   z: number;
 };
 
-/** 画面平面に落ちた重力の逆向き。ノルムが小さい・欠損は画面上が上（0°）。 */
+// accelerationIncludingGravity は重力の反力（=デバイスが感じる"上"）を返す
+// （W3C: 画面を上に寝かせた端末で z=+9.81）。逆ベクトルを取ると上下逆になる
+// ので、測定値をそのまま上方向として扱う。
+
+/** 画面平面に落ちた「上」の角度。ノルムが小さい・欠損は画面上が上（0°）。 */
 export function screenUpAngleDeg(gravity: GravityAxis | null | undefined): number {
   if (gravity == null || gravity.x == null || gravity.y == null) return 0;
   if (Math.hypot(gravity.x, gravity.y) < GRAVITY_SCREEN_MIN) return 0;
-  return (Math.atan2(-gravity.x, -gravity.y) * 180) / Math.PI;
+  return (Math.atan2(gravity.x, gravity.y) * 180) / Math.PI;
 }
 
 export function smoothAngleDeg(prev: number, next: number, alpha = GRAVITY_SMOOTH): number {
@@ -30,7 +34,7 @@ export function smoothAngleDeg(prev: number, next: number, alpha = GRAVITY_SMOOT
 /**
  * デバイス座標の重力ベクトル → カメラ空間での世界の上向き（床法線）。
  * デバイス座標（x=右, y=画面上方向, z=画面手前）と three.js のカメラ座標は
- * 一致する前提で、重力の逆ベクトルをそのまま正規化する。
+ * 一致する前提で、測定値（=反力）をそのまま正規化する。
  * ノルムが小さい・欠損は null（呼び出し側は恒等姿勢にフォールバック）。
  */
 export function gravityUpVec(gravity: GravityAxis | null | undefined): GravityVec3 | null {
@@ -39,7 +43,7 @@ export function gravityUpVec(gravity: GravityAxis | null | undefined): GravityVe
   }
   const norm = Math.hypot(gravity.x, gravity.y, gravity.z);
   if (norm < GRAVITY_SCREEN_MIN) return null;
-  return { x: -gravity.x / norm, y: -gravity.y / norm, z: -gravity.z / norm };
+  return { x: gravity.x / norm, y: gravity.y / norm, z: gravity.z / norm };
 }
 
 /** 生の重力ベクトルを成分ごとに平滑化する。欠損値は前回値を維持する。 */

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   canAdvanceFromStaging,
   canStartGachaBySwipe,
+  clampRevealScale,
+  clampRevealSpawn,
   clientPointFromPercent,
   companionshipPhaseDelay,
   companionshipRevealCopy,
@@ -224,16 +226,46 @@ describe("nextCompanionshipArPhase", () => {
 });
 
 describe("companionshipPhaseDelay", () => {
-  it("staging は待たず、揺れは 700ms、reduced-motion は 0", () => {
+  it("staging は待たず、揺れは 700ms、reveal はタップ待ち、reduced-motion は 0", () => {
     expect(companionshipPhaseDelay("staging", false)).toBeNull();
     expect(companionshipPhaseDelay("summary", false)).toBeNull();
     expect(companionshipPhaseDelay("throw", false)).toBe(COMPANIONSHIP_PHASE_MS.throw);
     expect(companionshipPhaseDelay("shake", false)).toBe(COMPANIONSHIP_PHASE_MS.shake);
-    expect(companionshipPhaseDelay("reveal", false)).toBe(COMPANIONSHIP_PHASE_MS.reveal);
+    // reveal はタップで進むため自動遷移しない
+    expect(companionshipPhaseDelay("reveal", false)).toBeNull();
+    expect(companionshipPhaseDelay("reveal", true)).toBeNull();
     expect(companionshipPhaseDelay("shake", true)).toBe(0);
     expect(companionshipPhaseDelay("throw", true)).toBe(0);
-    // reduced-motion でも抽選結果だけは静止表示で確認できる時間を残す
-    expect(companionshipPhaseDelay("reveal", true)).toBe(COMPANIONSHIP_PHASE_MS.revealReduced);
+  });
+});
+
+describe("clampRevealSpawn", () => {
+  it("出現位置はそのまま返す（見切れ防止で内側へ寄せない）", () => {
+    expect(clampRevealSpawn({ target: { x: 50, y: 70 } })).toEqual({ x: 50, y: 70 });
+    expect(clampRevealSpawn({ target: { x: 10, y: 5 } })).toEqual({ x: 10, y: 5 });
+  });
+
+  it("画面外の座標だけ 0〜100 に収める", () => {
+    expect(clampRevealSpawn({ target: { x: -5, y: 120 } })).toEqual({ x: 0, y: 100 });
+  });
+});
+
+describe("clampRevealScale", () => {
+  it("枠に収まるスケールはそのまま", () => {
+    expect(clampRevealScale({ scale: 1, stageWidth: 400, stageHeight: 600 })).toBe(1);
+  });
+
+  it("ステージ幅を超えるスケールは幅いっぱいに抑える", () => {
+    // 350px 幅なら 350*0.92/224 ≈ 1.44
+    expect(clampRevealScale({ scale: 1.8, stageWidth: 350, stageHeight: 500 })).toBeCloseTo(1.44, 2);
+  });
+
+  it("高さ方向も同様に抑える", () => {
+    expect(clampRevealScale({ scale: 1.8, stageWidth: 800, stageHeight: 300 })).toBeCloseTo(1.23, 2);
+  });
+
+  it("計測前はそのまま返す", () => {
+    expect(clampRevealScale({ scale: 1.8, stageWidth: 0, stageHeight: 0 })).toBe(1.8);
   });
 });
 

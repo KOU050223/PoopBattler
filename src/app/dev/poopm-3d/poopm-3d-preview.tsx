@@ -42,6 +42,7 @@ const TILT_PRESETS = [
   { id: "tilt-left", label: "左に傾け", up: { x: -0.5, y: 0.86, z: 0 } },
   { id: "tilt-right", label: "右に傾け", up: { x: 0.5, y: 0.86, z: 0 } },
   { id: "look-down", label: "見下ろし", up: { x: 0, y: 0.3, z: 0.95 } },
+  { id: "phone-pitch", label: "実機前傾", up: { x: 0.06, y: 0.82, z: 0.57 } },
   { id: "none", label: "重力なし", up: null },
 ] as const;
 type TiltPresetId = (typeof TILT_PRESETS)[number]["id"];
@@ -179,6 +180,7 @@ export function Poopm3DPreview() {
                 key={gachaNonce}
                 appearance={appearances.enemy}
                 gravityUp={tiltUp}
+                overscan={1.8}
               />
             </div>
           </div>

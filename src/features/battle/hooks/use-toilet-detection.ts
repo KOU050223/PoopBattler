@@ -57,17 +57,28 @@ export function useToiletDetection(
           const detections = await detector.detect(video, 20, TOILET_DEBUG_SCORE);
           if (cancelled) return;
           const picked = pickToiletDetection(detections);
-          const display = video.getBoundingClientRect();
-          const box = picked
+          const videoRect = video.getBoundingClientRect();
+          // 映像はシェイク演出のオーバースキャンでステージ枠より大きい。
+          // bbox/出現位置は枠基準で使うので、枠座標へ平行移動してから割合を出す。
+          const stageEl = video.closest("[data-gacha-swipe]");
+          const stageRect = stageEl?.getBoundingClientRect() ?? videoRect;
+          const mapped = picked
             ? overlayBoxFromDetection(
                 picked,
                 video.videoWidth,
                 video.videoHeight,
-                display.width,
-                display.height,
+                videoRect.width,
+                videoRect.height,
               )
             : null;
-          setSight(toiletSightFromDetection(picked, box, display.width, display.height));
+          const box = mapped
+            ? {
+                ...mapped,
+                x: mapped.x + videoRect.left - stageRect.left,
+                y: mapped.y + videoRect.top - stageRect.top,
+              }
+            : null;
+          setSight(toiletSightFromDetection(picked, box, stageRect.width, stageRect.height));
         }
         if (!cancelled) {
           timer = window.setTimeout(() => {

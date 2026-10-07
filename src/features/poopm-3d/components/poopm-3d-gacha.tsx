@@ -15,6 +15,8 @@ export type Poopm3DGachaProps = {
   reduceMotion?: boolean;
   /** 床法線（カメラ空間の世界の上向き）。null/省略は直立。 */
   gravityUp?: GravityVec3 | null;
+  /** 描画領域を親の箱より広げる倍率。傾いたモデルがキャンバス端で切れるのを防ぐ。 */
+  overscan?: number;
 };
 
 // 這い出し（swap_in）→ お祝い（win）→ 待機（idle）の3段。
@@ -29,6 +31,7 @@ export function Poopm3DGacha({
   appearance,
   reduceMotion = false,
   gravityUp = null,
+  overscan,
 }: Poopm3DGachaProps) {
   const [motion, setMotion] = useState<Poopm3DMotionRequest>({
     name: reduceMotion ? "idle" : "swap_in",
@@ -48,6 +51,7 @@ export function Poopm3DGacha({
       motion={motion}
       onMotionFinished={onMotionFinished}
       gravityUp={gravityUp}
+      overscan={overscan}
     />
   );
 }

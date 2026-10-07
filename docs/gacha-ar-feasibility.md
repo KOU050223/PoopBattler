@@ -12,7 +12,7 @@ Issue [#171](https://github.com/KOU050223/PoopBattler/issues/171)。
 
 | 要件 | 手段 | 可否 |
 | --- | --- | --- |
-| 床面の法線（世界の上向き）確定 | `devicemotion` の `accelerationIncludingGravity`（x,y,z）。重力の逆 = 床法線。ピッチ＋ロールまで取れる | ◎ |
+| 床面の法線（世界の上向き）確定 | `devicemotion` の `accelerationIncludingGravity`（x,y,z）。加速度計は重力の反力（=上向き）を返すので測定値がそのまま床法線。ピッチ＋ロールまで取れる | ◎ |
 | 画像認識座標からの出現 | 便器 bbox → 表示座標（`mapCoverBBox` 済）→ three.js カメラのレイにアンプロジェクトし仮想床面へ配置 | ◎ |
 | サイズ感の現実連動 | 深度は取れない。bbox 高さ ÷ 便器実寸（便座〜全高で約0.4〜0.8m）で粗い距離推定しモデルスケールに使う | ○ 粗い |
 | 回転への追従 | `rotationRate`（ジャイロ）の短期積分で3DoF補償。reveal は約2.2秒なのでドリフト誤差は無視できる | ○ |

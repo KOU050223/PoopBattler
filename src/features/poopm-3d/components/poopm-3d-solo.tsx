@@ -23,7 +23,20 @@ export type Poopm3DSoloProps = {
    * 実際の床に立つ向きへ傾く。null/省略は恒等姿勢（直立）。
    */
   gravityUp?: GravityVec3 | null;
+  /**
+   * 描画領域を親の箱より何倍広く取るか（中心固定）。画角も同率で広げるので
+   * 箱の中のモデルの見かけは変わらず、周囲に余白だけが増える。
+   * 傾けた姿勢（頭がカメラ側へ倒れる等）がキャンバス端で切れるのを防ぐ。
+   */
+  overscan?: number;
 };
+
+const BASE_FOV_DEG = 30;
+
+function overscanFovDeg(overscan: number) {
+  const half = (BASE_FOV_DEG * Math.PI) / 360;
+  return (2 * Math.atan(overscan * Math.tan(half)) * 180) / Math.PI;
+}
 
 // カメラは固定。正面からの単体表示用に、頭頂 y≈0.63・足裏 y≈-2.25 の
 // 全身が枠内に収まる距離を取る（ガチャ・結果カード共用）。
@@ -38,7 +51,11 @@ function SoloCamera() {
 
 const LOCAL_UP = new THREE.Vector3(0, 1, 0);
 
-// モデル+床影を足裏接地点まわりで「世界の上向き」へ傾ける。
+// 全身の中心（SoloCamera の注視点と同じ高さ）。傾きの回転軸をここに置く。
+const BODY_CENTER_Y = -0.85;
+
+// モデル+床影を「世界の上向き」へ傾ける。回転軸は足裏ではなく胴中央:
+// 足裏軸だと傾けた分だけ体の中心が画面中心（=検出枠の中心）からずれるため。
 // up=null のときは恒等姿勢へ戻す。slerp でセンサーの段差を吸収する。
 function GravityAligned({ up, children }: { up: GravityVec3 | null | undefined; children: ReactNode }) {
   const ref = useRef<THREE.Group>(null);
@@ -58,8 +75,8 @@ function GravityAligned({ up, children }: { up: GravityVec3 | null | undefined; 
   });
 
   return (
-    <group ref={ref} position={[0, STAGE_GROUND_Y, 0]}>
-      {children}
+    <group ref={ref} position={[0, BODY_CENTER_Y, 0]}>
+      <group position={[0, STAGE_GROUND_Y - BODY_CENTER_Y, 0]}>{children}</group>
     </group>
   );
 }
@@ -71,10 +88,11 @@ export function Poopm3DSolo({
   motion,
   onMotionFinished,
   gravityUp = null,
+  overscan = 1,
 }: Poopm3DSoloProps) {
-  return (
+  const canvas = (
     <Canvas
-      camera={{ position: [0, 0.7, 6.6], fov: 30 }}
+      camera={{ position: [0, 0.7, 6.6], fov: overscanFovDeg(overscan) }}
       gl={{ antialias: true, alpha: true }}
       dpr={[1, 2]}
       style={{ background: "transparent" }}
@@ -98,5 +116,14 @@ export function Poopm3DSolo({
       </Suspense>
       <SoloCamera />
     </Canvas>
+  );
+
+  if (overscan <= 1) return canvas;
+  // 親の箱の中心を保ったまま四方へ広げる。親は relative/サイズ指定済みの前提。
+  const inset = `${((1 - overscan) / 2) * 100}%`;
+  return (
+    <div className="pointer-events-none absolute" style={{ inset }}>
+      {canvas}
+    </div>
   );
 }

@@ -7,15 +7,18 @@ import {
   smoothGravityVec3,
 } from "./companionship-gravity";
 
+// accelerationIncludingGravity は重力の反力（=デバイスが感じる"上"）を返す。
+// 実機確認済み（iPhone: 直立で y=+9.8）。fixture は実測の符号で書く。
+
 describe("screenUpAngleDeg", () => {
   it("直立は 0、横倒しは傾き、平面や欠損は画面上が上", () => {
-    expect(screenUpAngleDeg({ x: 0, y: -9.8, z: 0 })).toBeCloseTo(0);
-    expect(screenUpAngleDeg({ x: -9.8, y: 0, z: 0 })).toBeCloseTo(90);
-    expect(screenUpAngleDeg({ x: 9.8, y: 0, z: 0 })).toBeCloseTo(-90);
-    expect(screenUpAngleDeg({ x: 0, y: 0, z: -9.8 })).toBe(0);
-    expect(screenUpAngleDeg({ x: 0.4, y: 0.2, z: -9.8 })).toBe(0);
+    expect(screenUpAngleDeg({ x: 0, y: 9.8, z: 0 })).toBeCloseTo(0);
+    expect(screenUpAngleDeg({ x: 9.8, y: 0, z: 0 })).toBeCloseTo(90);
+    expect(screenUpAngleDeg({ x: -9.8, y: 0, z: 0 })).toBeCloseTo(-90);
+    expect(screenUpAngleDeg({ x: 0, y: 0, z: 9.8 })).toBe(0);
+    expect(screenUpAngleDeg({ x: 0.4, y: 0.2, z: 9.8 })).toBe(0);
     expect(screenUpAngleDeg(null)).toBe(0);
-    expect(screenUpAngleDeg({ x: null, y: -9.8, z: 0 })).toBe(0);
+    expect(screenUpAngleDeg({ x: null, y: 9.8, z: 0 })).toBe(0);
   });
 });
 
@@ -27,33 +30,33 @@ describe("smoothAngleDeg", () => {
 });
 
 describe("gravityUpVec", () => {
-  it("重力の逆ベクトルを正規化して返す。画面手前が z+ なので寝かせると上はカメラ側", () => {
-    const upright = gravityUpVec({ x: 0, y: -9.8, z: 0 });
+  it("測定値（=反力）を正規化して返す。画面手前が z+ なので寝かせると上はカメラ側", () => {
+    const upright = gravityUpVec({ x: 0, y: 9.8, z: 0 });
     expect(upright?.x).toBeCloseTo(0);
     expect(upright?.y).toBeCloseTo(1);
     expect(upright?.z).toBeCloseTo(0);
-    const flat = gravityUpVec({ x: 0, y: 0, z: -9.8 });
+    const flat = gravityUpVec({ x: 0, y: 0, z: 9.8 });
     expect(flat?.z).toBeCloseTo(1);
-    const rolled = gravityUpVec({ x: -9.8, y: 0, z: 0 });
+    const rolled = gravityUpVec({ x: 9.8, y: 0, z: 0 });
     expect(rolled?.x).toBeCloseTo(1);
-    const pitched = gravityUpVec({ x: 0, y: -6.93, z: -6.93 });
+    const pitched = gravityUpVec({ x: 0, y: 6.93, z: 6.93 });
     expect(pitched?.y).toBeCloseTo(Math.SQRT1_2);
     expect(pitched?.z).toBeCloseTo(Math.SQRT1_2);
   });
 
   it("欠損・ノルム不足は null", () => {
     expect(gravityUpVec(null)).toBeNull();
-    expect(gravityUpVec({ x: 0, y: -9.8, z: null })).toBeNull();
+    expect(gravityUpVec({ x: 0, y: 9.8, z: null })).toBeNull();
     expect(gravityUpVec({ x: 0.4, y: 0.2, z: 0 })).toBeNull();
   });
 });
 
 describe("smoothGravityVec3", () => {
   it("成分ごとに寄せ、欠損は前回値、初回はそのまま採用", () => {
-    const first = smoothGravityVec3(null, { x: 0, y: -9.8, z: 0 });
-    expect(first).toEqual({ x: 0, y: -9.8, z: 0 });
-    const next = smoothGravityVec3(first, { x: 1, y: -9.8, z: 0.4 }, 0.5);
-    expect(next).toEqual({ x: 0.5, y: -9.8, z: 0.2 });
-    expect(smoothGravityVec3(next, { x: null, y: -9.8, z: 0 })).toEqual(next);
+    const first = smoothGravityVec3(null, { x: 0, y: 9.8, z: 0 });
+    expect(first).toEqual({ x: 0, y: 9.8, z: 0 });
+    const next = smoothGravityVec3(first, { x: 1, y: 9.8, z: 0.4 }, 0.5);
+    expect(next).toEqual({ x: 0.5, y: 9.8, z: 0.2 });
+    expect(smoothGravityVec3(next, { x: null, y: 9.8, z: 0 })).toEqual(next);
   });
 });

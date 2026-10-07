@@ -7,6 +7,8 @@ import type { CompleteBattleResult } from "@/features/battle/actions";
 import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
 import {
   canStartGachaBySwipe,
+  clampRevealScale,
+  clampRevealSpawn,
   clientPointFromPercent,
   companionshipPhaseDelay,
   companionshipRevealCopy,
@@ -16,6 +18,7 @@ import {
   isLiveCameraOverlay,
   isThrowSwipe,
   nextCompanionshipArPhase,
+  REVEAL_MODEL_BOX_PX,
   resolveRevealTarget,
   shouldCrawlOut,
   shouldPlayThrow,
@@ -43,6 +46,10 @@ import type { UserMediaCameraStatus } from "@/lib/user-media-camera";
 import { captionTextClass, mutedTextClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type CompletionSuccess = Extract<CompleteBattleResult, { success: true }>;
+
+// 前傾でモデルがカメラ側へ倒れると、直立でぴったりの 224px 箱から出て
+// キャンバス端で切れる。箱の周囲に余白を取って描画する。
+const REVEAL_CANVAS_OVERSCAN = 1.8;
 
 export type CompanionshipArFrameProps = {
   result: CompletionSuccess;
@@ -85,7 +92,7 @@ const CONFETTI_PIECES = [
 function phaseLabel(phase: CompanionshipArPhase, canSwipe: boolean) {
   if (phase === "throw") return "食事を便器へ投げ入れています";
   if (phase === "shake") return "便器が揺れています";
-  if (phase === "reveal") return "仲間化の結果です";
+  if (phase === "reveal") return "タップで結果を確認";
   return canSwipe ? "スワイプして食事を投げ入れてください" : "便器にカメラを向けてください";
 }
 
@@ -170,17 +177,52 @@ export function CompanionshipArFrame({
     usedMealLog: result.usedMealLog,
   });
   const pointerStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  // 表示スケールを枠の実寸へ収めるため実寸を追う（位置のクランプには使わない）。
+  const [stageSize, setStageSize] = useState<{ width: number; height: number } | null>(null);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setStageSize((prev) =>
+        prev && Math.round(prev.width) === Math.round(width) && Math.round(prev.height) === Math.round(height)
+          ? prev
+          : { width, height },
+      );
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // reveal でモデルが頭まで見えるよう、ステージがビューポート内に来るよう
+  // 最小限スクロールする（画面外にスクロールしてると出現位置が見切れる）。
+  useEffect(() => {
+    if (phase === "reveal") {
+      stageRef.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [phase]);
+
+  // bboxスケールが大きいとモデル箱がステージ自体を上回って必ず見切れるので、
+  // 表示スケールも枠の実寸に収める。
+  const displayScale = clampRevealScale({
+    scale: modelScale,
+    stageWidth: stageSize?.width ?? 0,
+    stageHeight: stageSize?.height ?? 0,
+  });
+
   // spawnTarget が省略されたら投げ入れ先と同じ点に出す（従来どおり）。
-  const spawn = spawnTarget ?? throwTarget;
+  // 位置は検出枠の中心へ忠実に合わせる。見切れは許容する。
+  const spawn = clampRevealSpawn({ target: spawnTarget ?? throwTarget });
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
-    if (phase !== "staging" || !event.isPrimary) return;
+    if ((phase !== "staging" && phase !== "reveal") || !event.isPrimary) return;
     pointerStartRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
-    if (phase !== "staging" || !event.isPrimary) return;
+    if ((phase !== "staging" && phase !== "reveal") || !event.isPrimary) return;
     const start = pointerStartRef.current;
     pointerStartRef.current = null;
     if (!start || start.id !== event.pointerId) return;
@@ -191,6 +233,13 @@ export function CompanionshipArFrame({
     const rect = event.currentTarget.getBoundingClientRect();
     const end = { x: event.clientX, y: event.clientY };
     const distance = Math.hypot(end.x - start.x, end.y - start.y);
+
+    // reveal 中のタップは自動遷移の代わりに結果画面へ進む操作。
+    // スワイプ相当の移動は誤操作として無視する。
+    if (phase === "reveal") {
+      if (distance < GACHA_SWIPE_MIN_DISTANCE_PX) onSkip();
+      return;
+    }
 
     if (distance < GACHA_SWIPE_MIN_DISTANCE_PX) {
       if (onAim && toiletSight.kind !== "hit") {
@@ -227,9 +276,16 @@ export function CompanionshipArFrame({
       </div>
 
       <div
-        className="relative min-h-[22rem] touch-none select-none overflow-hidden rounded-2xl border-2 border-faded-gray bg-night-ink shadow-raised-gray aspect-[3/4]"
+        ref={stageRef}
+        className="relative min-h-[20rem] max-h-[62svh] touch-none select-none overflow-hidden rounded-2xl border-2 border-faded-gray bg-night-ink shadow-raised-gray aspect-[3/4]"
         data-gacha-swipe={canSwipe ? "ready" : "blocked"}
-        aria-label={canSwipe ? "便器へ投げ入れる。スワイプで開始" : "便器が写ったらスワイプできます"}
+        aria-label={
+          phase === "reveal"
+            ? "仲間化の結果。タップで結果を確認"
+            : canSwipe
+              ? "便器へ投げ入れる。スワイプで開始"
+              : "便器が写ったらスワイプできます"
+        }
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
@@ -300,29 +356,33 @@ export function CompanionshipArFrame({
             data-spawn-y={spawn.y.toFixed(1)}
             initial={false}
             animate={{ left: `${spawn.x}%`, top: `${spawn.y}%` }}
-            transition={reduceMotion ? { duration: 0 } : { duration: 0.3, ease: "easeOut" }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
           >
-            <div className="-translate-x-1/2 -translate-y-full">
+            {/* アンカー点=モデル中心。検出枠の中心にうんちくんが立って見えるよう
+                足元ではなく箱の中央を合わせる。 */}
+            <div className="-translate-x-1/2 -translate-y-1/2">
+              {/* canvas の祖先に transform を置かない。R3F のサイズ計測は
+                  transform 込みの bounding rect 基準で、transform 途中の値が
+                  焼き付くとモデルがアンカーからずれる。スケールは箱の実寸、
+                  出現演出は GLB 側の swap_in クリップが担う。 */}
               <div
+                role="img"
+                aria-label={character.name}
                 data-gravity-floor="true"
                 data-gravity-angle={floorAngleDeg.toFixed(1)}
-                data-model-scale={modelScale.toFixed(2)}
-                // 回転は3D側（gravityUp）が担う。ここでは足元基準の大きさだけ。
-                style={{ transform: `scale(${modelScale})`, transformOrigin: "50% 100%" }}
+                data-model-scale={displayScale.toFixed(2)}
+                className="relative"
+                style={{
+                  width: REVEAL_MODEL_BOX_PX * displayScale,
+                  height: REVEAL_MODEL_BOX_PX * displayScale,
+                }}
               >
-                <motion.div
-                  initial={reduceMotion ? false : { scale: 0.72 }}
-                  animate={{ scale: 1 }}
-                  transition={reduceMotion ? { duration: 0 } : { duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  <div role="img" aria-label={character.name} className="relative h-56 w-56">
-                    <GachaStage3D
-                      appearance={appearanceForCharacter(character.id)}
-                      reduceMotion={reduceMotion}
-                      gravityUp={gravityUp}
-                    />
-                  </div>
-                </motion.div>
+                <GachaStage3D
+                  appearance={appearanceForCharacter(character.id)}
+                  reduceMotion={reduceMotion}
+                  gravityUp={gravityUp}
+                  overscan={REVEAL_CANVAS_OVERSCAN}
+                />
               </div>
             </div>
           </motion.div>
