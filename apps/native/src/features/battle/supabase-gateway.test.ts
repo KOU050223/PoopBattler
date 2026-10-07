@@ -4,7 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 import { RENTAL_HP } from "@poopbattler/domain/battle/battle.constants";
 import type { Database } from "@poopbattler/domain/types/database.types";
 
-import { completeBattleAction, startBattleAction } from "./supabase-gateway";
+import {
+  completeBattleAction,
+  completeBattleForSession,
+  loadOwnedCharacterIds,
+  startBattleAction,
+} from "./supabase-gateway";
 
 type Result = { data?: unknown; error?: unknown; count?: number | null };
 
@@ -281,5 +286,82 @@ describe("completeBattleAction", () => {
       success: false,
       message: expect.stringContaining("取得に失敗"),
     });
+  });
+
+  it("症状があれば p_symptoms に乗せる", async () => {
+    const { client, raw } = fakeSupabase({
+      rpc: { complete_battle_with_symptoms: { data: [completeRow()] } },
+      tables: {
+        battle_results: [{ data: { completed_at: "t", meal_log_id: null } }, { count: 1 }],
+        meal_logs: [{ count: 0 }],
+      },
+    });
+
+    await completeBattleAction(client, {
+      battleId: BATTLE_ID,
+      bowelLog: { ...bowelLog, symptoms: ["strained", "abdominal_pain"] },
+    });
+
+    expect(raw.rpc).toHaveBeenCalledWith("complete_battle_with_symptoms",
+      expect.objectContaining({ p_symptoms: ["strained", "abdominal_pain"] }));
+  });
+});
+
+const MEAL_1 = "33333333-3333-4333-8333-333333333333";
+const MEAL_2 = "44444444-4444-4444-8444-444444444444";
+const completedTables = {
+  battle_results: [{ data: { completed_at: "t", meal_log_id: null } }, { count: 1 }],
+  meal_logs: [{ count: 1 }],
+};
+
+describe("completeBattleForSession", () => {
+  it("食事セッションで記録した最後のログIDを p_meal_log_id として送る", async () => {
+    const { client, raw } = fakeSupabase({
+      rpc: { complete_battle_with_symptoms: { data: [completeRow()] } },
+      tables: completedTables,
+    });
+
+    const result = await completeBattleForSession(client, {
+      battleId: BATTLE_ID,
+      bowelLog,
+      sessionMealLogIds: [MEAL_1, MEAL_2],
+    });
+
+    expect(result.success).toBe(true);
+    expect(raw.rpc).toHaveBeenCalledWith("complete_battle_with_symptoms",
+      expect.objectContaining({ p_meal_log_id: MEAL_2 }));
+  });
+
+  it("未記録で完了したら p_meal_log_id を送らない", async () => {
+    const { client, raw } = fakeSupabase({
+      rpc: { complete_battle_with_symptoms: { data: [completeRow()] } },
+      tables: completedTables,
+    });
+
+    const result = await completeBattleForSession(client, {
+      battleId: BATTLE_ID,
+      bowelLog,
+      sessionMealLogIds: [],
+    });
+
+    expect(result.success).toBe(true);
+    const args = raw.rpc.mock.calls[0][1] as Record<string, unknown>;
+    expect(args).not.toHaveProperty("p_meal_log_id");
+  });
+});
+
+describe("loadOwnedCharacterIds", () => {
+  it("所持個体のidを新しい順に全件返す（3件制限なし）", async () => {
+    const { client, calls } = fakeSupabase({
+      tables: { user_characters: [{ data: [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }] }] },
+    });
+
+    expect(await loadOwnedCharacterIds(client)).toEqual(["a", "b", "c", "d"]);
+    expect(calls).toEqual(["from:user_characters"]);
+  });
+
+  it("読み込み失敗は throw（呼び出し側で編成フォールバックに分岐する）", async () => {
+    const { client } = fakeSupabase({ tables: { user_characters: [{ error: { message: "x" } }] } });
+    await expect(loadOwnedCharacterIds(client)).rejects.toThrow();
   });
 });

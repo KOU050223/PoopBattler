@@ -8,27 +8,31 @@ import {
   isOutcomeOverlayDismissLocked,
   resolveBattleScreenView,
 } from "@poopbattler/domain/battle/battle-screen-view";
-import { isBattleGoneMessage } from "@poopbattler/domain/battle/complete-battle-error";
-import type { BowelLog } from "@poopbattler/domain/records/bowel-log.types";
+import { parsePartyLineup } from "@poopbattler/domain/records/party-lineup";
 
+import { keyValueStorage } from "@/adapters/storage";
 import { ensureAnonymousSession } from "@/lib/anonymous-session";
 import { getSupabase } from "@/lib/supabase";
 import { colors, fontSize, fonts, radius, spacing } from "@/theme";
 import { useBattleStore } from "../battle-store";
 import {
-  completeBattleAction,
+  loadOwnedCharacterIds,
   loadPartyPreview,
   startBattleAction,
   type CompleteBattleResult,
   type PartyPreviewMember,
 } from "../supabase-gateway";
+import {
+  loadBattlePartyIds,
+  readPartyLineup,
+} from "../../collection/party-lineup-storage";
 import { useBattleHaptics, useBattleKeepAwake } from "../use-battle-feedback";
 import { useBattleHydrated } from "../use-battle-hydration";
 import { useBattleSpeed } from "../use-battle-speed";
 import { useBattleTicker } from "../use-battle-ticker";
+import { BattleCompletionFlow } from "./battle-completion-flow";
 import { BattleControls } from "./battle-controls";
 import { BattleStage } from "./battle-stage";
-import { BowelForm } from "./bowel-form";
 import { Button } from "./ui";
 
 type Completed = Extract<CompleteBattleResult, { success: true }>;
@@ -41,11 +45,9 @@ export function BattleScreen() {
   const [speed, toggleSpeed] = useBattleSpeed();
   const [accepted, setAccepted] = useState(false);
   const [starting, setStarting] = useState(false);
-  const [completing, setCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState<Completed | null>(null);
   const [preview, setPreview] = useState<PartyPreviewMember[]>([]);
-  const submittingRef = useRef(false);
   const overlayShownAt = useRef(0);
 
   const needsRestoreConfirm = hydrated && snapshot.status === "active" && !accepted;
@@ -63,7 +65,16 @@ export function BattleScreen() {
       try {
         const supabase = getSupabase();
         const session = await ensureAnonymousSession(supabase.auth);
-        if (session.status === "ready" && alive) setPreview(await loadPartyPreview(supabase));
+        if (session.status !== "ready" || !alive) return;
+        const members = await loadPartyPreview(supabase);
+        // 編成済みならその並びで出撃パーティを見せる（コレクション画面の先発と一致させる）。
+        const partyIds = await loadBattlePartyIds(keyValueStorage, members.map((m) => m.id));
+        const byId = new Map(members.map((m) => [m.id, m]));
+        const ordered = partyIds.flatMap((id) => {
+          const member = byId.get(id);
+          return member ? [member] : [];
+        });
+        if (alive) setPreview(ordered.length ? ordered : members.slice(0, PARTY_SIZE));
       } catch {
         // プレビューは補助表示。失敗してもレンタル扱いで開始できる。
       }
@@ -94,8 +105,17 @@ export function BattleScreen() {
         setError(t("Battle.startError"));
         return;
       }
-      // パーティ選出 UI は図鑑タブの担当。ここでは空を渡し、新しい順の所持個体 → レンタルで埋める。
-      const result = await startBattleAction(supabase, { userCharacterIds: [] });
+      // 編成はコレクション画面で端末ローカルに保存される。送るのは user_characters.id だけ
+      // （HP/攻/速はサーバーがDBから確定）。未編成なら空配列＝新しい順の自動選出。
+      let userCharacterIds: string[];
+      try {
+        const ownedIds = await loadOwnedCharacterIds(supabase);
+        userCharacterIds = await loadBattlePartyIds(keyValueStorage, ownedIds);
+      } catch {
+        // 所持確認が失敗しても編成自体は捨てない。他者の個体は start_battle が返さない。
+        userCharacterIds = parsePartyLineup(await readPartyLineup(keyValueStorage));
+      }
+      const result = await startBattleAction(supabase, { userCharacterIds });
       if (result.status === "error") {
         setError(result.message);
         return;
@@ -131,32 +151,12 @@ export function BattleScreen() {
     setError(null);
   }, []);
 
-  const complete = useCallback(
-    async (bowelLog: BowelLog) => {
-      const battleId = useBattleStore.getState().battleId;
-      if (!battleId || submittingRef.current) return;
-      submittingRef.current = true;
-      setCompleting(true);
-      setError(null);
-      try {
-        const result = await completeBattleAction(getSupabase(), { battleId, bowelLog });
-        if (!result.success) {
-          setError(result.message);
-          return;
-        }
-        // DB 確定に成功したときだけ復元用のバトルを破棄する。
-        setCompleted(result);
-        useBattleStore.getState().reset();
-        setAccepted(false);
-      } catch {
-        setError(t("Battle.startError"));
-      } finally {
-        submittingRef.current = false;
-        setCompleting(false);
-      }
-    },
-    [t],
-  );
+  const handleCompleted = useCallback((result: Completed) => {
+    // DB 確定に成功したときだけ復元用のバトルを破棄する。
+    setCompleted(result);
+    useBattleStore.getState().reset();
+    setAccepted(false);
+  }, []);
 
   const dismissOutcome = () => {
     if (isOutcomeOverlayDismissLocked(overlayShownAt.current, Date.now())) return;
@@ -202,16 +202,20 @@ export function BattleScreen() {
   }
 
   if (view.kind === "completion") {
-    return (
-      <ScrollView style={styles.screen} contentContainerStyle={[pad, styles.gap, styles.scrollBottom]} keyboardShouldPersistTaps="handled">
-        <View style={styles.card}>
-          <Text style={styles.title} accessibilityRole="header">{t("Battle.completeTitle")}</Text>
-          <Text style={styles.body}>{t("Battle.completeBody")}</Text>
+    if (!snapshot.battleId) {
+      return (
+        <View style={[styles.screen, pad, styles.gap]}>
+          <Text accessibilityRole="alert" style={styles.error}>{t("Battle.completeError")}</Text>
+          <Button label={t("Battle.abandon")} variant="secondary" onPress={abandon} />
         </View>
-        <BowelForm submitting={completing} onSubmit={(log) => void complete(log)} />
-        {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-        {error && isBattleGoneMessage(error) ? <Button label={t("Battle.abandon")} variant="secondary" onPress={abandon} /> : null}
-      </ScrollView>
+      );
+    }
+    return (
+      <BattleCompletionFlow
+        battleId={snapshot.battleId}
+        onCompleted={handleCompleted}
+        onAbandon={abandon}
+      />
     );
   }
 

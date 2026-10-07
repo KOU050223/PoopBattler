@@ -10,6 +10,7 @@ import {
   type PartySnapshotMember,
   type StartBattleGateway,
 } from "@poopbattler/domain/battle/start-battle";
+import { mealLogIdForComplete } from "@poopbattler/domain/battle/post-battle-meal-session";
 import { isBowelLog, type BowelLog } from "@poopbattler/domain/records/bowel-log.types";
 import type { Database } from "@poopbattler/domain/types/database.types";
 
@@ -246,6 +247,22 @@ export async function completeBattleAction(
   };
 }
 
+/** 完了フローの食事セッションを受け、最後に記録した食事を meal_log_id として確定する。 */
+export function completeBattleForSession(
+  supabase: Client,
+  input: {
+    battleId: string;
+    bowelLog: BowelLog;
+    sessionMealLogIds: readonly string[];
+  },
+): Promise<CompleteBattleResult> {
+  return completeBattleAction(supabase, {
+    battleId: input.battleId,
+    bowelLog: input.bowelLog,
+    mealLogId: mealLogIdForComplete(input.sessionMealLogIds),
+  });
+}
+
 export type PartyPreviewMember = {
   id: string;
   name: string;
@@ -253,13 +270,15 @@ export type PartyPreviewMember = {
   hp: number;
 };
 
-/** 開始前のパーティ表示用。選出と同じ「新しい順に最大3体」。失敗・0体は空配列（レンタル出撃扱い）。 */
+/**
+ * 開始前のパーティ表示・編成解決用。本人の所持個体を新しい順に全件返す。
+ * 失敗・0体は空配列（レンタル出撃扱い）。呼び出し側で編成順に並べ替える。
+ */
 export async function loadPartyPreview(supabase: Client): Promise<PartyPreviewMember[]> {
   const { data, error } = await supabase
     .from("user_characters")
     .select("id, hp, characters(name, attribute)")
-    .order("acquired_at", { ascending: false })
-    .limit(PARTY_SIZE);
+    .order("acquired_at", { ascending: false });
   if (error || !data) return [];
 
   return data.flatMap((row) => {
@@ -268,4 +287,14 @@ export async function loadPartyPreview(supabase: Client): Promise<PartyPreviewMe
       ? [{ id: row.id, name: character.name, attribute: character.attribute, hp: row.hp }]
       : [];
   });
+}
+
+/** 編成の所持確認用。コレクションと同じ「新しい順・全件」の user_characters.id。失敗は throw。 */
+export async function loadOwnedCharacterIds(supabase: Client): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("user_characters")
+    .select("id")
+    .order("acquired_at", { ascending: false });
+  if (error || !data) throw new Error("所持キャラクターの読み込みに失敗しました。");
+  return data.map((row) => row.id);
 }
