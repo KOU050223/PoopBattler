@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { KeyValueStorage } from "@poopbattler/domain/ports";
 
-import { loadPartyLineup, PARTY_LINEUP_STORAGE_KEY, writePartyLineup } from "./party-lineup-storage";
+import { loadBattlePartyIds, loadPartyLineup, PARTY_LINEUP_STORAGE_KEY, writePartyLineup } from "./party-lineup-storage";
 
 function memory(initial?: string): KeyValueStorage & { raw(): string | null } {
   let value = initial ?? null;
@@ -29,5 +29,25 @@ describe("party lineup 永続化", () => {
 
   it("web と同じキーを使う", () => {
     expect(PARTY_LINEUP_STORAGE_KEY).toBe("poop-battler.party-lineup");
+  });
+});
+
+describe("loadBattlePartyIds（バトル開始に送る編成ID）", () => {
+  it("編成済みなら保存した並びの user_characters.id を返す", async () => {
+    const s = memory();
+    await writePartyLineup(s, ["b", "a", "c"]);
+    expect(await loadBattlePartyIds(s, ["a", "b", "c", "d"])).toEqual(["b", "a", "c"]);
+  });
+
+  it("未編成・空・壊れたJSONは空配列（サーバーが新しい順で自動選出）", async () => {
+    expect(await loadBattlePartyIds(memory(), ["a", "b", "c"])).toEqual([]);
+    expect(await loadBattlePartyIds(memory("[]"), ["a", "b", "c"])).toEqual([]);
+    expect(await loadBattlePartyIds(memory("{bad"), ["a", "b", "c"])).toEqual([]);
+  });
+
+  it("編成から外れた個体は落ち、残りは所持個体で左詰めされる", async () => {
+    const s = memory(JSON.stringify(["gone", "b"]));
+    // resolveLineup の穴埋めはコレクション画面の先発表示と同じ規則。
+    expect(await loadBattlePartyIds(s, ["a", "b"])).toEqual(["b", "a"]);
   });
 });

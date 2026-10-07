@@ -10,23 +10,25 @@ import { colors, fontSize, fonts, radius, spacing } from "@/theme";
 import { Button, Chip } from "../../records-ui";
 import { mealGateway } from "../../gateways";
 import { savePickedPhoto, pickErrorKey, removePhotoQuietly } from "../meal-actions";
+import type { MealLog } from "../meal-gateway";
 import { pickMealPhoto } from "../meal-photo-picker";
 
-export function MealLogForm({ visible, onClose, onSaved }: { visible: boolean; onClose: () => void; onSaved: () => void }) {
+export function MealLogForm({ visible, onClose, onSaved }: { visible: boolean; onClose: () => void; onSaved: (saved: MealLog) => void }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [photoUri, setPhotoUri] = useState<string>();
   const [foodGroups, setFoodGroups] = useState<MealFoodGroup[]>([]);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string>();
+  const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const reset = () => { setPhotoUri(undefined); setFoodGroups([]); setNote(""); setError(undefined); };
-  const close = () => { if (!saving) { reset(); onClose(); } };
+  const close = () => { if (!saving) { reset(); setSaved(false); onClose(); } };
 
   const pick = async (source: "camera" | "library") => {
     const result = await pickMealPhoto(source);
-    if (result.status === "picked") { setPhotoUri(result.uri); setError(undefined); }
+    if (result.status === "picked") { setPhotoUri(result.uri); setError(undefined); setSaved(false); }
     if (result.status === "denied") setError(t(source === "camera" ? "Records.permissionCamera" : "Records.permissionLibrary"));
   };
 
@@ -39,19 +41,24 @@ export function MealLogForm({ visible, onClose, onSaved }: { visible: boolean; o
 
     setSaving(true);
     setError(undefined);
+    setSaved(false);
     let photoId: string | undefined;
     try {
       photoId = await savePickedPhoto(photoUri);
+      const eatenAt = new Date().toISOString();
       const trimmed = note.trim();
       const result = await mealGateway().saveMealLog({
         photoId,
-        eatenAt: new Date().toISOString(),
+        eatenAt,
         foodGroups,
         ...(trimmed ? { note: trimmed } : {}),
       });
       if (!result.success) throw new Error(result.message);
+      const savedLog: MealLog = { id: result.mealLogId, eatenAt, photoId, foodGroups, note: trimmed || null };
       reset();
-      onSaved();
+      // バトル後の記録セッションではフォームを残して連続記録できるよう、保存通知だけ出す。
+      setSaved(true);
+      onSaved(savedLog);
     } catch (e) {
       // DB に載らなかった写真は端末に残さない。
       if (photoId) await removePhotoQuietly(photoId);
@@ -100,6 +107,7 @@ export function MealLogForm({ visible, onClose, onSaved }: { visible: boolean; o
           </View>
 
           {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
+          {saved ? <Text style={styles.saved}>{t("Records.savedContinue")}</Text> : null}
           <Button label={t(saving ? "Records.saving" : "Records.save")} onPress={() => void submit()} disabled={saving} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -123,4 +131,5 @@ const styles = StyleSheet.create({
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   input: { minHeight: 80, backgroundColor: colors.paperWhite, borderRadius: radius.md, padding: spacing.md, fontFamily: fonts.regular, fontSize: fontSize.body, color: colors.charcoal, textAlignVertical: "top" },
   error: { fontFamily: fonts.bold, fontSize: 13, color: colors.dangerEdge },
+  saved: { fontFamily: fonts.bold, fontSize: 13, color: colors.flushEdge },
 });
