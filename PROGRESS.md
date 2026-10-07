@@ -8,3 +8,4 @@
 | 2026-10-07 | T-002/T-003/T-004 | devin x3 | dispatch | dispatched | T-002=ctx_d61ae6fe2465(database.types移動も担当) T-003=ctx_98298f9b687a T-004=ctx_7724e515a373。各々別worktree、マージは指示役 |
 | 2026-10-07 | T-004 | devin ctx_7724e515a373 | 第1段階 | needs-human-review | typecheck/native14tests通過、統合ブランチへマージ済。確認: apps/native/.env 作成→npm run ios -w apps/native。決定事項: アプリ名はmanifest実体「踏ん張れ！ブリュレイド！！」/bundleId jp.poopbattler.app(仮)/react,react-nativeはnative側に固定(metro resolveRequest) |
 | 2026-10-07 | T-004マージ | 指示役 | - | 完了 | package.json(scripts和集合)/package-lock(theirs採用→npm install再生成)の衝突を解消。typecheck/531+1+14 tests通過 |
+| 2026-10-07 | T-002 | devin ctx_d61ae6fe2465 | 第1段階 | completed | マージ済。532tests維持(web387+domain145)。ローカル複製型(BowelDraft/MotionPermission/UserMediaCameraStatus)はT-003後に統合要。battle-storeはzustand禁止のためweb残置、SyncKeyValueStorageをports追加 |
