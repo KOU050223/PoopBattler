@@ -1,48 +1,50 @@
 # PLAN: PoopBattler Native化（Expo / 案C）
 
-統合ブランチ: `orch/native-app`（`guriguri00451/MakeNativeApp` から作成）
+統合ブランチ: `orch/native-app`
+仕様の正本: **`docs/web-spec.md`**（現行Webの振る舞い。Nativeの実装はこれに合わせる。判断に迷ったらここを参照し、specにない差異を勝手に作らない）
 方針の根拠: `docs/native/migration-proposal.md`, `docs/native/ideal-architecture.md`（承認済み: 案C・3D維持・便器検出維持・課金ゲート現状同等）
-範囲: 全機能（バトル含む）／構成: npm workspaces（`apps/web` `apps/native` `packages/domain`）
 検証の限界: Expo実機/シミュレータでの見た目は指示役が確認できない。native UIタスクは `needs-human-review` で止める。自動判定は typecheck / vitest / `expo export` で行う。
 
 ## 共通の完成条件（全タスク）
-- `npm run typecheck`, `npm test`, `npm run lint` が通る（workspace化後は各workspaceで）
+- `npm run typecheck`, `npm test`, `npm run lint` が通る
 - Webの既存テストを消さない・緩めない
+- 仕様は `docs/web-spec.md` を正本とする。特に以下は合わせること：
+  - 仲間化確率（食事ログ 0件=0% / 1件=50% / 2件=75% / 3件=85% / 4件以上=90%、サーバー判定）
+  - 敗北時はサーバーのバトル行がactive残り＝次の開始で同じ敵・同じparty_snapshotを再開
+  - 排便ログは勝利後の完了フローでのみ記録
+  - パーティ3値はクライアントから送らずサーバーが確定
 
-## フェーズ0: 土台（直列・単独実行）
+## 完了済み（詳細は PROGRESS.md）
 
-### T-001 npm workspaces化
-- 種類：logic
-- やること：現行 `src/ public/ messages/ next.config.ts` 等を `apps/web/` に移動。ルート `package.json` に workspaces 設定。`supabase/` はルート維持。lefthook・CI(`.github/workflows`)・`scripts/`・vercel設定のパスを追従
-- 触ってよいファイル：リポジトリ全体（このタスクのみ。他タスクは並行させない）
-- 完成の条件：`npm install` 後 `npm run typecheck && npm test && npm run lint && npm run build -w apps/web` が通る。`git mv` でRename検出されること
-- 依存：なし
+| ID | 内容 | 状態 |
+| --- | --- | --- |
+| T-001 | npm workspaces化 | completed |
+| T-002/002a/002b | domain battle純粋層 | completed |
+| T-003 | domain records/report/account等 | completed |
+| T-004 | apps/native スキャフォールド | completed（human-review通過） |
+| T-006 | native 記録系（meal/bowel/collection/パーティ編成） | completed |
+| T-008 | native バトル2Dコア（tick・RPC・haptics・keep-awake） | completed |
 
-## フェーズ1: 並列（最大3）
+## 残タスク
 
-### T-002 domain: battle純粋層の切り出し
-- 種類：logic
-- やること：`packages/domain`（`@poopbattler/domain`、依存ゼロ）を新設し、migration-proposal §2.1 の battle 系ファイル（constants/types/runtime/commands/snapshot/screen-view/enemy-generator/rental-party/start-battle/companionship-*/toilet-detection/special-motion/complete-battle-error/post-battle-meal-session）をテストごと移動。`battle-speed`/`battle-store` は §2.2 に従い分割（ストレージはポート注入）。`isFirstCompletedBattle` をpwa依存から分離。web側importを更新
-- 触ってよいファイル：`packages/domain/**`, `apps/web/src/features/battle/**`, `apps/web/src/features/pwa/**`, `apps/web/src/stores/**`
-- 完成の条件：`npm test` 全通過、`npm run typecheck`、domainが `react`/`next`/`@supabase/*` をimportしていない（grepで0件）
-- 依存：T-001
-
-### T-003 domain: records/report/account/billing/motion/i18n設定
-- 種類：logic
-- やること：§2.1 の records・foundation 系（meal/bowel-log/collection型、`party-lineup`純粋部、report集計一式、account/auth純関数、`stripe-event`、`lib/motion`純粋部、i18n config）を `packages/domain` へ移動。`ports.ts`（KeyValueStorage / PhotoStore / CameraStream 等）を定義。`database.types.ts` を共有
-- 触ってよいファイル：`packages/domain/**`（T-002と別サブディレクトリ `records/ report/ account/ billing/ motion/ i18n/ ports.ts`）, `apps/web/src/features/{meal,bowel-log,collection,report,account,auth,billing}/**`, `apps/web/src/lib/motion*`, `apps/web/src/i18n/**`
-- 完成の条件：T-002と同じ
-- 依存：T-001（T-002とはディレクトリが分かれるため並列可。`packages/domain/index`/package.json の衝突は指示役が解消）
-
-### T-004 apps/native スキャフォールド
+### T-012 native バトル完了フローの仕様追従
 - 種類：ui
-- やること：`apps/native` にExpo（expo-router, TypeScript）を新設。supabase-js(AsyncStorage persist)・匿名サインイン、`i18next`+`expo-localization`（`messages/*.json`共有）、フォント(Nunito)、タブ骨組み（バトル/記録/コレクション/レポート/アカウントの空画面）、`@poopbattler/domain` 参照、Metroのworkspace設定、`EXPO_PUBLIC_*` env
-- 触ってよいファイル：`apps/native/**`、ルート`package.json`のworkspaces/scripts、`packages/i18n/**`（必要なら）
-- 完成の条件：`npm run typecheck -w apps/native`、`npx expo export --platform ios -w apps/native` が成功、domainのvitestがnative側からimportできる（スモークテスト1本）
-- 見た目の条件：シミュレータでタブ5つが表示・遷移（人間確認）
-- 依存：T-001（domain参照は T-002/003 完了後に結線。先に空importで可）
+- 背景：web-specと比較して完了フローに3つの欠落がある。①開始時に `userCharacterIds: []` 固定で送っており、コレクションで編成したパーティが使われない ②勝利後の食事記録セッションが無く `meal_log_id` が常にnull（ガチャの投げ入れ演出の種になる値）③排便フォームに症状（symptoms）入力が無い（gatewayの `p_symptoms` は対応済み）
+- やること：①開始時に `loadPartyLineup` + `lineupOwnedIds` で編成を送る（未編成は空配列＝新しい順自動選択のまま）②完了フローに食事セッションのステップを追加。domainの `mealLogIdForComplete` / `postBattleMealChanceCopy` を再利用して確率案内を表示 ③排便フォームに症状の複数選択を追加
+- 触ってよいファイル：`apps/native/src/features/battle/**`, `apps/native/src/features/meal/**`, `apps/native/src/features/collection/party-lineup-storage.ts`, `apps/native/src/i18n/**`
+- 完成の条件：編成→開始で `p_user_character_ids` に編成IDが載る・食事セッション保存後に `p_meal_log_id` が送られる・症状が送られる、をvitestで確認。`npm run typecheck`、`npx expo export -w apps/native`（or該当スクリプト）
+- 見た目の条件：コレクションで編成→バトル→勝利→排便4項目＋症状→食事セッション（確率コピー表示）→結果
+- 依存：T-006, T-008（完了済み）
+- 状態：ready
 
-## フェーズ2: 並列（T-002〜004 完了後）
+### T-013 写真ピッカー不具合対応＋既知typecheckエラー
+- 種類：logic
+- 背景：ごはん記録Modal内からのexpo-image-pickerがiOS 26で閉じない不具合。`meal-photo-picker.ts` に `presentationStyle: FULL_SCREEN` を入れた暫定修正はコミット済みだが実機未確認。別件で `app/(tabs)/_layout.tsx` にstyle型エラー2件が残っている
+- やること：①FULL_SCREEN修正をシミュレータで再現確認。閉じない場合はRN `Modal`（pageSheet）内からの起動をやめ、フォームをModal以外で表示するかピッカーをModal外から起動する構造に変更 ②`_layout.tsx` の `fontFamily`/`backgroundColor` 型エラーを修正してnative typecheckを0エラーに
+- 触ってよいファイル：`apps/native/src/features/meal/**`, `apps/native/src/app/**`
+- 完成の条件：`npm run typecheck -w apps/native` が0エラー。写真選択→確定→フォームに戻ることを確認（構造変更した場合はシミュレータ手動確認または実機レビュー依頼）
+- 依存：なし。**T-012と `features/meal/**` が被るため同時には振らない**
+- 状態：ready（①の構造変更が必要かは人間の実機確認次第）
 
 ### T-005 アプリ内課金（IAP）の権利付与バックエンド
 - 種類：logic（決済・DBスキーマ・権限 → 着手前に人間承認、最終レビュー必須）
@@ -51,45 +53,50 @@
 - 触ってよいファイル：`supabase/migrations/**`, `apps/web/src/app/api/iap/**`, `apps/web/src/features/billing/**`, `packages/domain/billing/**`, `apps/web/src/types/database.types.ts`
 - 完成の条件：vitestで 署名/シークレット不正は拒否・購入/更新/期限切れ/返金の各イベントでsubscriptions状態が正しく遷移・他人の行を書けない、`db:test:rls`、全テスト通過
 - 依存：T-003
-
-### T-006 native 記録系（meal/bowel-log/collection）
-- 種類：ui
-- やること：PhotoStore(expo-file-system)・KeyValueStorage(AsyncStorage)アダプタ、食事記録（expo-image-picker/camera）、排便ログ履歴、コレクション/パーティ編成。Server Action→supabase直結（§1.4対応表）
-- 触ってよいファイル：`apps/native/src/features/{meal,bowel-log,collection}/**`, `apps/native/app/(tabs)/{records,collection}*`, `apps/native/src/adapters/**`
-- 完成の条件：native側vitestでgateway/アダプタのテスト、typecheck、`expo export`
-- 依存：T-003, T-004
+- 状態：**blocked（RevenueCat利用の人間承認待ち）**
 
 ### T-007 native レポート/アカウント/課金
 - 種類：ui（課金・認証 → 最終レビュー必須）
-- やること：週次レポート（react-native-svg）、アカウント（Google連携 expo-auth-session、`poopbattler://`）、課金は IAP（RevenueCat SDK = `react-native-purchases`）。購入→RevenueCat→T-005のwebhook→`subscriptions`、native は `subscriptions` を読んで権利判定。購入復元ボタンを設ける
-- 触ってよいファイル：`apps/native/src/features/{report,account,billing}/**`（billing=IAP）, 対応する `app/` 画面
-- 完成の条件：T-006と同じ＋非課金時に実値がペイロード/UIに載らないテスト
+- 仕様（web-spec準拠）：週次レポートはJST月曜始まり。未課金はティーザー（実数値のみ・分析はプレースホルダー、CSS隠しでは読める設計にしない）。課金はStripeサブスクではなくIAP。購入復元ボタン必須
+- やること：週次レポート（react-native-svg）、アカウント（Google連携 expo-auth-session、`poopbattler://`）、IAP（RevenueCat SDK = `react-native-purchases`）。購入→RevenueCat→T-005のwebhook→`subscriptions`、native は `subscriptions` を読んで権利判定
+- 触ってよいファイル：`apps/native/src/features/{report,account,billing}/**`、対応する `app/` 画面
+- 完成の条件：native側vitestでgateway/アダプタのテスト、typecheck、`expo export`＋**非課金時に実値がペイロード/UIに載らないテスト**
 - 依存：T-003, T-004, T-005
-
-### T-008 native バトル（2D版コア）
-- 種類：ui
-- やること：battle-store(AsyncStorage persist)、tick駆動＋AppState復帰時の経過tick畳み込み、バトル画面、start/complete のRPC直結、expo-keep-awake、haptics。ステージは2D（PoopmFigure+Reanimated）で最小実装
-- 触ってよいファイル：`apps/native/src/features/battle/**`, `apps/native/app/(tabs)/battle*`
-- 完成の条件：tick畳み込み・RPC gatewayのテスト、typecheck、`expo export`
-- 依存：T-002, T-004
-
-## フェーズ3
+- 状態：pending
 
 ### T-009 native 便器検出＋ガチャAR
-- 種類：ui　やること：expo-camera＋検出（要技術選定。着手前に指示役が調査して人間に提示）、ガチャ演出/仲間化AR、踏ん張り(expo-sensors)　依存：T-006, T-008
+- 種類：ui
+- 仕様（web-spec準拠）：仲間化成功時のみ、ステージ遷移 `staging → throw → shake → reveal → summary`。staging=カメラプレビュー＋便器検出、throw=食事写真の投げ入れ（`meal_log_id` の写真をPhotoStoreから）、shake=揺れ演出、reveal=キャラ出現、summary=獲得結果。カメラ権限拒否/非対応は3Dのみにフォールバック、`prefers-reduced-motion` 相当ではthrow/shake省略、スキップボタン常設
+- やること：expo-camera＋検出（要技術選定。webはcoco-ssd。nativeの検出手法は**着手前に指示役が調査して人間に提示**）、ガチャ演出、踏ん張り(expo-sensors)
+- 触ってよいファイル：`apps/native/src/features/battle/**`（AR/gacha系新規サブディレクトリ）, `apps/native/src/features/meal/**`（写真取得）
+- 完成の条件：typecheck、`expo export`、ステートマシンのvitest
+- 依存：T-006, T-008, T-012（meal_log_idと写真を使うため）
+- 状態：pending
 
 ### T-010 native 3D（poopm-3d）
-- 種類：ui　やること：expo-gl＋R3Fで3Dステージ移植（GLBロード・テクスチャ生成の代替）。2Dと切替可能に　依存：T-008
+- 種類：ui
+- 仕様（web-spec準拠）：3Dが使われるのはバトルステージ・ガチャ・結果フィギュア・プーモン演出。コレクション一覧/履歴/タイトルは2Dのまま。GLBは `poopm_base.glb`＋頭部バリエーション/アクセサリ
+- やること：expo-gl＋R3Fで3Dステージ移植（GLBロード・テクスチャ生成の代替）。2Dと切替可能に
+- 触ってよいファイル：`apps/native/src/features/poopm-3d/**`, `apps/native/src/features/battle/**`（ステージ差し替え部）
+- 完成の条件：typecheck、`expo export`、2D/3D切替の回帰テスト
+- 依存：T-008（T-009の前に入れてガチャを3Dで作る選択肢もある。順序は指示役判断）
+- 状態：pending
 
 ### T-011 仕上げ
-- 種類：logic　やること：EAS設定、README/`docs/native` 更新、CIにnative typecheck追加　依存：全部
+- 種類：logic
+- やること：EAS設定、README/`docs/native` 更新、CIにnative typecheck/test/export追加、`docs/web-spec.md` とnativeの差分の最終照合
+- 依存：全部
+- 状態：pending
 
 ## 実行順
-T-001 → (T-002 ∥ T-003 ∥ T-004) → (T-005 ∥ T-006 ∥ T-008) → T-007 → T-009 → T-010 → T-011
+
+```
+即着手可: T-012 →（meal/** 衝突回避で逐次）→ T-013
+承認待ち: T-005 → T-007
+後続:     T-009 → T-010 → T-011
+```
 
 ## 人間に確認したい点
-1. native のスタイリング：NativeWind か StyleSheet か（T-004 前に決めたい）
-2. Expo は Expo Go 前提か、dev build（3D/便器検出は dev build 必須）か
-3. T-001 は変更ファイルが非常に多い（全ファイルrename）。許容でよいか
-4. iOSのみ先行か、Android も対象か（→iOS先行・dev build・StyleSheet・T-001単独先行で合意方向）
-5. IAPは RevenueCat 利用でよいか（月額課金が発生しうる／自前StoreKit検証も可）
+1. T-005: IAPにRevenueCatを使ってよいか（月額課金が発生しうる／自前StoreKit検証も可）— 承認待ちのまま
+2. T-013: FULL_SCREEN修正が実機で効いたか。効いていれば構造変更は不要
+3. T-009の便器検出手法（nativeでcoco-ssd相当を何でやるか）は着手時に調査結果を提示する
