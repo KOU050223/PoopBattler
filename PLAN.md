@@ -52,16 +52,16 @@
 - 触ってよいファイル：`apps/native/src/features/meal/**`, `apps/native/src/app/**`
 - 完成の条件：`npm run typecheck -w apps/native` が0エラー。写真選択→確定→フォームに戻ることを確認（構造変更した場合はシミュレータ手動確認または実機レビュー依頼）
 - 依存：なし。**T-012と `features/meal/**` が被るため同時には振らない**
-- 状態：保留（②はT-013bへ分割済み。①は人間の実機確認次第）
+- 状態：**completed（①は人間が実機で修正の動作を確認済み。②はT-013bで解消済み）**
 
 ### T-005 アプリ内課金（IAP）の権利付与バックエンド
 - 種類：logic（決済・DBスキーマ・権限 → 着手前に人間承認、最終レビュー必須）
 - 方針：native は **IAP のみ**（Stripe を native から呼ばない）。Web版の Stripe は現状維持。権利の正は `subscriptions`（`hasActiveEntitlement`）に一本化
 - やること：①`subscriptions` に提供元(`provider`: stripe|apple)と外部ID列を足す migration（ファイル作成のみ・適用しない）②RevenueCat webhook を受ける `POST /api/iap/webhook`（共有シークレット検証・service role で `subscription-write`）③型再生成・RLSテスト追加。`resolveStripeEvent` 相当の純関数 `resolveIapEvent` を domain に置きテスト
-- 触ってよいファイル：`supabase/migrations/**`, `apps/web/src/app/api/iap/**`, `apps/web/src/features/billing/**`, `packages/domain/billing/**`, `apps/web/src/types/database.types.ts`
+- 触ってよいファイル：`supabase/migrations/**`（新規追加のみ・適用はローカルのみ可）, `apps/web/src/app/api/iap/**`, `apps/web/src/features/billing/**`, `apps/web/src/lib/supabase/subscription-write.ts`, `packages/domain/src/billing/**`, `packages/domain/src/types/database.types.ts`, `scripts/sql/rls-verify.sql`
 - 完成の条件：vitestで 署名/シークレット不正は拒否・購入/更新/期限切れ/返金の各イベントでsubscriptions状態が正しく遷移・他人の行を書けない、`db:test:rls`、全テスト通過
 - 依存：T-003
-- 状態：**blocked（RevenueCat利用の人間承認待ち）**
+- 状態：dispatched（ctx_18b8d331ccc1 / worktree t005-iap-webhook。RevenueCat利用は人間が承認済み。決済・権限のため第1段階後に最終レビュー必須）
 
 ### T-007 native レポート/アカウント/課金
 - 種類：ui（課金・認証 → 最終レビュー必須）
