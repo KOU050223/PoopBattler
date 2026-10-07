@@ -7,3 +7,4 @@
 | 2026-10-07 | T-002a | devin ctx_bd03ee99209a | 第1段階 | completed | domainスケルトン+eslint依存禁止(陽性/陰性確認、自分でも再確認)。531tests。解放済み。※指示文作成時にheredocでバッククォートが展開され npm install/test が一度実行された（害なし・ツリー清浄）。教訓: 指示文は必ず 'EOF' クォート付きかwriteツールで作る |
 | 2026-10-07 | T-002/T-003/T-004 | devin x3 | dispatch | dispatched | T-002=ctx_d61ae6fe2465(database.types移動も担当) T-003=ctx_98298f9b687a T-004=ctx_7724e515a373。各々別worktree、マージは指示役 |
 | 2026-10-07 | T-004 | devin ctx_7724e515a373 | 第1段階 | needs-human-review | typecheck/native14tests通過、統合ブランチへマージ済。確認: apps/native/.env 作成→npm run ios -w apps/native。決定事項: アプリ名はmanifest実体「踏ん張れ！ブリュレイド！！」/bundleId jp.poopbattler.app(仮)/react,react-nativeはnative側に固定(metro resolveRequest) |
+| 2026-10-07 | T-004マージ | 指示役 | - | 完了 | package.json(scripts和集合)/package-lock(theirs採用→npm install再生成)の衝突を解消。typecheck/531+1+14 tests通過 |
