@@ -1,0 +1,43 @@
+name: Deploy Migrations to Production
+
+# main への push で本番 Supabase へマイグレーションを適用する。
+# Vercel の自動デプロイと独立して走るため、コードが先行する隙間は残る
+# （許容範囲。完全な順序付けはデプロイのワークフロー化が必要）。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 同時に2つのpushが走るとマイグレーションの適用順が壊れるため直列化する。
+# 新しいpushが来ても走行中のものはキャンセルしない（本番DBへの適用は止めない）。
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # 必須のシークレットはこれだけ。scoped PAT でこのプロジェクト限定 + 最小スコープにする。
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      # project ref は NEXT_PUBLIC_SUPABASE_URL としてブラウザへ配信される公開情報なので
+      # シークレットにせず Variables に置く（ワークフローへの直書きでもよい）。
+      SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
+      # DBパスワードは不要。CLI は access token から一時ロールを発行して接続する。
+      # pooler の資格情報キャッシュ起因で failed SASL auth が出た場合だけ、
+      # SUPABASE_DB_PASSWORD をシークレット登録すれば旧方式へフォールバックする。
+    steps:
+      - uses: actions/checkout@v5
+
+      # ci.yml と同じ理由で npm 経由の v3 + 固定バージョンを使う。
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.116.0
+
+      - run: supabase link --project-ref $SUPABASE_PROJECT_ID
+
+      # 適用すべきマイグレーションがなければ "Remote database is up to date" で
+      # 正常終了する。失敗時は exit 1 でワークフローごと fail する。
+      - run: supabase db push --linked
