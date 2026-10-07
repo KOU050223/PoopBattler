@@ -71,7 +71,6 @@ export function CollectionList({
             <button
               type="button"
               onClick={() => (swapEnabled ? onPick : onOpenGrowth)(character.ownershipId)}
-              aria-label={swapEnabled ? `${character.name}を先発に入れる` : `${character.name}を育てる`}
               className={`${cardClass} flex w-full cursor-pointer flex-col gap-3 p-4 text-left ${
                 inParty ? "bg-blush-wash" : ""
               }`}
@@ -104,6 +103,10 @@ export function CollectionList({
                     </span>
                   </div>
                   {inParty && <span className="sr-only">選出中</span>}
+                  {/* カード全体を aria-label で上書きすると中の数値が読まれなくなるので、操作は補足として足す */}
+                  <span className="sr-only">
+                    {swapEnabled ? "（タップで先発に入れる）" : "（タップで合成・進化）"}
+                  </span>
                   <dl className="flex flex-col gap-2">
                     {/* 属性・取得はサブ情報なので1行に小さくまとめる */}
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] leading-[1.3]">

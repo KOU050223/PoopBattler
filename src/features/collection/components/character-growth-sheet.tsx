@@ -1,7 +1,14 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type KeyboardEvent,
+  type TransitionStartFunction,
+} from "react";
 import { createPortal } from "react-dom";
 
 import { PoopmFigure3D } from "@/features/poopm-3d/components/poopm-figure-3d";
@@ -50,6 +57,12 @@ export function CharacterGrowthSheet({
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
   const isOpen = character != null;
+  // 処理中は閉じさせない。× だけでなく背景タップと Esc も止めないと、
+  // 合成は続いているのにキャンセルできたように見える。
+  const [isPending, startTransition] = useTransition();
+  const close = () => {
+    if (!isPending) onClose();
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -73,7 +86,7 @@ export function CharacterGrowthSheet({
           transition={{ duration: 0.18 }}
           className="fixed inset-0 z-30 flex items-end justify-center bg-black/50 sm:items-center sm:p-4"
           onClick={(event) => {
-            if (event.target === event.currentTarget) onClose();
+            if (event.target === event.currentTarget) close();
           }}
         >
           <motion.div
@@ -82,7 +95,7 @@ export function CharacterGrowthSheet({
             aria-labelledby="growth-sheet-title"
             ref={dialogRef}
             tabIndex={-1}
-            onKeyDown={(event) => trapFocus(event, dialogRef.current, onClose)}
+            onKeyDown={(event) => trapFocus(event, dialogRef.current, close)}
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
@@ -95,7 +108,9 @@ export function CharacterGrowthSheet({
               character={character}
               characters={characters}
               starterIds={starterIds}
-              onClose={onClose}
+              isPending={isPending}
+              startTransition={startTransition}
+              onClose={close}
             />
           </motion.div>
         </motion.div>
@@ -109,16 +124,19 @@ function GrowthSheetBody({
   character,
   characters,
   starterIds,
+  isPending,
+  startTransition,
   onClose,
 }: {
   character: CollectionCharacter;
   characters: readonly CollectionCharacter[];
   starterIds: ReadonlySet<string>;
+  isPending: boolean;
+  startTransition: TransitionStartFunction;
   onClose: () => void;
 }) {
   const [materialId, setMaterialId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
 
   const material = materialId == null
     ? null
@@ -329,6 +347,13 @@ export function MergeConfirm({
   onCancel: () => void;
   onConfirm: (confirmEnhanced: boolean) => void;
 }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // 素材リストはこの画面に置き換わって消えるので、フォーカスが body に落ちる。
+  // 見出しへ移し、キーボード・読み上げの利用者が確認画面と警告を見失わないようにする。
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
   const check = checkMerge(base, material);
   if (!check.ok) {
     return (
@@ -349,7 +374,12 @@ export function MergeConfirm({
 
   return (
     <section className="flex flex-col gap-3" aria-labelledby="merge-confirm-heading">
-      <h3 id="merge-confirm-heading" className="text-sm font-bold text-charcoal">
+      <h3
+        id="merge-confirm-heading"
+        ref={headingRef}
+        tabIndex={-1}
+        className="text-sm font-bold text-charcoal outline-none"
+      >
         {growthLabel(material.tier, material.rank)}の{material.name}を素材にしますか？
       </h3>
 
@@ -449,7 +479,12 @@ function trapFocus(
 
   const firstElement = focusableElements[0];
   const lastElement = focusableElements[focusableElements.length - 1];
-  if (event.shiftKey && document.activeElement === firstElement) {
+  // 開いた直後はダイアログ自身（tabIndex=-1）にフォーカスがあり、一覧に含まれない。
+  // そこからの Shift+Tab で背後のページへ抜けないよう、端の要素へ送る。
+  if (document.activeElement === dialog) {
+    event.preventDefault();
+    (event.shiftKey ? lastElement : firstElement).focus();
+  } else if (event.shiftKey && document.activeElement === firstElement) {
     event.preventDefault();
     lastElement.focus();
   } else if (!event.shiftKey && document.activeElement === lastElement) {

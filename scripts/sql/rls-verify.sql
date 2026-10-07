@@ -1212,6 +1212,13 @@ declare
   -- legendary（golden-poop）: +4凸。
   l_base uuid := gen_random_uuid();
   l_mat uuid := gen_random_uuid();
+  -- rare（spicy-poop）: +1凸。
+  r_base uuid := gen_random_uuid();
+  r_mat uuid := gen_random_uuid();
+  -- 仲間化済みで、その個体が合成で消えた完了バトル / 仲間化しなかった完了バトル。
+  consumed_battle uuid := gen_random_uuid();
+  plain_battle uuid := gen_random_uuid();
+  retried record;
   -- ★3・4凸（最大）。
   maxed uuid := gen_random_uuid();
   -- 他人の同種族個体。
@@ -1239,8 +1246,16 @@ begin
     (e_mat, m, 'yogurt-poop', 384, 32, 32, 0, 0),
     (l_base, m, 'golden-poop', 456, 38, 38, 0, 0),
     (l_mat, m, 'golden-poop', 456, 38, 38, 0, 0),
+    (r_base, m, 'spicy-poop', 312, 26, 26, 0, 0),
+    (r_mat, m, 'spicy-poop', 312, 26, 26, 0, 0),
     (maxed, m, 'curry-poop', 240, 20, 20, 2, 4),
     (others, other_user, 'curry-poop', 240, 20, 20, 0, 0);
+
+  -- 仲間化済み（個体の行は無い = 素材として消費済み）と、仲間化しなかった完了バトル。
+  insert into public.battle_results (id, user_id, enemy_character_id, enemy_attribute, status, companionship_result, completed_at)
+  values
+    (consumed_battle, m, 'meat-poop', 'meat', 'completed', true, now()),
+    (plain_battle, m, 'curry-poop', 'curry', 'completed', false, now());
 
   perform pg_temp.become(m);
 
@@ -1320,6 +1335,8 @@ begin
   perform pg_temp.expect('epic の合成は+2凸', merged.rank = 2, true);
   select * into merged from public.merge_characters(l_base, l_mat);
   perform pg_temp.expect('legendary の合成は+4凸', merged.rank = 4, true);
+  select * into merged from public.merge_characters(r_base, r_mat);
+  perform pg_temp.expect('rare の合成は+1凸', merged.rank = 1, true);
 
   -- 進化 ---------------------------------------------------------------------
   state := pg_temp.sqlstate_of(format('select * from public.evolve_character(%L)', e_base));
@@ -1356,6 +1373,35 @@ begin
       and (started.party_snapshot -> 2 ->> 'power')::integer = 53,
     true);
   perform public.complete_battle(started.battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+
+  -- rare / epic も TS の effectiveStat と同じ値になる（character-growth.test.ts と同じ表）。
+  -- e_base は epic ★1・2凸 = 進行度2 → ×1.16。384→445（445.44）、32→37（37.12）。
+  -- r_base は rare ★1・1凸 = 進行度1 → ×1.07。312→334（333.84）、26→28（27.82）。
+  select * into started from public.start_battle(array[e_base, r_base]);
+  perform pg_temp.expect(
+    'rare / epic の実効値もスナップショットに載る',
+    (started.party_snapshot -> 0 ->> 'hp')::integer = 445
+      and (started.party_snapshot -> 0 ->> 'power')::integer = 37
+      and (started.party_snapshot -> 1 ->> 'hp')::integer = 334
+      and (started.party_snapshot -> 1 ->> 'power')::integer = 28,
+    true);
+  perform public.complete_battle(started.battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+
+  -- 仲間化した個体を素材にしたあとでも、完了済みバトルの再呼び出しは同じ結果を返す。
+  -- 行を引き直す実装だと character_id が null になり、クライアントが契約違反として
+  -- エラーを出し続ける。仲間化しなかったバトルは null のまま（陰性）。
+  select * into retried
+  from public.complete_battle(consumed_battle, 4::smallint, 'normal', 'brown', 'easy', null);
+  perform pg_temp.expect(
+    '素材で消えた仲間でも、完了済みバトルの再呼び出しは種族IDを返す',
+    retried.companionship_result = true and retried.character_id = 'meat-poop',
+    true);
+  select * into retried
+  from public.complete_battle(plain_battle, 4::smallint, 'normal', 'brown', 'easy', null);
+  perform pg_temp.expect(
+    '仲間化しなかった完了済みバトルの再呼び出しは character_id を返さない',
+    retried.companionship_result = false and retried.character_id is null,
+    true);
 
   -- クライアントは★・凸を直接書けず、個体を直接消せない ----------------------
   perform pg_temp.expect(

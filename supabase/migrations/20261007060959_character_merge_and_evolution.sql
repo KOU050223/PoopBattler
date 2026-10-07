@@ -29,34 +29,53 @@ comment on column public.user_characters.rank is
 -- TS 側の src/features/collection/character-growth.ts と同じ値を持つ。
 -- どちらかだけ変えると、図鑑の表示とバトルの実数が黙ってずれる。
 
--- 進行度1段あたりの伸び率（%）。進行度 = tier * 4 + rank（0〜12）。
-create function private.growth_percent_per_step(p_rarity public.character_rarity)
+create function private.raise_unknown_rarity(p_rarity public.character_rarity)
 returns integer
-language sql
+language plpgsql
 immutable
 set search_path = ''
 as $$
-  select case p_rarity
+begin
+  raise exception 'growth constants are not defined for rarity %', p_rarity using errcode = 'P0001';
+end;
+$$;
+
+-- 進行度1段あたりの伸び率（%）。進行度 = tier * 4 + rank（0〜12）。
+-- レアリティを足して case を更新し忘れると null が返り、実効値が黙って null になる。
+-- else で落とすため plpgsql にする。
+create function private.growth_percent_per_step(p_rarity public.character_rarity)
+returns integer
+language plpgsql
+immutable
+set search_path = ''
+as $$
+begin
+  return case p_rarity
     when 'common' then 5
     when 'rare' then 7
     when 'epic' then 8
     when 'legendary' then 10
+    else private.raise_unknown_rarity(p_rarity)
   end;
+end;
 $$;
 
 -- 合成1回で上がる凸数。高レアほど重複を引きにくいので、少ない素材で育つ。
 create function private.merge_rank_gain(p_rarity public.character_rarity)
 returns integer
-language sql
+language plpgsql
 immutable
 set search_path = ''
 as $$
-  select case p_rarity
+begin
+  return case p_rarity
     when 'common' then 1
     when 'rare' then 1
     when 'epic' then 2
     when 'legendary' then 4
+    else private.raise_unknown_rarity(p_rarity)
   end;
+end;
 $$;
 
 -- 実効値 = 個体値 × (100 + 伸び率 × 進行度) / 100 を四捨五入する。
@@ -77,6 +96,7 @@ as $$
   ) / 100;
 $$;
 
+revoke all on function private.raise_unknown_rarity(public.character_rarity) from public, anon, authenticated;
 revoke all on function private.growth_percent_per_step(public.character_rarity) from public, anon, authenticated;
 revoke all on function private.merge_rank_gain(public.character_rarity) from public, anon, authenticated;
 revoke all on function private.effective_stat(integer, public.character_rarity, smallint, smallint) from public, anon, authenticated;
@@ -274,6 +294,134 @@ begin
 end;
 $$;
 
+
+-- ---------------------------------------------------------------------------
+-- complete_battle: 冪等な再呼び出しが、合成で消えた個体に依存しないようにする
+-- ---------------------------------------------------------------------------
+-- 合成で user_characters の行が削除されうるようになったため、完了済みバトルの
+-- 再呼び出しで「仲間化した個体の行」を探すのをやめる。変更は冒頭の分岐だけで、
+-- 引数・戻り値は 20260919090000 と同じ（CREATE OR REPLACE で権限も保たれる）。
+create or replace function private.complete_battle(
+  p_battle_id uuid,
+  p_hardness smallint,
+  p_amount text,
+  p_color text,
+  p_ease text,
+  p_meal_log_id uuid default null,
+  p_symptoms text[] default '{}'::text[]
+)
+returns table (
+  battle_id uuid,
+  status public.battle_status,
+  companionship_result boolean,
+  character_id text
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid := (select auth.uid());
+  v_battle public.battle_results%rowtype;
+  v_companionship_result boolean := false;
+  v_character_id text := null;
+  v_meal_log_count integer := 0;
+  v_rarity public.character_rarity;
+  v_spread integer;
+  v_base_hp integer;
+  v_base_power integer;
+  v_base_speed integer;
+begin
+  if v_user_id is null then
+    raise exception 'authentication is required' using errcode = '28000';
+  end if;
+
+  select * into v_battle
+  from public.battle_results
+  where id = p_battle_id and user_id = v_user_id
+  for update;
+
+  if not found then
+    raise exception 'battle cannot be completed' using errcode = '42501';
+  end if;
+
+  if v_battle.status <> 'active' then
+    -- 仲間化した個体の行は引き直さない。合成の素材として消費されていると見つからず、
+    -- character_id が null になる。クライアントは「仲間化したのに character_id が無い」
+    -- を契約違反として扱うため、完了済みのバトルがエラーのまま抜け出せなくなる。
+    -- 仲間化で作る行の character_id は常に enemy_character_id なので、それを返す。
+    if coalesce(v_battle.companionship_result, false) then
+      v_character_id := v_battle.enemy_character_id;
+    end if;
+
+    return query
+    select v_battle.id, v_battle.status, coalesce(v_battle.companionship_result, false), v_character_id;
+    return;
+  end if;
+
+  if p_hardness is null
+    or p_hardness not between 1 and 7
+    or p_amount is null or p_amount not in ('small', 'normal', 'large')
+    or p_color is null or p_color not in ('brown', 'dark_brown', 'yellow', 'green', 'red', 'black', 'white_gray', 'other')
+    or p_ease is null or p_ease not in ('easy', 'normal', 'hard')
+    or p_symptoms is null
+    or cardinality(p_symptoms) > 4
+    or array_position(p_symptoms, null) is not null
+    or not (p_symptoms <@ array['strained', 'incomplete_evacuation', 'abdominal_pain', 'urgent_urge']::text[])
+    or not public.has_unique_text_array_elements(p_symptoms) then
+    raise exception 'invalid bowel log values' using errcode = '22023';
+  end if;
+
+  if p_meal_log_id is not null then
+    if not exists (
+      select 1 from public.meal_logs as m
+      where m.id = p_meal_log_id and m.user_id = v_user_id
+    ) then
+      raise exception 'meal log cannot be used' using errcode = '42501';
+    end if;
+
+    if v_battle.meal_log_id is not null and v_battle.meal_log_id <> p_meal_log_id then
+      raise exception 'meal log cannot be changed' using errcode = '22023';
+    end if;
+
+    update public.battle_results set meal_log_id = p_meal_log_id where id = v_battle.id;
+  end if;
+
+  select count(*)::integer into v_meal_log_count
+  from public.meal_logs where user_id = v_user_id;
+
+  if v_meal_log_count > 0 then
+    v_companionship_result := random() < private.companionship_chance(v_meal_log_count);
+  end if;
+
+  insert into public.bowel_logs (user_id, battle_result_id, hardness, amount, color, ease, symptoms)
+  values (v_user_id, v_battle.id, p_hardness, p_amount, p_color, p_ease, p_symptoms);
+
+  update public.battle_results
+  set status = 'completed', companionship_result = v_companionship_result, completed_at = now()
+  where id = v_battle.id;
+
+  if v_companionship_result then
+    select c.rarity into v_rarity from public.characters as c where c.id = v_battle.enemy_character_id;
+    v_base_power := case v_rarity when 'common' then 20 when 'rare' then 26 when 'epic' then 32 when 'legendary' then 38 else 20 end;
+    v_base_speed := v_base_power;
+    v_base_hp := v_base_power * 12;
+    v_spread := case v_rarity when 'common' then 4 when 'rare' then 6 when 'epic' then 8 when 'legendary' then 10 else 4 end;
+
+    insert into public.user_characters as uc (user_id, character_id, acquired_from_battle_id, hp, power, speed)
+    values (
+      v_user_id, v_battle.enemy_character_id, v_battle.id,
+      greatest(1, v_base_hp + (floor(random() * (v_spread * 24 + 1))::integer - v_spread * 12)),
+      greatest(1, v_base_power + (floor(random() * (v_spread * 2 + 1))::integer - v_spread)),
+      greatest(1, v_base_speed + (floor(random() * (v_spread * 2 + 1))::integer - v_spread))
+    ) returning uc.character_id into v_character_id;
+  end if;
+
+  return query
+  select v_battle.id, 'completed'::public.battle_status, v_companionship_result, v_character_id;
+end;
+$$;
+
 -- ---------------------------------------------------------------------------
 -- merge_characters: 同じ種族の個体を素材にして、ベースの凸を上げる
 -- ---------------------------------------------------------------------------
@@ -414,6 +562,10 @@ begin
   if v_user_id is null then
     raise exception 'authentication is required' using errcode = '28000';
   end if;
+
+  -- 単一行の更新だけなら行ロックで足りるが、育成操作はすべて start_battle /
+  -- merge_characters と同じキーで直列化しておく。将来ここで複数行を触っても抜け道にならない。
+  perform pg_advisory_xact_lock(hashtextextended(v_user_id::text, 0));
 
   select *
   into v_row

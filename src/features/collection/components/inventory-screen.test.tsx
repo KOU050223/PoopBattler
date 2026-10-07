@@ -101,7 +101,7 @@ describe("CollectionList", () => {
       />,
     );
 
-    expect(markup).toContain('aria-label="カレーうんちくんを育てる"');
+    expect(markup).toContain("（タップで合成・進化）");
     expect(markup).not.toContain("disabled");
   });
 });

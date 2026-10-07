@@ -37,6 +37,10 @@ describe("effectiveStat", () => {
       .toEqual({ hp: 384, power: 32, speed: 32 });
     expect(effectiveStats({ hp: 456, power: 38, speed: 38 }, "legendary", { tier: 0, rank: 4 }))
       .toEqual({ hp: 638, power: 53, speed: 53 });
+    expect(effectiveStats({ hp: 384, power: 32, speed: 32 }, "epic", { tier: 0, rank: 2 }))
+      .toEqual({ hp: 445, power: 37, speed: 37 });
+    expect(effectiveStats({ hp: 312, power: 26, speed: 26 }, "rare", { tier: 0, rank: 1 }))
+      .toEqual({ hp: 334, power: 28, speed: 28 });
   });
 
   it(".5 は SQL の整数演算と同じく切り上げる", () => {
@@ -99,6 +103,10 @@ describe("checkMerge", () => {
     expect(checkMerge(
       character({ id: "golden-poop", rarity: "legendary" }),
       character({ ownershipId: "material", id: "golden-poop", rarity: "legendary" }),
+    )).toMatchObject({ ok: true, nextRank: 4 });
+    expect(checkMerge(
+      character({ id: "spicy-poop", rarity: "rare", rank: 3 }),
+      character({ ownershipId: "material", id: "spicy-poop", rarity: "rare" }),
     )).toMatchObject({ ok: true, nextRank: 4 });
     expect(checkMerge(character({ rank: 4 }), character({ ownershipId: "material" })))
       .toEqual({ ok: false, reason: "rank-overflow" });
