@@ -35,7 +35,15 @@
 - 完成の条件：編成→開始で `p_user_character_ids` に編成IDが載る・食事セッション保存後に `p_meal_log_id` が送られる・症状が送られる、をvitestで確認。`npm run typecheck`、`npx expo export -w apps/native`（or該当スクリプト）
 - 見た目の条件：コレクションで編成→バトル→勝利→排便4項目＋症状→食事セッション（確率コピー表示）→結果
 - 依存：T-006, T-008（完了済み）
-- 状態：ready
+- 状態：needs-human-review（マージ済。見た目の条件で人間確認待ち）
+
+### T-013b `_layout.tsx` typecheckエラー修正（T-013から分割）
+- 種類：logic
+- やること：`app/(tabs)/_layout.tsx` の `fontFamily`/`backgroundColor` 型エラー2件を修正してnative typecheckを0エラーに（ピッカー側はT-013本体で扱う）
+- 触ってよいファイル：`apps/native/src/app/**` のみ
+- 完成の条件：`npm run typecheck -w apps/native` が0エラー、`npm test -w apps/native` 通過
+- 依存：なし（`app/**` のみでT-012と非衝突のため並列）
+- 状態：completed（差し戻し後に修正・マージ済 7416805。統合ブランチtypecheck 0エラー）
 
 ### T-013 写真ピッカー不具合対応＋既知typecheckエラー
 - 種類：logic
@@ -44,7 +52,7 @@
 - 触ってよいファイル：`apps/native/src/features/meal/**`, `apps/native/src/app/**`
 - 完成の条件：`npm run typecheck -w apps/native` が0エラー。写真選択→確定→フォームに戻ることを確認（構造変更した場合はシミュレータ手動確認または実機レビュー依頼）
 - 依存：なし。**T-012と `features/meal/**` が被るため同時には振らない**
-- 状態：ready（①の構造変更が必要かは人間の実機確認次第）
+- 状態：保留（②はT-013bへ分割済み。①は人間の実機確認次第）
 
 ### T-005 アプリ内課金（IAP）の権利付与バックエンド
 - 種類：logic（決済・DBスキーマ・権限 → 着手前に人間承認、最終レビュー必須）
