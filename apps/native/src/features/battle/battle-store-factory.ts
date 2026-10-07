@@ -14,7 +14,8 @@ import {
 import { applyBattleStart, applyBattleTick } from "@poopbattler/domain/battle/battle-runtime";
 import { IDLE_BATTLE_SNAPSHOT, partializeBattleStore } from "@poopbattler/domain/battle/battle-snapshot";
 import type { BattleSpeed, BattleStance } from "@poopbattler/domain/battle/battle.constants";
-import type { BattleSnapshot, BattleStartInput, BowelDraft } from "@poopbattler/domain/battle/battle.types";
+import type { BattleSnapshot, BattleStartInput } from "@poopbattler/domain/battle/battle.types";
+import type { BowelLogDraft } from "@poopbattler/domain/records/bowel-log.types";
 
 import { catchUpBattleTicks } from "./tick-catchup";
 
@@ -40,7 +41,7 @@ export type BattleStore = BattleSnapshot & {
   restore: (snapshot: BattleSnapshot) => void;
   markDefeated: () => void;
   markCompleting: () => void;
-  setBowelDraft: (draft: BowelDraft | null) => void;
+  setBowelDraft: (draft: BowelLogDraft | null) => void;
   acknowledgeOutcome: () => void;
   reset: () => void;
 };
