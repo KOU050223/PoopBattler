@@ -13,3 +13,4 @@
 | 2026-10-07 | 片付け | 指示役 | - | 記録 | t002/t003 worktree削除(completed・マージ済・clean)。t004 worktreeは needs-human-review のため残すべきだったが誤って削除(cleanで未コミット無し、ブランチ guriguri00451/t004-native-scaffold は残存・マージ済み)。確認はorch/native-appのapps/nativeで可能 |
 | 2026-10-07 | T-002b / T-008 | devin x2 | dispatch | dispatched | T-002b=ctx_e5de713c0f92(current) T-008=ctx_8c6da3e6c837(worktree t008-native-battle)。T-005はユーザー承認待ち、T-006はT-002b待ち |
 | 2026-10-07 | T-002b | devin ctx_e5de713c0f92 | 第1段階 | completed | TODO(T-003)0件、532tests維持(web297+domain235)、typecheck/lint/build通過、コミット済 |
+| 2026-10-07 | T-006 | devin | dispatch | dispatched | worktree t006-native-records |
