@@ -285,7 +285,9 @@ export type Database = {
           hp: number
           id: string
           power: number
+          rank: number
           speed: number
+          tier: number
           user_id: string
         }
         Insert: {
@@ -295,7 +297,9 @@ export type Database = {
           hp: number
           id?: string
           power: number
+          rank?: number
           speed: number
+          tier?: number
           user_id: string
         }
         Update: {
@@ -305,7 +309,9 @@ export type Database = {
           hp?: number
           id?: string
           power?: number
+          rank?: number
           speed?: number
+          tier?: number
           user_id?: string
         }
         Relationships: [
@@ -370,9 +376,29 @@ export type Database = {
           status: Database["public"]["Enums"]["battle_status"]
         }[]
       }
+      evolve_character: {
+        Args: { p_user_character_id: string }
+        Returns: {
+          rank: number
+          tier: number
+          user_character_id: string
+        }[]
+      }
       has_unique_text_array_elements: {
         Args: { p_values: string[] }
         Returns: boolean
+      }
+      merge_characters: {
+        Args: {
+          p_base_id: string
+          p_confirm_enhanced?: boolean
+          p_material_id: string
+        }
+        Returns: {
+          rank: number
+          tier: number
+          user_character_id: string
+        }[]
       }
       start_battle: {
         Args: { p_user_character_ids?: string[] }

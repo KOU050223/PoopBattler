@@ -12,6 +12,7 @@ import {
   COLLECTION_RARITY_LABELS,
   type CollectionCharacter,
 } from "../character.types";
+import { GrowthBadge } from "./growth-badge";
 
 function formatAcquiredAt(value: string) {
   return new Intl.DateTimeFormat("ja-JP", {
@@ -25,6 +26,8 @@ type CollectionListProps = {
   starterIds: ReadonlySet<string>;
   swapEnabled: boolean;
   onPick: (ownershipId: string) => void;
+  /** 先発の入れ替え中でなければ、タップで育成シートを開く。 */
+  onOpenGrowth: (ownershipId: string) => void;
 };
 
 export function CollectionList({
@@ -32,6 +35,7 @@ export function CollectionList({
   starterIds,
   swapEnabled,
   onPick,
+  onOpenGrowth,
 }: CollectionListProps) {
   if (characters.length === 0) {
     return (
@@ -66,11 +70,11 @@ export function CollectionList({
           <li key={character.ownershipId}>
             <button
               type="button"
-              disabled={!swapEnabled}
-              onClick={() => onPick(character.ownershipId)}
-              className={`${cardClass} flex w-full flex-col gap-3 p-4 text-left disabled:opacity-100 ${
+              onClick={() => (swapEnabled ? onPick : onOpenGrowth)(character.ownershipId)}
+              aria-label={swapEnabled ? `${character.name}を先発に入れる` : `${character.name}を育てる`}
+              className={`${cardClass} flex w-full cursor-pointer flex-col gap-3 p-4 text-left ${
                 inParty ? "bg-blush-wash" : ""
-              } ${swapEnabled ? "cursor-pointer" : "cursor-default"}`}
+              }`}
             >
               <div className="flex items-start gap-4">
                 <div className="relative shrink-0">
@@ -91,7 +95,10 @@ export function CollectionList({
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="min-w-0 font-bold text-charcoal">{character.name}</p>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <p className="min-w-0 font-bold text-charcoal">{character.name}</p>
+                      <GrowthBadge tier={character.tier} rank={character.rank} />
+                    </div>
                     <span className="shrink-0 rounded-xl bg-blush-wash px-2 py-1 text-xs font-bold text-charcoal">
                       {COLLECTION_RARITY_LABELS[character.rarity]}
                     </span>
@@ -156,7 +163,7 @@ export function InventoryHint({
     <p className={mutedTextClass}>
       {slotSelected
         ? "入れ替える仲間を下のリストから選んでください。"
-        : "先発枠を選んでから、下のリストで入れ替えます。"}
+        : "先発枠を選んでから、下のリストで入れ替えます。仲間をタップすると合成・進化できます。"}
     </p>
   );
 }
