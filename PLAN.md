@@ -97,7 +97,7 @@
 - 触ってよいファイル：`apps/native/src/features/poopm-3d/**`, `apps/native/src/features/battle/**`, `apps/native/src/i18n/**`
 - 完成の条件：typecheck、`expo export`、stage-motionと切替のvitest
 - 依存：T-010a（ガチャ3DはT-009側。T-009の前に入れてガチャを3Dで作る流れにする）
-- 状態：dispatched（ctx_f0da8d53bd8d / worktree t010b-poopm-3d-stage）
+- 状態：needs-human-review（マージ済 f599da9。実機/シミュレータで3D描画・モーション・切替・結果フィギュアの確認待ち）
 
 ### T-011 仕上げ
 - 種類：logic
