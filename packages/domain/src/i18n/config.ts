@@ -1,10 +1,8 @@
-import type { Locale as NextIntlLocale } from "next-intl";
-
 /**
  * 対応ロケール。言語を追加するときは、この配列に追加して
  * `messages/<locale>.json` を用意すれば足りる（コード側の変更は不要）。
  */
-export const locales = ["ja", "en"] as const satisfies readonly NextIntlLocale[];
+export const locales = ["ja", "en"] as const;
 
 export type Locale = (typeof locales)[number];
 

@@ -7,7 +7,7 @@ import { ImagePlus, Trash2 } from "lucide-react";
 import { MealLogImage } from "./meal-log-image";
 import { deleteMealPhoto, saveMealPhoto, validateMealPhoto } from "@/features/meal/meal-photo-storage";
 import type { MealLog } from "@/features/meal/actions";
-import { getMealFoodGroupLabel } from "@/features/meal/meal.types";
+import { getMealFoodGroupLabel } from "@poopbattler/domain/records/meal.types";
 import { captionTextClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type MealLogListProps = {

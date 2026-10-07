@@ -1,5 +1,4 @@
-// TODO(T-003マージ後): domain/motion 側の MotionPermission（元 lib/motion）へ統合する。
-type MotionPermission = "unsupported" | "prompt" | "granted" | "denied";
+import type { MotionPermission } from "../motion/device-motion";
 
 export type SpecialMotionPlan = "noop" | "listen" | "fire-now";
 

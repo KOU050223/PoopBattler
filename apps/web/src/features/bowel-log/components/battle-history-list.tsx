@@ -3,7 +3,7 @@ import { CheckCircle2, Swords, UserRoundPlus } from "lucide-react";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { ATTRIBUTE_LABELS } from "@poopbattler/domain/battle/battle.constants";
-import { getMealFoodGroupLabel } from "@/features/meal/meal.types";
+import { getMealFoodGroupLabel } from "@poopbattler/domain/records/meal.types";
 
 import type { BattleHistoryLog } from "../actions";
 import {
@@ -11,7 +11,7 @@ import {
   BOWEL_COLOR_OPTIONS,
   BOWEL_EASE_OPTIONS,
   BOWEL_HARDNESS_OPTIONS,
-} from "../bowel-log.types";
+} from "@poopbattler/domain/records/bowel-log.types";
 
 function formatCompletedAt(value: string) {
   return new Intl.DateTimeFormat("ja-JP", {

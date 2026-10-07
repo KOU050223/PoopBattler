@@ -1,6 +1,4 @@
-import type { Locale } from "next-intl";
-
-import { defaultLocale, isSupportedLocale } from "./config";
+import { defaultLocale, isSupportedLocale, type Locale } from "./config";
 
 /**
  * Cookie の値から利用するロケールを決める。

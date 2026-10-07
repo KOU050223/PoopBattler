@@ -1,7 +1,7 @@
 import {
   accelerationMagnitude,
   type DeviceMotionEventLike,
-} from "@/lib/motion";
+} from "@poopbattler/domain/motion/device-motion";
 
 const LINEAR_SHAKE_THRESHOLD = 3.5;
 const GRAVITY_MAGNITUDE = 9.80665;

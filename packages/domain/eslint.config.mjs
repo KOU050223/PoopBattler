@@ -17,8 +17,6 @@ const forbidden = [
   "three/*",
   "@react-three/*",
   "framer-motion",
-  "motion",
-  "motion/*",
   "zustand",
   "zustand/*",
   "stripe",
@@ -41,7 +39,13 @@ export default defineConfig([
     rules: {
       "no-restricted-imports": [
         "error",
-        { patterns: [{ group: forbidden, message }] },
+        {
+          patterns: [
+            { group: forbidden, message },
+            // group(gitignore記法)の "motion" は domain 内の motion/ ディレクトリ(相対import)にも誤マッチするため、npmパッケージ名だけを正規表現で禁止する。
+            { regex: "^motion(/.*)?$", message },
+          ],
+        },
       ],
       "no-restricted-syntax": [
         "error",

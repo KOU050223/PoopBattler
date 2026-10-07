@@ -5,7 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../messages/ja.json";
 
 import { WeeklyReportView } from "./weekly-report-view";
-import type { WeeklyReport } from "../weekly-report";
+import type { WeeklyReport } from "@poopbattler/domain/report/weekly-report";
 
 const report: WeeklyReport = {
   range: { startsAt: "2026-08-30T15:00:00.000Z", endsAt: "2026-09-04T12:00:00.000Z" },

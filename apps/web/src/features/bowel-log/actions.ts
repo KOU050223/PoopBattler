@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-import type { BowelLog } from "./bowel-log.types";
+import type { BowelLog } from "@poopbattler/domain/records/bowel-log.types";
 import type { Database } from "@poopbattler/domain/types/database.types";
 
 type CharacterRow = Database["public"]["Tables"]["characters"]["Row"];

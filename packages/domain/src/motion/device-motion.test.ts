@@ -14,7 +14,7 @@ import {
   requestMotionPermission,
   type DeviceMotionEventLike,
   type StrainListenerHost,
-} from "./motion";
+} from "./device-motion";
 
 function axis(x: number, y: number, z: number) {
   return { x, y, z };

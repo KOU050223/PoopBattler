@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { watchAccountStatusFromBrowser } from "@/lib/supabase/account-watch";
 import { signInAnonymouslyFromBrowser } from "@/lib/supabase/anonymous-session";
 
-import type { AccountStatus } from "../account.types";
+import type { AccountStatus } from "@poopbattler/domain/account/account.types";
 import { AccountMenu } from "./account-menu";
 import { HeaderAccountStatus } from "./header-account-status";
 

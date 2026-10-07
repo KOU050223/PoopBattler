@@ -1,4 +1,5 @@
-import type { Database } from "@poopbattler/domain/types/database.types";
+import type { BowelLogDraft } from "../records/bowel-log.types";
+import type { Database } from "../types/database.types";
 
 import type {
   BattleStance,

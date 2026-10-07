@@ -1,17 +1,17 @@
 import { CalendarDays, ChartNoAxesCombined, LockKeyhole, Palette, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { AccountStatus } from "@/features/account/account.types";
+import type { AccountStatus } from "@poopbattler/domain/account/account.types";
 
 import type { ReportTeaser } from "../actions";
-import { createTeaserPlaceholder } from "../teaser-placeholder";
+import { createTeaserPlaceholder } from "@poopbattler/domain/report/teaser-placeholder";
 
 import { BarChart } from "./charts/bar-chart";
 import { ShareBar } from "./charts/share-bar";
 import { TrendLine } from "./charts/trend-line";
 import { PurchaseCallToAction } from "./purchase-call-to-action";
 
-import { BOWEL_COLOR_LABELS, weekdayShortLabel, type BowelColor, type Weekday } from "../report-labels";
+import { BOWEL_COLOR_LABELS, weekdayShortLabel, type BowelColor, type Weekday } from "@poopbattler/domain/report/report-labels";
 
 type Props = {
   teaser: ReportTeaser;

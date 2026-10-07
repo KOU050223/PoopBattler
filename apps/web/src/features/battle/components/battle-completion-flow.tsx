@@ -14,10 +14,10 @@ import {
   postBattleMealChanceCopy,
 } from "@poopbattler/domain/battle/post-battle-meal-session";
 import { BowelLogForm } from "@/features/bowel-log/components/bowel-log-form";
-import type { BowelLog } from "@/features/bowel-log/bowel-log.types";
+import type { BowelLog } from "@poopbattler/domain/records/bowel-log.types";
 import { getMealLogsAction, saveMealLogAction, type MealLog } from "@/features/meal/actions";
 import { MealLogForm } from "@/features/meal/components/meal-log-form";
-import type { MealLogDraft, MealLogSaveResult } from "@/features/meal/meal.types";
+import type { MealLogDraft, MealLogSaveResult } from "@poopbattler/domain/records/meal.types";
 import { primaryButtonClass } from "@/lib/ui-classes";
 
 export type BattleCompletedPayload = {

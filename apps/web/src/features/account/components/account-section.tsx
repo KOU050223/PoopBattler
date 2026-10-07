@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { watchAccountStatusFromBrowser } from "@/lib/supabase/account-watch";
 import type { SubscriptionSnapshot } from "@/features/billing/actions";
 
-import type { AccountStatus } from "../account.types";
+import type { AccountStatus } from "@poopbattler/domain/account/account.types";
 import { DeleteAccountSection } from "./delete-account-section";
 import { GoogleAccountLink } from "./google-account-link";
 import { PremiumSection } from "./premium-section";

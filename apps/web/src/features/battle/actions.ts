@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { isBowelLog, type BowelLog } from "@/features/bowel-log/bowel-log.types";
+import { isBowelLog, type BowelLog } from "@poopbattler/domain/records/bowel-log.types";
 import type { Database } from "@poopbattler/domain/types/database.types";
 import { revalidatePath } from "next/cache";
 

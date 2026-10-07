@@ -12,7 +12,7 @@ export type DeviceMotionEventLike = {
 };
 
 export type DeviceMotionEventCtor = {
-  requestPermission?: () => Promise<PermissionState | "granted" | "denied">;
+  requestPermission?: () => Promise<"granted" | "denied" | "prompt">;
 };
 
 export type MotionEnvironment = {
@@ -43,18 +43,6 @@ export type StrainProgress = {
   requiredMs: number;
   ratio: number;
 };
-
-export function readBrowserMotionEnv(): MotionEnvironment {
-  if (typeof window === "undefined") {
-    return { isSecureContext: false, canSubscribe: false };
-  }
-
-  return {
-    isSecureContext: window.isSecureContext,
-    DeviceMotionEvent: window.DeviceMotionEvent as DeviceMotionEventCtor | undefined,
-    canSubscribe: typeof window.addEventListener === "function",
-  };
-}
 
 export function inspectMotionPermission(env: MotionEnvironment): MotionPermission {
   if (!env.isSecureContext || env.DeviceMotionEvent == null) {

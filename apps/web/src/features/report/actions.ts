@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 
-import { hasActiveEntitlement } from "./report-access";
-import { createWeeklyReport, getWeeklyReportRange, type WeeklyReport } from "./weekly-report";
+import { hasActiveEntitlement } from "@poopbattler/domain/report/report-access";
+import { createWeeklyReport, getWeeklyReportRange, type WeeklyReport } from "@poopbattler/domain/report/weekly-report";
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 

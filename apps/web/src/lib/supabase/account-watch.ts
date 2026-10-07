@@ -1,4 +1,4 @@
-import { toAccountStatus, type AccountStatus } from "@/features/account/account.types";
+import { toAccountStatus, type AccountStatus } from "@poopbattler/domain/account/account.types";
 
 import { createClient } from "./client";
 

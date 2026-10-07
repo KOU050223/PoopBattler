@@ -2,7 +2,7 @@ import Stripe from "stripe";
 
 import { cancelSubscriptionNow } from "@/features/billing/cancel-subscription";
 import { getStripeWebhookSecret } from "@/features/billing/stripe-env";
-import { resolveStripeEvent } from "@/features/billing/stripe-event";
+import { resolveStripeEvent } from "@poopbattler/domain/billing/stripe-event";
 import { updateSubscriptionStatusByCustomer, upsertSubscription } from "@/lib/supabase/subscription-write";
 
 // Stripe の Webhook 受け口。

@@ -1,6 +1,6 @@
 import { MealLogImage } from "@/features/meal/components/meal-log-image";
 import type { MealLog } from "@/features/meal/actions";
-import { getMealFoodGroupLabel } from "@/features/meal/meal.types";
+import { getMealFoodGroupLabel } from "@poopbattler/domain/records/meal.types";
 import { captionTextClass } from "@/lib/ui-classes";
 
 type BattleMealSessionListProps = {

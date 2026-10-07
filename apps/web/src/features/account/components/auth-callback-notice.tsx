@@ -1,4 +1,4 @@
-import { getAuthErrorMessage } from "../auth-error-messages";
+import { getAuthErrorMessage } from "@poopbattler/domain/account/auth-error-messages";
 
 type Props = {
   linked: boolean;

@@ -4,7 +4,7 @@ import { LinkIcon, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 
-import type { AccountStatus } from "@/features/account/account.types";
+import type { AccountStatus } from "@poopbattler/domain/account/account.types";
 import { createCheckoutSessionAction } from "@/features/billing/actions";
 
 type Props = {

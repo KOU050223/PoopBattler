@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { SubscriptionSnapshot } from "@/features/billing/actions";
 
-import { SIGNED_OUT_ACCOUNT_STATUS } from "../account.types";
+import { SIGNED_OUT_ACCOUNT_STATUS } from "@poopbattler/domain/account/account.types";
 import { PremiumSection } from "./premium-section";
 
 const signedIn = {

@@ -1,7 +1,6 @@
-import type Stripe from "stripe";
 import { describe, expect, it } from "vitest";
 
-import { resolveStripeEvent } from "./stripe-event";
+import { resolveStripeEvent, type StripeEventLike, type StripeSubscriptionLike } from "./stripe-event";
 
 const userId = "00000000-0000-4000-8000-000000000001";
 
@@ -11,12 +10,12 @@ function checkoutEvent(
     | "checkout.session.completed"
     | "checkout.session.async_payment_succeeded"
     | "checkout.session.async_payment_failed" = "checkout.session.completed",
-): Stripe.Event {
+): StripeEventLike {
   return {
     type,
     created: 1790000500,
     data: { object: { payment_status: "paid", ...session } },
-  } as unknown as Stripe.Event;
+  } as unknown as StripeEventLike;
 }
 
 const EVENT_CREATED = 1790000500;
@@ -25,13 +24,13 @@ function subscriptionEvent(
   type: "customer.subscription.updated" | "customer.subscription.deleted",
   subscription: Record<string, unknown>,
   created = EVENT_CREATED,
-): Stripe.Event {
-  return { type, created, data: { object: subscription } } as unknown as Stripe.Event;
+): StripeEventLike {
+  return { type, created, data: { object: subscription } } as unknown as StripeEventLike;
 }
 
 /** Route Handler が Stripe から取得して渡す購読。 */
 function retrievedSubscription(overrides: Record<string, unknown> = {}) {
-  return { status: "active", current_period_end: 1790000000, ...overrides } as unknown as Stripe.Subscription;
+  return { status: "active", current_period_end: 1790000000, ...overrides } as unknown as StripeSubscriptionLike;
 }
 
 describe("resolveStripeEvent（購入）", () => {
@@ -302,7 +301,7 @@ describe("resolveStripeEvent（発生順）", () => {
 
 describe("resolveStripeEvent（その他）", () => {
   it("購読に関係しないイベントは無視する", () => {
-    const event = { type: "invoice.paid", data: { object: {} } } as unknown as Stripe.Event;
+    const event = { type: "invoice.paid", data: { object: {} } } as unknown as StripeEventLike;
 
     expect(resolveStripeEvent(event)).toEqual({ kind: "ignore" });
   });

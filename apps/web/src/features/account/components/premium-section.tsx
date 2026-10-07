@@ -8,7 +8,7 @@ import {
   type SubscriptionSnapshot,
 } from "@/features/billing/actions";
 
-import type { AccountStatus } from "../account.types";
+import type { AccountStatus } from "@poopbattler/domain/account/account.types";
 
 type Props = {
   status: AccountStatus;

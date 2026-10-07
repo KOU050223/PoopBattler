@@ -2,7 +2,7 @@
 
 import { Check } from "lucide-react";
 
-import { MEAL_FOOD_GROUPS, type MealFoodGroup } from "@/features/meal/meal.types";
+import { MEAL_FOOD_GROUPS, type MealFoodGroup } from "@poopbattler/domain/records/meal.types";
 
 type MealTagSelectorProps = {
   value: MealFoodGroup[];

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { STRAIN_REQUIRED_MS } from "../motion/device-motion";
 import {
   AUTO_ATTACK_DAMAGE,
   AUTO_ATTACK_PERIOD_TICKS,
@@ -22,9 +23,6 @@ import {
   tickIntervalMs,
   typeMultiplier,
 } from "./battle.constants";
-
-// TODO(T-003マージ後): lib/motion の STRAIN_REQUIRED_MS（domain/motion 側）をimportして値の二重管理を解消する。
-const STRAIN_REQUIRED_MS = 3_000;
 
 describe("typeMultiplier", () => {
   it("docsの有利・不利表と一致する", () => {
