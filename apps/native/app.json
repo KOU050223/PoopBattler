@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "踏ん張れ！ブリュレイド！！",
+    "slug": "poop-battler",
+    "scheme": "poopbattler",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "backgroundColor": "#ffe0ef",
+    "ios": {
+      "bundleIdentifier": "jp.poopbattler.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "jp.poopbattler.app"
+    },
+    "plugins": ["expo-router", "expo-font", "expo-localization"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
