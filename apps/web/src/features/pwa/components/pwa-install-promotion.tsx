@@ -8,9 +8,9 @@ import {
   installPromotionKind,
   PWA_INSTALL_PROMOTION_ELIGIBLE_STORAGE_KEY,
   PWA_INSTALL_PROMOTION_STORAGE_KEY,
-  shouldRememberInstallPromotionEligibility,
   type InstallPromotionKind,
 } from "@/features/pwa/pwa-install";
+import { shouldRememberInstallPromotionEligibility } from "@poopbattler/domain/battle/install-promotion-eligibility";
 import { cardClass, mutedTextClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 import { usePwaInstall } from "./pwa-install-provider";

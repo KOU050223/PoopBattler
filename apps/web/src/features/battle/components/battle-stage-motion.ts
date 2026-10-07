@@ -1,9 +1,9 @@
 import type { Poopm3DBattleMotion } from "@/features/poopm-3d/poopm-3d.motion";
-import type { BattleStance } from "@/features/battle/battle.constants";
+import type { BattleStance } from "@poopbattler/domain/battle/battle.constants";
 import type {
   BattleSnapshot,
   BattleStatus,
-} from "@/features/battle/battle.types";
+} from "@poopbattler/domain/battle/battle.types";
 
 // ステージへ渡す再生要求。nonce は同名モーションを再トリガーするための番号で、
 // 命令が出るたびに増える（prop が変わらないとクリップが再生され直さないため）。

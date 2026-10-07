@@ -25,10 +25,10 @@ import {
   VIDEO_SHAKE_ANIMATE,
   VIDEO_SHAKE_TRANSITION,
   type CompanionshipArPhase,
-} from "@/features/battle/companionship-ar";
+} from "@poopbattler/domain/battle/companionship-ar";
 import { useGachaCamera } from "@/features/battle/hooks/use-gacha-camera";
 import { useGravityFloor } from "@/features/battle/hooks/use-gravity-floor";
-import type { GravityVec3 } from "@/features/battle/companionship-gravity";
+import type { GravityVec3 } from "@poopbattler/domain/battle/companionship-gravity";
 import { useToiletDetection } from "@/features/battle/hooks/use-toilet-detection";
 import {
   DEFAULT_THROW_TARGET,
@@ -38,7 +38,7 @@ import {
   type PercentPoint,
   type ToiletModelStatus,
   type ToiletSight,
-} from "@/features/battle/toilet-detection";
+} from "@poopbattler/domain/battle/toilet-detection";
 import { getMealPhoto } from "@/features/meal/meal-photo-storage";
 import { GachaStage3D } from "@/features/battle/components/gacha-stage-3d";
 import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";

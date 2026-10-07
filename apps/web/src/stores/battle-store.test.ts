@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { applyBattleStart } from "@/features/battle/battle-runtime";
+import { applyBattleStart } from "@poopbattler/domain/battle/battle-runtime";
 import {
   BATTLE_SNAPSHOT_KEYS,
   IDLE_BATTLE_SNAPSHOT,
   partializeBattleStore,
-} from "@/features/battle/battle-snapshot";
+} from "@poopbattler/domain/battle/battle-snapshot";
 import {
   AUTO_ATTACK_DAMAGE,
   BASE_SPEED,
   INITIAL_ENEMY_HP,
   INITIAL_MEMBER_HP,
-} from "@/features/battle/battle.constants";
-import type { BattleStartInput } from "@/features/battle/battle.types";
+} from "@poopbattler/domain/battle/battle.constants";
+import type { BattleStartInput } from "@poopbattler/domain/battle/battle.types";
 
 const startInput: BattleStartInput = {
   battleId: "battle-1",

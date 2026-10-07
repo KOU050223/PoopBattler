@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# apps/web/src/types/database.types.ts が supabase/migrations/ の現状と一致するかを検証する。
+# packages/domain/src/types/database.types.ts が supabase/migrations/ の現状と一致するかを検証する。
 # マイグレーションを変更したまま型を再生成し忘れた場合に落とす。
 #
 # 既に起動しているローカルDBがあればそれを使い、無ければ一時的にDBだけ起動する。
@@ -13,7 +13,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-GENERATED="apps/web/src/types/database.types.ts"
+GENERATED="packages/domain/src/types/database.types.ts"
 STARTED_BY_SCRIPT=0
 
 cleanup() {

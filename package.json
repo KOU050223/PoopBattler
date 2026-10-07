@@ -16,7 +16,7 @@
     "db:new": "supabase migration new",
     "db:migrate": "supabase migration up",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types --local --lang typescript > apps/web/src/types/database.types.ts",
+    "db:types": "supabase gen types --local --lang typescript > packages/domain/src/types/database.types.ts",
     "db:types:check": "./scripts/check-db-types.sh",
     "db:test:rls": "./scripts/test-rls.sh",
     "prepare": "lefthook install",

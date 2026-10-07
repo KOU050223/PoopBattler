@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { ATTRIBUTE_LABELS } from "@/features/battle/battle.constants";
+import { ATTRIBUTE_LABELS } from "@poopbattler/domain/battle/battle.constants";
 import { PoopmFigure3D } from "@/features/poopm-3d/components/poopm-figure-3d";
 import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
 import { EmptyState } from "@/components/ui/empty-state";

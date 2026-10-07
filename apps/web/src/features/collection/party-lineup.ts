@@ -1,4 +1,4 @@
-import { PARTY_SIZE } from "@/features/battle/battle.constants";
+import { PARTY_SIZE } from "@poopbattler/domain/battle/battle.constants";
 
 export const PARTY_LINEUP_STORAGE_KEY = "poop-battler.party-lineup";
 

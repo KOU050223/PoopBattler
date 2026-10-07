@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "framer-motion";
-import { readBattleSpeed, subscribeBattleSpeed, writeBattleSpeed } from "@/features/battle/battle-speed";
+import { readBattleSpeed, subscribeBattleSpeed, writeBattleSpeed } from "@poopbattler/domain/battle/battle-speed";
 import {
   startBattleAction,
   type CompleteBattleResult,
@@ -14,7 +14,7 @@ import {
   type BattleCompletedPayload,
 } from "@/features/battle/components/battle-completion-flow";
 import { CompanionshipArStage } from "@/features/battle/components/companionship-ar-stage";
-import { usesCompanionshipAr } from "@/features/battle/companionship-ar";
+import { usesCompanionshipAr } from "@poopbattler/domain/battle/companionship-ar";
 import {
   ATTRIBUTE_LABELS,
   DEFAULT_BATTLE_SPEED,
@@ -24,8 +24,8 @@ import {
   scaleByBattleSpeed,
   tickIntervalMs,
   type BattleSpeed,
-} from "@/features/battle/battle.constants";
-import { resolveBattleScreenView } from "@/features/battle/battle-screen-view";
+} from "@poopbattler/domain/battle/battle.constants";
+import { resolveBattleScreenView } from "@poopbattler/domain/battle/battle-screen-view";
 import { BattleControls } from "@/features/battle/components/battle-controls";
 import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
 import { BattleStage3D } from "@/features/battle/components/battle-stage-3d";
@@ -44,7 +44,7 @@ import { LoadingState } from "@/components/ui/loading-state";
 import { captionTextClass, mutedTextClass, primaryButtonClass, stancePillClass } from "@/lib/ui-classes";
 import { signInAnonymouslyFromBrowser } from "@/lib/supabase/anonymous-session";
 import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
-import type { BattleSnapshot } from "@/features/battle/battle.types";
+import type { BattleSnapshot } from "@poopbattler/domain/battle/battle.types";
 import { useBattleStore } from "@/stores/battle-store";
 
 const MATCHUP_LABEL = {

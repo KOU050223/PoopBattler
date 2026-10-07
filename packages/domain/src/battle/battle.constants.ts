@@ -1,4 +1,4 @@
-import type { Database } from "@/types/database.types";
+import type { Database } from "@poopbattler/domain/types/database.types";
 
 export type CharacterAttribute =
   Database["public"]["Enums"]["character_attribute"];

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { planSpecialMotion } from "@/features/battle/special-motion";
-import { readBattleSpeed } from "@/features/battle/battle-speed";
+import { planSpecialMotion } from "@poopbattler/domain/battle/special-motion";
+import { readBattleSpeed } from "@poopbattler/domain/battle/battle-speed";
 import {
   createStrainListener,
   inspectMotionPermission,

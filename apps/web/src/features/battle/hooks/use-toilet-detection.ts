@@ -11,7 +11,7 @@ import {
   type CocoDetection,
   type ToiletModelStatus,
   type ToiletSight,
-} from "@/features/battle/toilet-detection";
+} from "@poopbattler/domain/battle/toilet-detection";
 
 type ToiletDetector = {
   detect: (

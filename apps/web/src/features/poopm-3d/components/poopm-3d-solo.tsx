@@ -12,7 +12,7 @@ import {
 } from "@/features/poopm-3d/components/poopm-3d-model";
 import { STAGE_GROUND_Y } from "@/features/poopm-3d/poopm-3d.camera";
 import type { Poopm3DBattleMotion } from "@/features/poopm-3d/poopm-3d.motion";
-import type { GravityVec3 } from "@/features/battle/companionship-gravity";
+import type { GravityVec3 } from "@poopbattler/domain/battle/companionship-gravity";
 
 export type Poopm3DSoloProps = {
   appearance: Poopm3DAppearance;

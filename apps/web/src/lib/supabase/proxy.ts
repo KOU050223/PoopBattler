@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import type { Database } from "@/types/database.types";
+import type { Database } from "@poopbattler/domain/types/database.types";
 
 import { getSupabaseEnvironment } from "./env";
 

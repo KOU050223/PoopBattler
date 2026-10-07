@@ -4,6 +4,7 @@ import {
   isBattleSpeed,
   type BattleSpeed,
 } from "./battle.constants";
+import type { SyncKeyValueStorage } from "../ports";
 
 const listeners = new Set<() => void>();
 
@@ -15,7 +16,7 @@ export function subscribeBattleSpeed(onStoreChange: () => void) {
 }
 
 export function readBattleSpeed(
-  storage: Pick<Storage, "getItem"> | null,
+  storage: Pick<SyncKeyValueStorage, "getItem"> | null,
 ): BattleSpeed {
   if (storage == null) {
     return DEFAULT_BATTLE_SPEED;
@@ -26,7 +27,7 @@ export function readBattleSpeed(
 }
 
 export function writeBattleSpeed(
-  storage: Pick<Storage, "setItem">,
+  storage: Pick<SyncKeyValueStorage, "setItem">,
   speed: BattleSpeed,
 ): void {
   storage.setItem(BATTLE_SPEED_STORAGE_KEY, String(speed));

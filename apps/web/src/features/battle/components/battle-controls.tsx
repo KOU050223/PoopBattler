@@ -4,8 +4,8 @@ import {
   SPECIAL_GAUGE_MAX,
   TICK_INTERVAL_MS,
   type BattleStance,
-} from "@/features/battle/battle.constants";
-import type { BattleParty } from "@/features/battle/battle.types";
+} from "@poopbattler/domain/battle/battle.constants";
+import type { BattleParty } from "@poopbattler/domain/battle/battle.types";
 import {
   captionTextClass,
   secondaryButtonClass,

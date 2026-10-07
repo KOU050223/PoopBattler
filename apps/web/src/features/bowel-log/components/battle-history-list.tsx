@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CheckCircle2, Swords, UserRoundPlus } from "lucide-react";
 
 import { EmptyState } from "@/components/ui/empty-state";
-import { ATTRIBUTE_LABELS } from "@/features/battle/battle.constants";
+import { ATTRIBUTE_LABELS } from "@poopbattler/domain/battle/battle.constants";
 import { getMealFoodGroupLabel } from "@/features/meal/meal.types";
 
 import type { BattleHistoryLog } from "../actions";
