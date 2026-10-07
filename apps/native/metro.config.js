@@ -10,6 +10,8 @@ const pinned = ["react", "react-native"].map((name) => ({
   dir: path.resolve(__dirname, "node_modules", name),
 }));
 
+config.resolver.assetExts.push("glb");
+
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   for (const { name, dir } of pinned) {
     if (moduleName === name || moduleName.startsWith(`${name}/`)) {
