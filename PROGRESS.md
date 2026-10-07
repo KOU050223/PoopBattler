@@ -28,3 +28,5 @@
 | 2026-10-07 | T-010b | devin ctx_f0da8d53bd8d | 第1段階 | needs-human-review | 指示役検証: worktree・統合ブランチとも typecheck 0・native140tests(+24: stage-motion15/render-mode4/png-rgba5)、ルート web297+domain235、export iosでGLB8個バンドル確認（画面import経由）。マージ済 f599da9。fast-png@8.0.0追加。ワーカー解放・ack済。確認: バトルタブで3Dステージ描画・攻撃/被弾/必殺/交代/勝敗のモーションとカメラワーク・2D/3D切替・勝利後結果の3Dフィギュア・端末のreduce-motion設定時の緩和 |
 | 2026-10-07 | T-013 | 人間 | 実機確認 | completed | FULL_SCREEN暫定修正がiOS実機で有効と人間が確認（「修正できた」報告）。構造変更不要 |
 | 2026-10-07 | T-005 | - | - | ready→dispatched | 人間がRevenueCat利用を承認。ctx_18b8d331ccc1 / worktree t005-iap-webhook。spec: .orch/t005-spec.md。許可ファイルを実態に修正（型生成はpackages/domain/src/types、書き込み層はlib/supabase/subscription-write.ts、rls-verify.sql追加）。決済・権限のため最終レビュー必須 |
+| 2026-10-07 | T-009分割 | 指示役 | - | 完了 | 便器検出方式は人間がA案（vision-camera+fast-tflite+resize-plugin+COCO系TFLite）を選択。T-009を T-009a(検出基盤・logic) / T-009b(ガチャAR統合・ui) に分割。domainのtoilet-detection.ts純ロジックは再利用、推論層のみ差し替え |
+| 2026-10-07 | T-009a | devin ctx_146e1ad038d8 | dispatch | dispatched | worktree t009a-toilet-detect。spec: .orch/t009a-spec.md。native依存追加＋config plugin＋モデル同梱＋検出フック＋PoCコンポーネント（画面非接続）。実機検証はdev build必須で完了後も残る |

@@ -72,13 +72,22 @@
 - 依存：T-003, T-004, T-005
 - 状態：pending
 
-### T-009 native 便器検出＋ガチャAR
+### T-009a native 便器検出基盤（vision-camera + fast-tflite）
+- 種類：logic
+- 背景：便器検出の方式は人間が **A案（`react-native-vision-camera` + `react-native-fast-tflite` + `vision-camera-resize-plugin` + COCO系TFLiteモデル同梱）** を選択済み（B案=手動照準、C案=tfjs-react-nativeは不採用）
+- やること：①3パッケージ＋必要な関連依存（worklets等）をapps/nativeに追加・Expo config plugin配線（カメラ権限文面はja/en想定・NSCameraUsageDescription）②COCO互換・`toilet`ラベル入りの軽量TFLite検出モデルをassetsに同梱（取得元URLとライセンスを報告に記載）③webの `use-toilet-detection`/`use-gacha-camera` と domain `battle/toilet-detection.ts` を読み、検出結果→判定（検出中/見つかった/タイムアウト→フォールバック）の純ロジックを native 側に切り出す④frame processor で推論する検出フック＋カメラプレビューPoCコンポーネント（画面非接続）⑤純ロジックのvitest
+- 触ってよいファイル：`apps/native/**`（src・app.json等config含む）、ルート `package-lock.json`。`packages/domain/` は読むだけ（変更したくなったらask）
+- 完成の条件：typecheck、`npm test -w apps/native`（検出判定ロジックのテスト含む）、`npx expo export` 成功（モデルがasset解決されること）、`npx expo prebuild --clean` が通ること（config plugin検証）
+- 依存：T-012（完了フロー確定済み）
+- 状態：dispatched（ctx_146e1ad038d8 / worktree t009a-toilet-detect）
+
+### T-009b native ガチャAR統合
 - 種類：ui
-- 仕様（web-spec準拠）：仲間化成功時のみ、ステージ遷移 `staging → throw → shake → reveal → summary`。staging=カメラプレビュー＋便器検出、throw=食事写真の投げ入れ（`meal_log_id` の写真をPhotoStoreから）、shake=揺れ演出、reveal=キャラ出現、summary=獲得結果。カメラ権限拒否/非対応は3Dのみにフォールバック、`prefers-reduced-motion` 相当ではthrow/shake省略、スキップボタン常設
-- やること：expo-camera＋検出（要技術選定。webはcoco-ssd。nativeの検出手法は**着手前に指示役が調査して人間に提示**）、ガチャ演出、踏ん張り(expo-sensors)
-- 触ってよいファイル：`apps/native/src/features/battle/**`（AR/gacha系新規サブディレクトリ）, `apps/native/src/features/meal/**`（写真取得）
-- 完成の条件：typecheck、`expo export`、ステートマシンのvitest
-- 依存：T-006, T-008, T-012（meal_log_idと写真を使うため）
+- 仕様（web-spec準拠）：仲間化成功時のみ、ステージ遷移 `staging → throw → shake → reveal → summary`。staging=T-009aのカメラプレビュー＋便器検出、throw=食事写真の投げ入れ（`meal_log_id` の写真をPhotoStoreから）、shake=揺れ演出、reveal=キャラ出現（T-010bのpoopm-3dコンポーネント利用）、summary=獲得結果。カメラ権限拒否/非対応は3Dのみにフォールバック、reduce-motionではthrow/shake省略、スキップボタン常設
+- やること：webの `companionship-ar-stage.tsx`/`gacha-stage-3d.tsx`/`poopm-3d-gacha.tsx` と domain `companionship-ar.ts` を移植し、完了フローにARステージを組み込む。踏ん張り入力は expo-sensors（webの device-motion 相当）
+- 触ってよいファイル：`apps/native/src/features/battle/**`（AR/gacha系新規サブディレクトリ）, `apps/native/src/features/meal/**`（写真取得）, `apps/native/src/features/poopm-3d/**`, `apps/native/src/i18n/**`
+- 完成の条件：typecheck、`expo export`、ガチャステートマシンのvitest
+- 依存：T-009a, T-010b
 - 状態：pending
 
 ### T-010a native 3D基盤（expo-gl + three + R3F 導入・GLBロードPoC）
