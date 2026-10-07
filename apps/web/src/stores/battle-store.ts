@@ -29,8 +29,8 @@ import type { BattleSpeed, BattleStance } from "@poopbattler/domain/battle/battl
 import type {
   BattleSnapshot,
   BattleStartInput,
-  BowelDraft,
 } from "@poopbattler/domain/battle/battle.types";
+import type { BowelLogDraft } from "@poopbattler/domain/records/bowel-log.types";
 
 export const BATTLE_STORE_NAME = "poop-battler.battle";
 
@@ -62,7 +62,7 @@ export type BattleStore = BattleSnapshot & {
   restore: (snapshot: BattleSnapshot) => void;
   markDefeated: () => void;
   markCompleting: () => void;
-  setBowelDraft: (draft: BowelDraft | null) => void;
+  setBowelDraft: (draft: BowelLogDraft | null) => void;
   acknowledgeOutcome: () => void;
   reset: () => void;
 };

@@ -42,7 +42,7 @@ import {
 import { getMealPhoto } from "@/features/meal/meal-photo-storage";
 import { GachaStage3D } from "@/features/battle/components/gacha-stage-3d";
 import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
-import type { UserMediaCameraStatus } from "@/lib/user-media-camera";
+import type { UserMediaCameraStatus } from "@poopbattler/domain/ports";
 import { captionTextClass, mutedTextClass, secondaryButtonClass } from "@/lib/ui-classes";
 
 type CompletionSuccess = Extract<CompleteBattleResult, { success: true }>;

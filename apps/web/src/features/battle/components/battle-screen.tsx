@@ -8,7 +8,8 @@ import {
   startBattleAction,
   type CompleteBattleResult,
 } from "@/features/battle/actions";
-import { parsePartyLineup, readPartyLineup } from "@/features/collection/party-lineup";
+import { parsePartyLineup } from "@poopbattler/domain/records/party-lineup";
+import { readPartyLineup } from "@/features/collection/party-lineup-storage";
 import {
   BattleCompletionFlow,
   type BattleCompletedPayload,

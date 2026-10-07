@@ -6,14 +6,14 @@ import { PoopmFigure3D } from "@/features/poopm-3d/components/poopm-figure-3d";
 import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
 import { captionTextClass, cardClass } from "@/lib/ui-classes";
 
-import type { CollectionCharacter } from "../character.types";
+import type { CollectionCharacter } from "@poopbattler/domain/records/character.types";
+import { resolveLineup, swapLineupSlot } from "@poopbattler/domain/records/party-lineup";
+
 import {
   getPartyLineupSnapshot,
-  resolveLineup,
   subscribePartyLineup,
-  swapLineupSlot,
   writePartyLineup,
-} from "../party-lineup";
+} from "../party-lineup-storage";
 import { CollectionList, InventoryHint } from "./collection-list";
 
 type InventoryScreenProps = {

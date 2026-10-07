@@ -12,7 +12,8 @@ import {
 } from "./battle.constants";
 import { dealDamage } from "./battle-runtime";
 import { cloneBattleSnapshot, isFighting } from "./battle-snapshot";
-import type { BattleSnapshot, BowelDraft } from "./battle.types";
+import type { BowelLogDraft } from "../records/bowel-log.types";
+import type { BattleSnapshot } from "./battle.types";
 
 export function applySetStance(
   state: BattleSnapshot,
@@ -158,7 +159,7 @@ export function applyMarkCompleting(state: BattleSnapshot): BattleSnapshot {
 
 export function applySetBowelDraft(
   state: BattleSnapshot,
-  draft: BowelDraft | null,
+  draft: BowelLogDraft | null,
 ): BattleSnapshot {
   return {
     ...state,

@@ -11,7 +11,7 @@ import { cardClass, mutedTextClass, primaryButtonClass, secondaryButtonClass } f
 import {
   COLLECTION_RARITY_LABELS,
   type CollectionCharacter,
-} from "../character.types";
+} from "@poopbattler/domain/records/character.types";
 
 function formatAcquiredAt(value: string) {
   return new Intl.DateTimeFormat("ja-JP", {

@@ -1,6 +1,4 @@
-import { PARTY_SIZE } from "@poopbattler/domain/battle/battle.constants";
-
-export const PARTY_LINEUP_STORAGE_KEY = "poop-battler.party-lineup";
+import { PARTY_SIZE } from "../battle/battle.constants";
 
 export type PartyLineup = [
   string | null,
@@ -96,50 +94,6 @@ export function swapLineupSlot(
 
 export function lineupOwnedIds(lineup: PartyLineup): string[] {
   return lineup.filter((id): id is string => id != null);
-}
-
-const listeners = new Set<() => void>();
-
-export function subscribePartyLineup(onStoreChange: () => void) {
-  listeners.add(onStoreChange);
-  return () => {
-    listeners.delete(onStoreChange);
-  };
-}
-
-export function getPartyLineupSnapshot(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  return window.localStorage.getItem(PARTY_LINEUP_STORAGE_KEY);
-}
-
-export function readPartyLineup(storage: Pick<Storage, "getItem"> | null): unknown {
-  if (storage == null) {
-    return null;
-  }
-
-  const raw = storage.getItem(PARTY_LINEUP_STORAGE_KEY);
-  if (raw == null) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(raw) as unknown;
-  } catch {
-    return null;
-  }
-}
-
-export function writePartyLineup(
-  storage: Pick<Storage, "setItem">,
-  lineup: PartyLineup,
-): void {
-  storage.setItem(
-    PARTY_LINEUP_STORAGE_KEY,
-    JSON.stringify(lineupOwnedIds(lineup)),
-  );
-  listeners.forEach((listener) => listener());
 }
 
 function compactLineup(lineup: PartyLineup): PartyLineup {

@@ -2,16 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type UserMediaCameraStatus =
-  | "idle"
-  | "starting"
-  | "ready"
-  | "insecure"
-  | "unsupported"
-  | "denied"
-  | "busy"
-  | "unavailable"
-  | "error";
+import type { UserMediaCameraStatus } from "@poopbattler/domain/ports";
 
 export function inspectUserMediaStart(env: {
   isSecureContext: boolean;

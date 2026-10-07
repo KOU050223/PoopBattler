@@ -1,21 +1,10 @@
+import type { UserMediaCameraStatus } from "../ports";
 import { clampPercent } from "./toilet-detection";
 import type {
   PercentPoint,
   ToiletModelStatus,
   ToiletSight,
 } from "./toilet-detection";
-
-// TODO(T-003マージ後): web側 lib/user-media-camera の同名型と統合する（現状は構造的に同一の複製）。
-export type UserMediaCameraStatus =
-  | "idle"
-  | "starting"
-  | "ready"
-  | "insecure"
-  | "unsupported"
-  | "denied"
-  | "busy"
-  | "unavailable"
-  | "error";
 
 export type CompanionshipArPhase = "staging" | "throw" | "shake" | "reveal" | "summary";
 

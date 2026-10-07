@@ -20,3 +20,14 @@ export interface SyncKeyValueStorage {
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
 }
+
+export type UserMediaCameraStatus =
+  | "idle"
+  | "starting"
+  | "ready"
+  | "insecure"
+  | "unsupported"
+  | "denied"
+  | "busy"
+  | "unavailable"
+  | "error";

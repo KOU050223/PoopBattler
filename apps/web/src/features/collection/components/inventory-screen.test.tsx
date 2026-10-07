@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import type { CollectionCharacter } from "../character.types";
+import type { CollectionCharacter } from "@poopbattler/domain/records/character.types";
 import { CollectionList } from "./collection-list";
 import { InventoryScreen } from "./inventory-screen";
 

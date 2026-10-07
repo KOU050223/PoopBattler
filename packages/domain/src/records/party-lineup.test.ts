@@ -2,14 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   defaultLineup,
-  lineupOwnedIds,
   parsePartyLineup,
-  PARTY_LINEUP_STORAGE_KEY,
-  readPartyLineup,
   resolveLineup,
-  subscribePartyLineup,
   swapLineupSlot,
-  writePartyLineup,
 } from "./party-lineup";
 
 const owned = ["a", "b", "c", "d"];
@@ -72,40 +67,5 @@ describe("swapLineupSlot", () => {
 
   it("入れ替え後の空きは左詰めしてレンタル枠を右に寄せる", () => {
     expect(swapLineupSlot(["a", "b", null], 1, "a")).toEqual(["b", "a", null]);
-  });
-});
-
-describe("party lineup storage", () => {
-  it("先発の所有IDだけを保存し、壊れたJSONは無視する", () => {
-    const stored: Record<string, string> = {};
-    const storage = {
-      getItem: (key: string) => stored[key] ?? null,
-      setItem: (key: string, value: string) => {
-        stored[key] = value;
-      },
-    };
-
-    writePartyLineup(storage, ["c", "a", null]);
-    expect(stored[PARTY_LINEUP_STORAGE_KEY]).toBe(JSON.stringify(["c", "a"]));
-    expect(lineupOwnedIds(["c", "a", null])).toEqual(["c", "a"]);
-    expect(readPartyLineup(storage)).toEqual(["c", "a"]);
-
-    stored[PARTY_LINEUP_STORAGE_KEY] = "{";
-    expect(readPartyLineup(storage)).toBeNull();
-    expect(readPartyLineup(null)).toBeNull();
-  });
-
-  it("保存したら購読者に知らせる", () => {
-    const storage = {
-      getItem: () => null,
-      setItem: () => undefined,
-    };
-    const seen: string[] = [];
-    const unsubscribe = subscribePartyLineup(() => seen.push("changed"));
-    writePartyLineup(storage, ["a", "b", null]);
-    expect(seen).toEqual(["changed"]);
-    unsubscribe();
-    writePartyLineup(storage, ["a", "b", "c"]);
-    expect(seen).toEqual(["changed"]);
   });
 });

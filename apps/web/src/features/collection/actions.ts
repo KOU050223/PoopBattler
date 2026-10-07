@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-import type { CollectionCharacter } from "./character.types";
+import type { CollectionCharacter } from "@poopbattler/domain/records/character.types";
 
 /** 本人が取得したキャラクターだけを、新しい取得日時順で返す。 */
 export async function getCollectionCharactersAction(): Promise<CollectionCharacter[]> {
