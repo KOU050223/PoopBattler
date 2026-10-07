@@ -14,6 +14,7 @@
     "browser:doctor": "agent-browser doctor --offline --quick"
   },
   "dependencies": {
+    "@poopbattler/domain": "*",
     "@react-three/drei": "10.7.8",
     "@react-three/fiber": "9.7.0",
     "@supabase/ssr": "0.12.5",
