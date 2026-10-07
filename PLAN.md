@@ -88,14 +88,14 @@
 - 触ってよいファイル：`apps/native/package.json`, `apps/native/metro.config.js`, `apps/native/src/features/poopm-3d/**`, `apps/native/vitest.config.mts`, ルート `package-lock.json`
 - 完成の条件：`npm run typecheck -w apps/native` 0エラー、`npm test -w apps/native` 通過、ルート typecheck/test 維持、`npx expo export` ios+android 成功（GLBがバンドル解決されること）
 - 依存：T-008
-- 状態：dispatched（ctx_6eb77f1cc7c1 / worktree t010a-poopm-3d-base）
+- 状態：completed（指示役検証で全合格・マージ済。実機でのGLB描画はT-010bで確認）
 
 ### T-010b native 3Dステージ統合（poopm-3d）
 - 種類：ui
 - 仕様（web-spec準拠）：3Dが使われるのはバトルステージ・ガチャ・結果フィギュア・プーモン演出。コレクション一覧/履歴/タイトルは2Dのまま
-- やること：T-010aの基盤上に web の poopm-3d components（model/field/camera-rig/stage/solo/blob-shadow/figure）を移植し、バトルステージを3D化。2Dと切替可能に。結果フィギュアも3D化
-- 触ってよいファイル：`apps/native/src/features/poopm-3d/**`, `apps/native/src/features/battle/**`（ステージ差し替え部）
-- 完成の条件：typecheck、`expo export`、2D/3D切替の回帰テスト
+- やること：T-010aの基盤上に web の poopm-3d components（model/field/camera-rig/stage/solo/blob-shadow/figure）と battle-stage-motion.ts を移植し、バトルステージを3D化。2D/3Dを切替可能に（battle-speed-storage と同様に永続化）。結果フィギュアも3D化。ガチャARはT-009の範囲で触らない
+- 触ってよいファイル：`apps/native/src/features/poopm-3d/**`, `apps/native/src/features/battle/**`, `apps/native/src/i18n/**`
+- 完成の条件：typecheck、`expo export`、stage-motionと切替のvitest
 - 依存：T-010a（ガチャ3DはT-009側。T-009の前に入れてガチャを3Dで作る流れにする）
 - 状態：pending
 
