@@ -81,13 +81,22 @@
 - 依存：T-006, T-008, T-012（meal_log_idと写真を使うため）
 - 状態：pending
 
-### T-010 native 3D（poopm-3d）
+### T-010a native 3D基盤（expo-gl + three + R3F 導入・GLBロードPoC）
+- 種類：logic
+- 背景：docs/native/ideal-architecture.md で expo-gl+three+R3F 移植が承認済み。「GLB1体+影のPoCを早期に、camera/motion純ロジックを先に切り出す」推奨に沿い、T-010を基盤（本タスク）とステージ統合（T-010b）に分割
+- やること：①apps/nativeに expo-gl/three(0.185.1揃え)/@react-three/fiber(RN対応版)/@types/three を追加（dreiは入れない）②metro.config.jsのassetExtsにglb追加 ③`src/features/poopm-3d/` を新設しwebの motion/camera/assets を移植（assetsはwebのGLB/PNGを相対require、poopm-images.tsと同じ方式）④GLTFLoader.parse+expo-file-system によるGLBローダー（fetch/file://を使わない）⑤R3F Canvasでpoopm_base.glb 1体描画する検証用コンポーネント（画面非接続）⑥純ロジックのvitest
+- 触ってよいファイル：`apps/native/package.json`, `apps/native/metro.config.js`, `apps/native/src/features/poopm-3d/**`, `apps/native/vitest.config.mts`, ルート `package-lock.json`
+- 完成の条件：`npm run typecheck -w apps/native` 0エラー、`npm test -w apps/native` 通過、ルート typecheck/test 維持、`npx expo export` ios+android 成功（GLBがバンドル解決されること）
+- 依存：T-008
+- 状態：dispatched（ctx_6eb77f1cc7c1 / worktree t010a-poopm-3d-base）
+
+### T-010b native 3Dステージ統合（poopm-3d）
 - 種類：ui
-- 仕様（web-spec準拠）：3Dが使われるのはバトルステージ・ガチャ・結果フィギュア・プーモン演出。コレクション一覧/履歴/タイトルは2Dのまま。GLBは `poopm_base.glb`＋頭部バリエーション/アクセサリ
-- やること：expo-gl＋R3Fで3Dステージ移植（GLBロード・テクスチャ生成の代替）。2Dと切替可能に
+- 仕様（web-spec準拠）：3Dが使われるのはバトルステージ・ガチャ・結果フィギュア・プーモン演出。コレクション一覧/履歴/タイトルは2Dのまま
+- やること：T-010aの基盤上に web の poopm-3d components（model/field/camera-rig/stage/solo/blob-shadow/figure）を移植し、バトルステージを3D化。2Dと切替可能に。結果フィギュアも3D化
 - 触ってよいファイル：`apps/native/src/features/poopm-3d/**`, `apps/native/src/features/battle/**`（ステージ差し替え部）
 - 完成の条件：typecheck、`expo export`、2D/3D切替の回帰テスト
-- 依存：T-008（T-009の前に入れてガチャを3Dで作る選択肢もある。順序は指示役判断）
+- 依存：T-010a（ガチャ3DはT-009側。T-009の前に入れてガチャを3Dで作る流れにする）
 - 状態：pending
 
 ### T-011 仕上げ
@@ -99,9 +108,9 @@
 ## 実行順
 
 ```
-即着手可: T-012 →（meal/** 衝突回避で逐次）→ T-013
-承認待ち: T-005 → T-007
-後続:     T-009 → T-010 → T-011
+即着手可: T-010a → T-010b（逐次）
+承認待ち: T-005 → T-007／T-013（実機確認待ち）
+後続:     T-009 → T-011
 ```
 
 ## 人間に確認したい点
