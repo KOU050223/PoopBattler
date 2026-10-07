@@ -6,7 +6,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   OUTCOME_OVERLAY_DISMISS_LOCK_MS,
   isOutcomeOverlayDismissLocked,
-} from "@/features/battle/battle-screen-view";
+} from "@poopbattler/domain/battle/battle-screen-view";
 import { captionTextClass } from "@/lib/ui-classes";
 
 export type BattleOutcome = "win" | "lose";

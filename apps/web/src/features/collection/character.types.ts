@@ -1,4 +1,4 @@
-import type { Database } from "@/types/database.types";
+import type { Database } from "@poopbattler/domain/types/database.types";
 
 type CharacterRow = Database["public"]["Tables"]["characters"]["Row"];
 

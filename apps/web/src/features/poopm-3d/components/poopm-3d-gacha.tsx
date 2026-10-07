@@ -8,7 +8,7 @@ import type {
 } from "@/features/poopm-3d/components/poopm-3d-model";
 import { Poopm3DSolo } from "@/features/poopm-3d/components/poopm-3d-solo";
 import type { Poopm3DBattleMotion } from "@/features/poopm-3d/poopm-3d.motion";
-import type { GravityVec3 } from "@/features/battle/companionship-gravity";
+import type { GravityVec3 } from "@poopbattler/domain/battle/companionship-gravity";
 
 export type Poopm3DGachaProps = {
   appearance: Poopm3DAppearance;

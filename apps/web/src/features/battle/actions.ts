@@ -2,19 +2,19 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isBowelLog, type BowelLog } from "@/features/bowel-log/bowel-log.types";
-import type { Database } from "@/types/database.types";
+import type { Database } from "@poopbattler/domain/types/database.types";
 import { revalidatePath } from "next/cache";
 
-import { PARTY_SIZE } from "./battle.constants";
-import type { StartBattleResult } from "./battle.types";
-import { messageForCompleteBattleError } from "./complete-battle-error";
-import { isFirstCompletedBattle } from "@/features/pwa/pwa-install";
+import { PARTY_SIZE } from "@poopbattler/domain/battle/battle.constants";
+import type { StartBattleResult } from "@poopbattler/domain/battle/battle.types";
+import { messageForCompleteBattleError } from "@poopbattler/domain/battle/complete-battle-error";
+import { isFirstCompletedBattle } from "@poopbattler/domain/battle/install-promotion-eligibility";
 import {
   readStartBattleUserCharacterIds,
   startBattle,
   type PartySnapshotMember,
   type StartBattleGateway,
-} from "./start-battle";
+} from "@poopbattler/domain/battle/start-battle";
 
 // マスターから読む列。表示に必要なものだけを取る。
 const CHARACTER_COLUMNS = "id, name, attribute, rarity, image_key";

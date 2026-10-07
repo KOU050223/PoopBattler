@@ -1,7 +1,7 @@
 import {
   COMPANIONSHIP_MEAL_LOG_CAP,
   companionshipChancePercent,
-} from "@/features/battle/companionship-chance";
+} from "./companionship-chance";
 
 /** ガチャに渡す食事は、この回で最後に記録したもの。未記録なら紐付けない。 */
 export function mealLogIdForComplete(sessionMealLogIds: readonly string[]): string | null {

@@ -16,21 +16,21 @@ import {
   applySetBowelDraft,
   applySetStance,
   applySwitchMember,
-} from "@/features/battle/battle-commands";
+} from "@poopbattler/domain/battle/battle-commands";
 import {
   applyBattleStart,
   applyBattleTick,
-} from "@/features/battle/battle-runtime";
+} from "@poopbattler/domain/battle/battle-runtime";
 import {
   IDLE_BATTLE_SNAPSHOT,
   partializeBattleStore,
-} from "@/features/battle/battle-snapshot";
-import type { BattleSpeed, BattleStance } from "@/features/battle/battle.constants";
+} from "@poopbattler/domain/battle/battle-snapshot";
+import type { BattleSpeed, BattleStance } from "@poopbattler/domain/battle/battle.constants";
 import type {
   BattleSnapshot,
   BattleStartInput,
   BowelDraft,
-} from "@/features/battle/battle.types";
+} from "@poopbattler/domain/battle/battle.types";
 
 export const BATTLE_STORE_NAME = "poop-battler.battle";
 

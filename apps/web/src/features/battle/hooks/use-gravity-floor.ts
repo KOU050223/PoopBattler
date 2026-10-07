@@ -7,7 +7,7 @@ import {
   screenUpAngleDeg,
   smoothGravityVec3,
   type GravityVec3,
-} from "@/features/battle/companionship-gravity";
+} from "@poopbattler/domain/battle/companionship-gravity";
 
 export type GravityFloor = {
   /** 画面平面に投影した「上」の角度。デバッグ表示用。 */

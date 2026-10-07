@@ -6,13 +6,13 @@ import {
   completeBattleAction,
   type CompleteBattleResult,
 } from "@/features/battle/actions";
-import { isBattleGoneMessage } from "@/features/battle/complete-battle-error";
+import { isBattleGoneMessage } from "@poopbattler/domain/battle/complete-battle-error";
 import { BattleMealSessionList } from "@/features/battle/components/battle-meal-session-list";
 import {
   mealLogIdForComplete,
   postBattleCompleteLabel,
   postBattleMealChanceCopy,
-} from "@/features/battle/post-battle-meal-session";
+} from "@poopbattler/domain/battle/post-battle-meal-session";
 import { BowelLogForm } from "@/features/bowel-log/components/bowel-log-form";
 import type { BowelLog } from "@/features/bowel-log/bowel-log.types";
 import { getMealLogsAction, saveMealLogAction, type MealLog } from "@/features/meal/actions";

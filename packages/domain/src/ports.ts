@@ -13,3 +13,10 @@ export interface PhotoStore {
 export interface Clock {
   now(): Date;
 }
+
+// useSyncExternalStore 等で同期読み出しが要る箇所用。Web の localStorage がそのまま満たす。
+export interface SyncKeyValueStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}

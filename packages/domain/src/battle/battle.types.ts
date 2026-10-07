@@ -1,5 +1,4 @@
-import type { BowelLogDraft } from "@/features/bowel-log/bowel-log.types";
-import type { Database } from "@/types/database.types";
+import type { Database } from "@poopbattler/domain/types/database.types";
 
 import type {
   BattleStance,
@@ -54,7 +53,27 @@ export type BattleStartInput = {
 };
 
 // 未送信の排便入力。センサー値やカメラ画像はここに足さない。
-export type BowelDraft = BowelLogDraft;
+// TODO(T-003マージ後): records/bowel-log.types の BowelLogDraft へ統合する。
+export type BowelDraft = Partial<{
+  hardness: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  amount: "small" | "normal" | "large";
+  color:
+    | "brown"
+    | "dark_brown"
+    | "yellow"
+    | "green"
+    | "red"
+    | "black"
+    | "white_gray"
+    | "other";
+  ease: "easy" | "normal" | "hard";
+  symptoms: (
+    | "strained"
+    | "incomplete_evacuation"
+    | "abdominal_pain"
+    | "urgent_urge"
+  )[];
+}>;
 
 export type BattleSnapshot = {
   status: BattleStatus;

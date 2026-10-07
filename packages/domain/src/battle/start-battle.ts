@@ -1,4 +1,4 @@
-import type { Database } from "@/types/database.types";
+import type { Database } from "@poopbattler/domain/types/database.types";
 
 import { FALLBACK_ATTRIBUTE, PARTY_SIZE } from "./battle.constants";
 import { fillParty, fillRentalParty, toStartMember } from "./rental-party";

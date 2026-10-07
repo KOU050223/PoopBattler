@@ -172,7 +172,7 @@ npm run lint    # ESLint
 ```bash
 supabase start           # 未起動なら起動する
 supabase db reset        # migrations を適用してスキーマを最新にする
-npm run db:types         # apps/web/src/types/database.types.ts を生成する
+npm run db:types         # packages/domain/src/types/database.types.ts を生成する
 ```
 
 `supabase start` は既存のDBを立ち上げるだけで、**追加したマイグレーションを
@@ -189,7 +189,7 @@ npm run db:types:check   # 生成物がマイグレーションと一致する�
 ```
 
 **マイグレーションを追加・変更したら必ず上記の手順で型を生成し直し、生成された
-`apps/web/src/types/database.types.ts` を同じコミットに含める。** 再生成漏れは pre-commit
+`packages/domain/src/types/database.types.ts` を同じコミットに含める。** 再生成漏れは pre-commit
 フック（型がステージされていなければ落ちる）と CI（実際に生成し直して差分を検証）
 の2段階で検出する。
 

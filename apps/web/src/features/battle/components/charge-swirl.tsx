@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   scaleByBattleSpeed,
   type BattleSpeed,
-} from "@/features/battle/battle.constants";
+} from "@poopbattler/domain/battle/battle.constants";
 
 export const CHARGE_SWIRL_PNG = "/assets/battle/charge-swirl.png";
 
