@@ -15,7 +15,19 @@
     "android": {
       "package": "jp.poopbattler.app"
     },
-    "plugins": ["expo-router", "expo-font", "expo-localization"],
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-localization",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "食事の写真を選んで記録するために、写真ライブラリへアクセスします。",
+          "cameraPermission": "食事の写真を撮って記録するために、カメラを使用します。",
+          "microphonePermission": false
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     }
