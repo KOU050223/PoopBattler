@@ -1,8 +1,11 @@
 export const TOILET_CLASS = "toilet";
 export const TOILET_ACCEPT_SCORE = 0.5;
 export const TOILET_DEBUG_SCORE = 0.15;
-export const TOILET_INFER_INTERVAL_MS = 450;
-export const TOILET_SEAT_BIAS = 0.68;
+// reveal 中の再アンカー追従を優先して短めに回す。推論自体は逐次実行で
+// 端末速度に応じて実効周期は推論時間+この間隔になる。
+export const TOILET_INFER_INTERVAL_MS = 120;
+// bbox 内での出現・投げ入れ基準点。真ん中（中央）に出す。
+export const TOILET_SEAT_BIAS = 0.5;
 
 export type CocoDetection = {
   bbox: [number, number, number, number];
@@ -22,8 +25,19 @@ export type OverlayBox = {
 
 export type ToiletSight =
   | { kind: "none" }
-  | { kind: "low"; box: OverlayBox; target: PercentPoint }
-  | { kind: "hit"; box: OverlayBox; target: PercentPoint };
+  | {
+      kind: "low";
+      box: OverlayBox;
+      target: PercentPoint;
+      /** bbox 高さ / 表示高さ。便器までの距離の粗い手がかりとして使う。 */
+      sizeFraction: number;
+    }
+  | {
+      kind: "hit";
+      box: OverlayBox;
+      target: PercentPoint;
+      sizeFraction: number;
+    };
 
 export type PercentPoint = {
   x: number;
@@ -50,8 +64,11 @@ export function toiletSightFromDetection(
 ): ToiletSight {
   if (!detection || !box) return { kind: "none" };
   const target = seatBiasedTarget(box, displayWidth, displayHeight);
-  if (detection.score >= TOILET_ACCEPT_SCORE) return { kind: "hit", box, target };
-  return { kind: "low", box, target };
+  const sizeFraction = displayHeight > 0 ? box.height / displayHeight : 0;
+  if (detection.score >= TOILET_ACCEPT_SCORE) {
+    return { kind: "hit", box, target, sizeFraction };
+  }
+  return { kind: "low", box, target, sizeFraction };
 }
 
 /**

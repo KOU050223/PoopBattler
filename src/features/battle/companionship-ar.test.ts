@@ -3,15 +3,22 @@ import { describe, expect, it } from "vitest";
 import {
   canAdvanceFromStaging,
   canStartGachaBySwipe,
+  clampRevealScale,
+  clampRevealSpawn,
   clientPointFromPercent,
   companionshipPhaseDelay,
   companionshipRevealCopy,
   COMPANIONSHIP_PHASE_MS,
+  gachaRevealScale,
+  GACHA_AR_SCALE_MAX,
+  GACHA_AR_SCALE_MIN,
+  GACHA_AR_SCALE_REF_FRACTION,
   GACHA_SWIPE_MIN_DISTANCE_PX,
   isCameraFallback,
   isLiveCameraOverlay,
   isThrowSwipe,
   nextCompanionshipArPhase,
+  resolveRevealTarget,
   REVEAL_FAIL_COPY,
   REVEAL_SUCCESS_COPY,
   shouldCrawlOut,
@@ -51,6 +58,7 @@ const hitSight = {
   kind: "hit" as const,
   box: { x: 10, y: 20, width: 80, height: 100, score: 0.74 },
   target: { x: 50, y: 72 },
+  sizeFraction: 0.5,
 };
 
 describe("canStartGachaBySwipe", () => {
@@ -130,6 +138,7 @@ describe("canStartGachaBySwipe", () => {
           kind: "low",
           box: { x: 8, y: 8, width: 40, height: 40, score: 0.31 },
           target: { x: 20, y: 30 },
+          sizeFraction: 0.1,
         },
         hasAimPoint: false,
       }),
@@ -143,6 +152,48 @@ describe("canStartGachaBySwipe", () => {
         hasAimPoint: true,
       }),
     ).toBe(true);
+  });
+});
+
+describe("gachaRevealScale", () => {
+  it("hit は bbox 高さ比でスケールし、範囲外はクランプ。非 hit は 1", () => {
+    const scaledSight = { ...hitSight, sizeFraction: GACHA_AR_SCALE_REF_FRACTION };
+    expect(gachaRevealScale(scaledSight)).toBeCloseTo(1);
+    expect(
+      gachaRevealScale({ ...hitSight, sizeFraction: GACHA_AR_SCALE_REF_FRACTION * 0.1 }),
+    ).toBeCloseTo(GACHA_AR_SCALE_MIN);
+    expect(
+      gachaRevealScale({ ...hitSight, sizeFraction: GACHA_AR_SCALE_REF_FRACTION * 4 }),
+    ).toBeCloseTo(GACHA_AR_SCALE_MAX);
+    expect(gachaRevealScale({ kind: "none" })).toBe(1);
+    expect(gachaRevealScale({ ...hitSight, sizeFraction: 0 })).toBe(1);
+    expect(
+      gachaRevealScale({
+        kind: "low",
+        box: hitSight.box,
+        target: hitSight.target,
+        sizeFraction: 0.4,
+      }),
+    ).toBe(1);
+  });
+});
+
+describe("resolveRevealTarget", () => {
+  it("hit 中は検出座標へ追従し、見失ったら fallback に留まる", () => {
+    const fallback = { x: 33, y: 66 };
+    expect(resolveRevealTarget({ sight: hitSight, fallback })).toEqual(hitSight.target);
+    expect(resolveRevealTarget({ sight: { kind: "none" }, fallback })).toEqual(fallback);
+    expect(
+      resolveRevealTarget({
+        sight: {
+          kind: "low",
+          box: hitSight.box,
+          target: { x: 1, y: 2 },
+          sizeFraction: 0.4,
+        },
+        fallback,
+      }),
+    ).toEqual(fallback);
   });
 });
 
@@ -175,16 +226,46 @@ describe("nextCompanionshipArPhase", () => {
 });
 
 describe("companionshipPhaseDelay", () => {
-  it("staging は待たず、揺れは 700ms、reduced-motion は 0", () => {
+  it("staging は待たず、揺れは 700ms、reveal はタップ待ち、reduced-motion は 0", () => {
     expect(companionshipPhaseDelay("staging", false)).toBeNull();
     expect(companionshipPhaseDelay("summary", false)).toBeNull();
     expect(companionshipPhaseDelay("throw", false)).toBe(COMPANIONSHIP_PHASE_MS.throw);
     expect(companionshipPhaseDelay("shake", false)).toBe(COMPANIONSHIP_PHASE_MS.shake);
-    expect(companionshipPhaseDelay("reveal", false)).toBe(COMPANIONSHIP_PHASE_MS.reveal);
+    // reveal はタップで進むため自動遷移しない
+    expect(companionshipPhaseDelay("reveal", false)).toBeNull();
+    expect(companionshipPhaseDelay("reveal", true)).toBeNull();
     expect(companionshipPhaseDelay("shake", true)).toBe(0);
     expect(companionshipPhaseDelay("throw", true)).toBe(0);
-    // reduced-motion でも抽選結果だけは静止表示で確認できる時間を残す
-    expect(companionshipPhaseDelay("reveal", true)).toBe(COMPANIONSHIP_PHASE_MS.revealReduced);
+  });
+});
+
+describe("clampRevealSpawn", () => {
+  it("出現位置はそのまま返す（見切れ防止で内側へ寄せない）", () => {
+    expect(clampRevealSpawn({ target: { x: 50, y: 70 } })).toEqual({ x: 50, y: 70 });
+    expect(clampRevealSpawn({ target: { x: 10, y: 5 } })).toEqual({ x: 10, y: 5 });
+  });
+
+  it("画面外の座標だけ 0〜100 に収める", () => {
+    expect(clampRevealSpawn({ target: { x: -5, y: 120 } })).toEqual({ x: 0, y: 100 });
+  });
+});
+
+describe("clampRevealScale", () => {
+  it("枠に収まるスケールはそのまま", () => {
+    expect(clampRevealScale({ scale: 1, stageWidth: 400, stageHeight: 600 })).toBe(1);
+  });
+
+  it("ステージ幅を超えるスケールは幅いっぱいに抑える", () => {
+    // 350px 幅なら 350*0.92/224 ≈ 1.44
+    expect(clampRevealScale({ scale: 1.8, stageWidth: 350, stageHeight: 500 })).toBeCloseTo(1.44, 2);
+  });
+
+  it("高さ方向も同様に抑える", () => {
+    expect(clampRevealScale({ scale: 1.8, stageWidth: 800, stageHeight: 300 })).toBeCloseTo(1.23, 2);
+  });
+
+  it("計測前はそのまま返す", () => {
+    expect(clampRevealScale({ scale: 1.8, stageWidth: 0, stageHeight: 0 })).toBe(1.8);
   });
 });
 

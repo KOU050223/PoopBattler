@@ -1,4 +1,9 @@
-import type { ToiletModelStatus, ToiletSight } from "@/features/battle/toilet-detection";
+import { clampPercent } from "@/features/battle/toilet-detection";
+import type {
+  PercentPoint,
+  ToiletModelStatus,
+  ToiletSight,
+} from "@/features/battle/toilet-detection";
 import type { UserMediaCameraStatus } from "@/lib/user-media-camera";
 
 export type CompanionshipArPhase = "staging" | "throw" | "shake" | "reveal" | "summary";
@@ -9,10 +14,6 @@ export const REVEAL_FAIL_COPY = "失敗";
 export const COMPANIONSHIP_PHASE_MS = {
   throw: 900,
   shake: 700,
-  reveal: 2200,
-  // reduced-motion では演出フェーズはスキップするが、抽選結果の確認に
-  // 必要な情報なので reveal だけは静止表示として残す。
-  revealReduced: 1400,
 } as const;
 
 export const VIDEO_SHAKE_ANIMATE = {
@@ -30,6 +31,12 @@ export const VIDEO_SHAKE_TRANSITION = {
 export const GACHA_SWIPE_MIN_DISTANCE_PX = 56;
 const GACHA_SWIPE_MAX_ANGLE_RAD = (65 * Math.PI) / 180;
 const GACHA_SWIPE_NEAR_TARGET_PX = 24;
+
+// reveal モデルの見かけサイズを便器の見え方（=距離の手がかり）に連動させる。
+// bbox 高さが表示高さのこの割合のとき scale=1。実機調整前提の仮値。
+export const GACHA_AR_SCALE_REF_FRACTION = 0.5;
+export const GACHA_AR_SCALE_MIN = 0.6;
+export const GACHA_AR_SCALE_MAX = 1.8;
 
 export type PixelPoint = {
   x: number;
@@ -92,6 +99,57 @@ export function clientPointFromPercent(
   };
 }
 
+/** reveal モデルのスケール。便器が大きく写る＝近いので、モデルも大きくする。 */
+export function gachaRevealScale(sight: ToiletSight): number {
+  if (sight.kind !== "hit" || sight.sizeFraction <= 0) return 1;
+  const scale = sight.sizeFraction / GACHA_AR_SCALE_REF_FRACTION;
+  return Math.min(GACHA_AR_SCALE_MAX, Math.max(GACHA_AR_SCALE_MIN, scale));
+}
+
+/**
+ * reveal 中の出現位置。便器が hit している間は現在の検出座標へ追従し、
+ * 見失った瞬間は直前の位置（fallback）を維持してジャンプを防ぐ。
+ */
+export function resolveRevealTarget(input: {
+  sight: ToiletSight;
+  fallback: PercentPoint;
+}): PercentPoint {
+  if (input.sight.kind === "hit") return input.sight.target;
+  return input.fallback;
+}
+
+// reveal モデルの表示箱（= 224px）。クランプと描画側で同じ値を使う。
+export const REVEAL_MODEL_BOX_PX = 224;
+// モデル箱がステージ実寸を超えると必ず見切れるので、
+// 表示スケール自体も枠に収まるよう抑える（bbox=近い=でかい、の勢いは殺さない程度に）。
+const REVEAL_STAGE_FILL = 0.92;
+
+/** 表示スケールをステージ実寸に収まる範囲へ抑える。 */
+export function clampRevealScale(input: {
+  scale: number;
+  stageWidth: number;
+  stageHeight: number;
+}): number {
+  const { scale, stageWidth, stageHeight } = input;
+  if (stageWidth <= 0 || stageHeight <= 0) return scale;
+  return Math.min(
+    scale,
+    (stageWidth * REVEAL_STAGE_FILL) / REVEAL_MODEL_BOX_PX,
+    (stageHeight * REVEAL_STAGE_FILL) / REVEAL_MODEL_BOX_PX,
+  );
+}
+
+/**
+ * 出現位置（=モデル中心）は検出枠の中心へ正確に合わせる。
+ * 見切れ防止で内側へ寄せると、検出枠が画面端寄りのときにアンカーが
+ * 枠の中心からずれて「立っていない」見た目になるため、位置はクランプしない。
+ * 枠が画面端にあるときモデルの一部が画面外へ出るのは AR として自然なので許容する。
+ */
+export function clampRevealSpawn(input: { target: PercentPoint }): PercentPoint {
+  const { target } = input;
+  return { x: clampPercent(target.x), y: clampPercent(target.y) };
+}
+
 export function isThrowSwipe(start: PixelPoint, end: PixelPoint, target: PixelPoint) {
   const dx = end.x - start.x;
   const dy = end.y - start.y;
@@ -125,10 +183,8 @@ export function companionshipPhaseDelay(
   phase: CompanionshipArPhase,
   reduceMotion: boolean,
 ): number | null {
-  if (phase === "staging" || phase === "summary") return null;
-  if (phase === "reveal") {
-    return reduceMotion ? COMPANIONSHIP_PHASE_MS.revealReduced : COMPANIONSHIP_PHASE_MS.reveal;
-  }
+  // reveal は這い出しをじっくり見られるよう、タップされるまで待機する。
+  if (phase === "staging" || phase === "summary" || phase === "reveal") return null;
   if (reduceMotion) return 0;
   if (phase === "throw") return COMPANIONSHIP_PHASE_MS.throw;
   return COMPANIONSHIP_PHASE_MS.shake;

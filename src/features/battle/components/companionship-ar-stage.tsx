@@ -7,14 +7,19 @@ import type { CompleteBattleResult } from "@/features/battle/actions";
 import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
 import {
   canStartGachaBySwipe,
+  clampRevealScale,
+  clampRevealSpawn,
   clientPointFromPercent,
   companionshipPhaseDelay,
   companionshipRevealCopy,
   gachaCameraStatusMessage,
+  gachaRevealScale,
   GACHA_SWIPE_MIN_DISTANCE_PX,
   isLiveCameraOverlay,
   isThrowSwipe,
   nextCompanionshipArPhase,
+  REVEAL_MODEL_BOX_PX,
+  resolveRevealTarget,
   shouldCrawlOut,
   shouldPlayThrow,
   VIDEO_SHAKE_ANIMATE,
@@ -22,7 +27,8 @@ import {
   type CompanionshipArPhase,
 } from "@/features/battle/companionship-ar";
 import { useGachaCamera } from "@/features/battle/hooks/use-gacha-camera";
-import { useGravityFloorAngle } from "@/features/battle/hooks/use-gravity-floor";
+import { useGravityFloor } from "@/features/battle/hooks/use-gravity-floor";
+import type { GravityVec3 } from "@/features/battle/companionship-gravity";
 import { useToiletDetection } from "@/features/battle/hooks/use-toilet-detection";
 import {
   DEFAULT_THROW_TARGET,
@@ -41,6 +47,10 @@ import { captionTextClass, mutedTextClass, secondaryButtonClass } from "@/lib/ui
 
 type CompletionSuccess = Extract<CompleteBattleResult, { success: true }>;
 
+// 前傾でモデルがカメラ側へ倒れると、直立でぴったりの 224px 箱から出て
+// キャンバス端で切れる。箱の周囲に余白を取って描画する。
+const REVEAL_CANVAS_OVERSCAN = 1.8;
+
 export type CompanionshipArFrameProps = {
   result: CompletionSuccess;
   mealPhotoUrl: string | null;
@@ -52,7 +62,13 @@ export type CompanionshipArFrameProps = {
   toiletSight?: ToiletSight;
   detectionStatus?: ToiletModelStatus;
   throwTarget?: PercentPoint;
+  /** reveal 中の出現位置。便器検出に追従するため throwTarget と分けている。 */
+  spawnTarget?: PercentPoint;
   floorAngleDeg?: number;
+  /** 床法線（カメラ空間の世界の上向き）。3D モデルへそのまま渡す。 */
+  gravityUp?: GravityVec3 | null;
+  /** bbox 高さから推定したモデルスケール。 */
+  modelScale?: number;
   aimPoint?: PercentPoint | null;
   onAim?: (point: PercentPoint) => void;
   onThrowStart?: () => void;
@@ -76,7 +92,7 @@ const CONFETTI_PIECES = [
 function phaseLabel(phase: CompanionshipArPhase, canSwipe: boolean) {
   if (phase === "throw") return "食事を便器へ投げ入れています";
   if (phase === "shake") return "便器が揺れています";
-  if (phase === "reveal") return "仲間化の結果です";
+  if (phase === "reveal") return "タップで結果を確認";
   return canSwipe ? "スワイプして食事を投げ入れてください" : "便器にカメラを向けてください";
 }
 
@@ -134,7 +150,10 @@ export function CompanionshipArFrame({
   toiletSight = { kind: "none" },
   detectionStatus = "idle",
   throwTarget = DEFAULT_THROW_TARGET,
+  spawnTarget,
   floorAngleDeg = 0,
+  gravityUp = null,
+  modelScale = 1,
   aimPoint = null,
   onAim,
   onThrowStart,
@@ -158,15 +177,52 @@ export function CompanionshipArFrame({
     usedMealLog: result.usedMealLog,
   });
   const pointerStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  // 表示スケールを枠の実寸へ収めるため実寸を追う（位置のクランプには使わない）。
+  const [stageSize, setStageSize] = useState<{ width: number; height: number } | null>(null);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setStageSize((prev) =>
+        prev && Math.round(prev.width) === Math.round(width) && Math.round(prev.height) === Math.round(height)
+          ? prev
+          : { width, height },
+      );
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // reveal でモデルが頭まで見えるよう、ステージがビューポート内に来るよう
+  // 最小限スクロールする（画面外にスクロールしてると出現位置が見切れる）。
+  useEffect(() => {
+    if (phase === "reveal") {
+      stageRef.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [phase]);
+
+  // bboxスケールが大きいとモデル箱がステージ自体を上回って必ず見切れるので、
+  // 表示スケールも枠の実寸に収める。
+  const displayScale = clampRevealScale({
+    scale: modelScale,
+    stageWidth: stageSize?.width ?? 0,
+    stageHeight: stageSize?.height ?? 0,
+  });
+
+  // spawnTarget が省略されたら投げ入れ先と同じ点に出す（従来どおり）。
+  // 位置は検出枠の中心へ忠実に合わせる。見切れは許容する。
+  const spawn = clampRevealSpawn({ target: spawnTarget ?? throwTarget });
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
-    if (phase !== "staging" || !event.isPrimary) return;
+    if ((phase !== "staging" && phase !== "reveal") || !event.isPrimary) return;
     pointerStartRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
-    if (phase !== "staging" || !event.isPrimary) return;
+    if ((phase !== "staging" && phase !== "reveal") || !event.isPrimary) return;
     const start = pointerStartRef.current;
     pointerStartRef.current = null;
     if (!start || start.id !== event.pointerId) return;
@@ -177,6 +233,13 @@ export function CompanionshipArFrame({
     const rect = event.currentTarget.getBoundingClientRect();
     const end = { x: event.clientX, y: event.clientY };
     const distance = Math.hypot(end.x - start.x, end.y - start.y);
+
+    // reveal 中のタップは自動遷移の代わりに結果画面へ進む操作。
+    // スワイプ相当の移動は誤操作として無視する。
+    if (phase === "reveal") {
+      if (distance < GACHA_SWIPE_MIN_DISTANCE_PX) onSkip();
+      return;
+    }
 
     if (distance < GACHA_SWIPE_MIN_DISTANCE_PX) {
       if (onAim && toiletSight.kind !== "hit") {
@@ -213,9 +276,16 @@ export function CompanionshipArFrame({
       </div>
 
       <div
-        className="relative min-h-[22rem] touch-none select-none overflow-hidden rounded-2xl border-2 border-faded-gray bg-night-ink shadow-raised-gray aspect-[3/4]"
+        ref={stageRef}
+        className="relative min-h-[20rem] max-h-[62svh] touch-none select-none overflow-hidden rounded-2xl border-2 border-faded-gray bg-night-ink shadow-raised-gray aspect-[3/4]"
         data-gacha-swipe={canSwipe ? "ready" : "blocked"}
-        aria-label={canSwipe ? "便器へ投げ入れる。スワイプで開始" : "便器が写ったらスワイプできます"}
+        aria-label={
+          phase === "reveal"
+            ? "仲間化の結果。タップで結果を確認"
+            : canSwipe
+              ? "便器へ投げ入れる。スワイプで開始"
+              : "便器が写ったらスワイプできます"
+        }
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
@@ -278,35 +348,44 @@ export function CompanionshipArFrame({
         {phase === "reveal" && acquired ? <RevealConfetti reduceMotion={reduceMotion} /> : null}
 
         {phase === "reveal" && acquired && character ? (
-          <div
+          // left/top をアニメーションして検出 bbox の移動に追従させる。
+          // translate は framer-motion が transform を管理する関係で内側へ逃がす。
+          <motion.div
             className="pointer-events-none absolute z-30"
-            data-spawn-x={throwTarget.x.toFixed(1)}
-            data-spawn-y={throwTarget.y.toFixed(1)}
-            style={{
-              left: `${throwTarget.x}%`,
-              top: `${throwTarget.y}%`,
-              transform: "translate(-50%, -100%)",
-            }}
+            data-spawn-x={spawn.x.toFixed(1)}
+            data-spawn-y={spawn.y.toFixed(1)}
+            initial={false}
+            animate={{ left: `${spawn.x}%`, top: `${spawn.y}%` }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
           >
-            <div
-              data-gravity-floor="true"
-              data-gravity-angle={floorAngleDeg.toFixed(1)}
-              style={{ transform: `rotate(${floorAngleDeg}deg)`, transformOrigin: "50% 100%" }}
-            >
-              <motion.div
-                initial={reduceMotion ? false : { scale: 0.72 }}
-                animate={{ scale: 1 }}
-                transition={reduceMotion ? { duration: 0 } : { duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            {/* アンカー点=モデル中心。検出枠の中心にうんちくんが立って見えるよう
+                足元ではなく箱の中央を合わせる。 */}
+            <div className="-translate-x-1/2 -translate-y-1/2">
+              {/* canvas の祖先に transform を置かない。R3F のサイズ計測は
+                  transform 込みの bounding rect 基準で、transform 途中の値が
+                  焼き付くとモデルがアンカーからずれる。スケールは箱の実寸、
+                  出現演出は GLB 側の swap_in クリップが担う。 */}
+              <div
+                role="img"
+                aria-label={character.name}
+                data-gravity-floor="true"
+                data-gravity-angle={floorAngleDeg.toFixed(1)}
+                data-model-scale={displayScale.toFixed(2)}
+                className="relative"
+                style={{
+                  width: REVEAL_MODEL_BOX_PX * displayScale,
+                  height: REVEAL_MODEL_BOX_PX * displayScale,
+                }}
               >
-                <div role="img" aria-label={character.name} className="relative h-56 w-56">
-                  <GachaStage3D
-                    appearance={appearanceForCharacter(character.id)}
-                    reduceMotion={reduceMotion}
-                  />
-                </div>
-              </motion.div>
+                <GachaStage3D
+                  appearance={appearanceForCharacter(character.id)}
+                  reduceMotion={reduceMotion}
+                  gravityUp={gravityUp}
+                  overscan={REVEAL_CANVAS_OVERSCAN}
+                />
+              </div>
             </div>
-          </div>
+          </motion.div>
         ) : null}
 
         {phase === "reveal" ? (
@@ -372,18 +451,25 @@ export function CompanionshipArStage({
 }) {
   const reduceMotion = useReducedMotion();
   const { stream, status, stop } = useGachaCamera();
-  const floorAngleDeg = useGravityFloorAngle();
+  const { angleDeg: floorAngleDeg, up: gravityUp } = useGravityFloor();
   const videoRef = useRef<HTMLVideoElement>(null);
   const mealPhotoUrl = useMealPhotoUrl(mealPhotoId);
   const [phase, setPhase] = useState<CompanionshipArPhase>("staging");
   const [aimPoint, setAimPoint] = useState<PercentPoint | null>(null);
   const [heldTarget, setHeldTarget] = useState<PercentPoint>(DEFAULT_THROW_TARGET);
   const hasPhoto = shouldPlayThrow(mealPhotoId);
-  const detectEnabled = phase === "staging" && isLiveCameraOverlay(status);
+  // reveal 中も検出を回し続け、投げ入れ先ではなく「いま写っている便器」に
+  // 這い出し位置を追従させる（AR のアンカー再配置に相当）。
+  const detectEnabled = phase !== "summary" && isLiveCameraOverlay(status);
   const { status: detectionStatus, sight } = useToiletDetection(videoRef, detectEnabled);
   const liveTarget = resolveThrowTarget({ sight, tap: aimPoint });
   const liveTargetRef = useRef(liveTarget);
   const throwTarget = phase === "staging" ? liveTarget : heldTarget;
+  // reveal で hit が続く間は検出座標へ追従、見失ったら投げ入れ先に留まる。
+  const spawnTarget = resolveRevealTarget({ sight, fallback: throwTarget });
+  // スケールも同じく、hit 中は検出値・見失ったら投げ入れ時の値を維持する。
+  const [heldScale, setHeldScale] = useState(1);
+  const modelScale = sight.kind === "hit" ? gachaRevealScale(sight) : heldScale;
 
   // 仲間がいるときだけ、staging の間にガチャ3Dのチャンクと GLB を先読みする。
   // reveal 開始時に useGLTF のロード待ちで這い出しが遅れないようにするため。
@@ -423,6 +509,7 @@ export function CompanionshipArStage({
 
   function startThrowFromSwipe() {
     setHeldTarget(liveTargetRef.current);
+    setHeldScale(gachaRevealScale(sight));
     setPhase((current) => nextCompanionshipArPhase(current, hasPhoto, Boolean(reduceMotion)));
   }
 
@@ -435,13 +522,17 @@ export function CompanionshipArStage({
       reduceMotion={Boolean(reduceMotion)}
       onSkip={() => {
         setHeldTarget(liveTargetRef.current);
+        setHeldScale(gachaRevealScale(sight));
         setPhase("summary");
       }}
       videoRef={videoRef}
       toiletSight={sight}
       detectionStatus={detectEnabled || phase !== "staging" ? detectionStatus : "failed"}
       throwTarget={throwTarget}
+      spawnTarget={spawnTarget}
       floorAngleDeg={floorAngleDeg}
+      gravityUp={gravityUp}
+      modelScale={modelScale}
       aimPoint={aimPoint}
       onAim={setAimPoint}
       onThrowStart={startThrowFromSwipe}

@@ -87,7 +87,9 @@ describe("CompanionshipArFrame", () => {
         reduceMotion
         onSkip={() => undefined}
         throwTarget={{ x: 41.2, y: 68.5 }}
+        spawnTarget={{ x: 55.5, y: 60.2 }}
         floorAngleDeg={18}
+        modelScale={1.4}
       />,
     );
     const missMarkup = renderToStaticMarkup(
@@ -110,10 +112,11 @@ describe("CompanionshipArFrame", () => {
     expect(successMarkup).toContain("成功");
     expect(successMarkup).toContain("data-confetti");
     expect(successMarkup).toContain("カレーうんちくん");
-    expect(successMarkup).toContain('data-spawn-x="41.2"');
-    expect(successMarkup).toContain('data-spawn-y="68.5"');
+    expect(successMarkup).toContain('data-spawn-x="55.5"');
+    expect(successMarkup).toContain('data-spawn-y="60.2"');
     expect(successMarkup).toContain('data-gravity-floor="true"');
     expect(successMarkup).toContain('data-gravity-angle="18.0"');
+    expect(successMarkup).toContain('data-model-scale="1.40"');
     expect(successMarkup).not.toContain("失敗");
     expect(missMarkup).toContain('data-reveal-result="fail"');
     expect(missMarkup).toContain("失敗");
@@ -180,6 +183,7 @@ describe("CompanionshipArFrame", () => {
           kind: "hit",
           box: { x: 10, y: 20, width: 80, height: 100, score: 0.74 },
           target: { x: 41.2, y: 68.5 },
+          sizeFraction: 0.25,
         }}
         throwTarget={{ x: 41.2, y: 68.5 }}
       />,
@@ -221,6 +225,7 @@ describe("CompanionshipArFrame", () => {
           kind: "low",
           box: { x: 8, y: 8, width: 40, height: 40, score: 0.31 },
           target: { x: 20, y: 30 },
+          sizeFraction: 0.1,
         }}
       />,
     );
@@ -250,6 +255,7 @@ describe("CompanionshipArFrame", () => {
           kind: "hit",
           box: { x: 10, y: 20, width: 80, height: 100, score: 0.74 },
           target: { x: 41.2, y: 68.5 },
+          sizeFraction: 0.25,
         }}
       />,
     );
