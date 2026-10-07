@@ -13,8 +13,10 @@ import { parsePartyLineup } from "@poopbattler/domain/records/party-lineup";
 import { keyValueStorage } from "@/adapters/storage";
 import { ensureAnonymousSession } from "@/lib/anonymous-session";
 import { getSupabase } from "@/lib/supabase";
+import { PoopmFigure3D } from "../../poopm-3d/components/poopm-figure-3d";
 import { colors, fontSize, fonts, radius, spacing } from "@/theme";
 import { useBattleStore } from "../battle-store";
+import { appearanceForCharacter } from "../poopm-appearance";
 import {
   loadOwnedCharacterIds,
   loadPartyPreview,
@@ -28,11 +30,14 @@ import {
 } from "../../collection/party-lineup-storage";
 import { useBattleHaptics, useBattleKeepAwake } from "../use-battle-feedback";
 import { useBattleHydrated } from "../use-battle-hydration";
+import { useBattleRenderMode } from "../use-battle-render-mode";
 import { useBattleSpeed } from "../use-battle-speed";
 import { useBattleTicker } from "../use-battle-ticker";
 import { BattleCompletionFlow } from "./battle-completion-flow";
 import { BattleControls } from "./battle-controls";
 import { BattleStage } from "./battle-stage";
+import { BattleStage3D } from "./battle-stage-3d";
+import { PoopmSprite } from "./poopm-sprite";
 import { Button } from "./ui";
 
 type Completed = Extract<CompleteBattleResult, { success: true }>;
@@ -43,6 +48,7 @@ export function BattleScreen() {
   const hydrated = useBattleHydrated();
   const snapshot = useBattleStore((state) => state);
   const [speed, toggleSpeed] = useBattleSpeed();
+  const [renderMode, toggleRenderMode] = useBattleRenderMode();
   const [accepted, setAccepted] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -183,6 +189,19 @@ export function BattleScreen() {
               ? t("Battle.resultCompanion", { name: completed.acquiredCharacter.name })
               : t("Battle.resultNoCompanion")}
           </Text>
+          {completed.acquiredCharacter ? (
+            <View style={styles.figure}>
+              {renderMode === "3d" ? (
+                <PoopmFigure3D
+                  appearance={appearanceForCharacter(completed.acquiredCharacter.id)}
+                  label={completed.acquiredCharacter.name}
+                  style={styles.figureBox}
+                />
+              ) : (
+                <PoopmSprite appearance={appearanceForCharacter(completed.acquiredCharacter.id)} hitKey={0} size={104} />
+              )}
+            </View>
+          ) : null}
         </View>
         <Button label={t("Battle.again")} onPress={() => setCompleted(null)} />
       </View>
@@ -241,6 +260,15 @@ export function BattleScreen() {
           <View style={[styles.pill, tone === "advantage" && styles.pillAdv, tone === "disadvantage" && styles.pillDis]}>
             <Text style={[styles.pillText, tone === "disadvantage" && styles.pillTextOnDark]}>{t(`Battle.matchup.${tone}`)}</Text>
           </View>
+          <View style={styles.topActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={renderMode === "3d" ? t("Battle.renderTo2d") : t("Battle.renderTo3d")}
+            onPress={toggleRenderMode}
+            style={styles.speed}
+          >
+            <Text style={styles.pillText}>{renderMode === "3d" ? "3D" : "2D"}</Text>
+          </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={speed === 2 ? t("Battle.speedOff") : t("Battle.speedOn")}
@@ -250,8 +278,9 @@ export function BattleScreen() {
           >
             <Text style={[styles.pillText, speed === 2 && styles.pillTextOnDark]}>×{speed}</Text>
           </Pressable>
+          </View>
         </View>
-        <BattleStage snapshot={state} />
+        {renderMode === "3d" ? <BattleStage3D snapshot={state} speed={speed} /> : <BattleStage snapshot={state} />}
         <BattleControls
           snapshot={state}
           onGuard={() => useBattleStore.getState().setStance("guard")}
@@ -320,6 +349,9 @@ const styles = StyleSheet.create({
   pillDis: { backgroundColor: colors.nightInk, borderColor: colors.nightInk },
   pillText: { fontFamily: fonts.bold, fontSize: 13, color: colors.charcoal },
   pillTextOnDark: { color: colors.paperWhite },
+  figure: { alignItems: "center", paddingTop: spacing.md },
+  figureBox: { width: 160, height: 200 },
+  topActions: { flexDirection: "row", gap: spacing.sm },
   speed: { minHeight: 44, minWidth: 56, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.cottonPink, backgroundColor: colors.paperWhite },
   speedOn: { backgroundColor: colors.nightInk, borderColor: colors.nightInk },
   overlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: "#ffe0efee" },
