@@ -1,8 +1,3 @@
-import { useTranslation } from "react-i18next";
+import { BattleScreen } from "@/features/battle/components/battle-screen";
 
-import { ScreenPlaceholder } from "@/components/ScreenPlaceholder";
-
-export default function BattleScreen() {
-  const { t } = useTranslation();
-  return <ScreenPlaceholder title={t("Pages.battle.title")} description={t("Pages.battle.description")} />;
-}
+export default BattleScreen;
