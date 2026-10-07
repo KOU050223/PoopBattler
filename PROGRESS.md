@@ -30,3 +30,4 @@
 | 2026-10-07 | T-005 | - | - | ready→dispatched | 人間がRevenueCat利用を承認。ctx_18b8d331ccc1 / worktree t005-iap-webhook。spec: .orch/t005-spec.md。許可ファイルを実態に修正（型生成はpackages/domain/src/types、書き込み層はlib/supabase/subscription-write.ts、rls-verify.sql追加）。決済・権限のため最終レビュー必須 |
 | 2026-10-07 | T-009分割 | 指示役 | - | 完了 | 便器検出方式は人間がA案（vision-camera+fast-tflite+resize-plugin+COCO系TFLite）を選択。T-009を T-009a(検出基盤・logic) / T-009b(ガチャAR統合・ui) に分割。domainのtoilet-detection.ts純ロジックは再利用、推論層のみ差し替え |
 | 2026-10-07 | T-009a | devin ctx_146e1ad038d8 | dispatch | dispatched | worktree t009a-toilet-detect。spec: .orch/t009a-spec.md。native依存追加＋config plugin＋モデル同梱＋検出フック＋PoCコンポーネント（画面非接続）。実機検証はdev build必須で完了後も残る |
+| 2026-10-07 | T-005質問対応 | 指示役→人間 | - | 回答済 | ワーカー質問「BILLING_ISSUEでstatus=billing_issueにすると期限内も権利なしになるが良いか」→ 人間が (a)「即座に権利なし（Stripe past_dueと同挙動）」を選択。reply msg_6532b915fff4 で回答済。report-access.ts変更不要 |
