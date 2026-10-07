@@ -24,3 +24,4 @@
 | 2026-10-07 | T-010分割 | 指示役 | - | 完了 | T-010を T-010a(3D基盤PoC・logic) / T-010b(ステージ統合・ui) に分割。ideal-architectureの「GLB1体PoCを早期に」推奨に沿う。新Run run_981c150faffb |
 | 2026-10-07 | T-010a | devin ctx_6eb77f1cc7c1 | dispatch | dispatched | worktree t010a-poopm-3d-base（orch/native-appから作成）。expo-gl+three 0.185.1+R3Fv9導入、GLBローダー、純ロジック移植がスコープ |
 | 2026-10-07 | T-010a | devin ctx_6eb77f1cc7c1 | 第1段階 | completed | 指示役検証: native typecheck 0/116tests(+24新規)、ルート web297+domain235+native116、export iosでGLB8個+PNGバンドル確認（一時importで実測後revert）。マージ済 2611390→orch/native-app。ワーカー解放・ack済。worktree t010a+t013b削除。残件: 実機でのGLBデコード/描画はT-010bで確認要 |
+| 2026-10-07 | T-010b | devin ctx_f0da8d53bd8d | dispatch | dispatched | worktree t010b-poopm-3d-stage。web poopm-3d components+battle-stage-motion 移植、バトル3D化、2D/3D切替（永続化）、結果フィギュア3D。ガチャARはT-009範囲で除外 |
