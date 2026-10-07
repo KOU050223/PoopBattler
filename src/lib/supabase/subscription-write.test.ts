@@ -53,6 +53,7 @@ const record = {
   stripeSubscriptionId: "sub_1",
   status: "active",
   currentPeriodEnd: "2026-10-01T00:00:00.000Z",
+  cancelAtPeriodEnd: false,
 };
 
 describe("upsertSubscription", () => {
@@ -80,6 +81,7 @@ describe("updateSubscriptionStatusByCustomer", () => {
     stripeSubscriptionId: "sub_1",
     status: "canceled",
     currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
     eventCreatedAt: "2026-09-04T12:00:00.000Z",
   };
 
@@ -88,6 +90,19 @@ describe("updateSubscriptionStatusByCustomer", () => {
     mocks.createClient.mockReturnValue(supabase.client);
 
     await expect(updateSubscriptionStatusByCustomer(args)).resolves.toEqual({ status: "ok" });
+  });
+
+  // 期間末解約の予約は status では表せない。フラグを書き損ねると
+  // 画面に「解約する」が出続ける。
+  it("解約予約の有無を行へ書き込む", async () => {
+    const supabase = createSupabase();
+    mocks.createClient.mockReturnValue(supabase.client);
+
+    await updateSubscriptionStatusByCustomer({ ...args, cancelAtPeriodEnd: true });
+
+    expect(supabase.update).toHaveBeenCalledWith(
+      expect.objectContaining({ cancel_at_period_end: true }),
+    );
   });
 
   // 顧客IDだけで絞ると、同じ顧客の古い購読に対して遅れて届いた deleted が

@@ -1,10 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
-
-vi.mock("./manage-subscription-link", () => ({
-  ManageSubscriptionLink: () => <span>subscription link</span>,
-}));
 
 import messages from "../../../../messages/ja.json";
 

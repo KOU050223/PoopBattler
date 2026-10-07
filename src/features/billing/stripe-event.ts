@@ -18,6 +18,8 @@ export type StripeEventOutcome =
       stripeSubscriptionId: string;
       status: string;
       currentPeriodEnd: string | null;
+      /** 期間末解約の予約の有無。status は期間末まで active のままなので別に持つ。 */
+      cancelAtPeriodEnd: boolean;
       /** このイベントの発生時刻。これより新しい行は上書きしない。 */
       eventCreatedAt: string;
     }
@@ -116,6 +118,7 @@ export function resolveStripeEvent(
         stripeSubscriptionId,
         status: expandedSubscription?.status ?? "active",
         currentPeriodEnd: expandedSubscription ? periodEndOf(expandedSubscription) : null,
+        cancelAtPeriodEnd: expandedSubscription?.cancel_at_period_end ?? false,
       },
     };
   }
@@ -144,6 +147,11 @@ export function resolveStripeEvent(
       // 「有効なまま」へ倒さないよう canceled を明示する。
       status: event.type === "customer.subscription.deleted" ? "canceled" : subscription.status,
       currentPeriodEnd: periodEndOf(subscription),
+      // 解約予約の有無。deleted では購読そのものが無くなるため false に倒す。
+      cancelAtPeriodEnd:
+        event.type === "customer.subscription.deleted"
+          ? false
+          : subscription.cancel_at_period_end === true,
       // Stripe は配信順を保証しないため、到着順ではなく発生順を正とする。
       eventCreatedAt: new Date(event.created * 1000).toISOString(),
     };

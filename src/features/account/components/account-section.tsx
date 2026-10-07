@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react";
 
 import { watchAccountStatusFromBrowser } from "@/lib/supabase/account-watch";
+import type { SubscriptionSnapshot } from "@/features/billing/actions";
 
 import type { AccountStatus } from "../account.types";
+import { DeleteAccountSection } from "./delete-account-section";
 import { GoogleAccountLink } from "./google-account-link";
+import { PremiumSection } from "./premium-section";
 
 type Props = {
   /**
@@ -14,6 +17,8 @@ type Props = {
    * これを初期値に使い、ブラウザ側の実際の状態で上書きする。
    */
   initialStatus: AccountStatus;
+  /** サーバー側で読んだ購読状態。プレミアム解約の導線を出すかに使う。 */
+  subscription: SubscriptionSnapshot;
 };
 
 /**
@@ -23,7 +28,7 @@ type Props = {
  * ここに置くとこの画面を開くまでセッションが作られず、`/battle` へ
  * 直接来た利用者が未サインインのままになる。
  */
-export function AccountSection({ initialStatus }: Props) {
+export function AccountSection({ initialStatus, subscription }: Props) {
   const [status, setStatus] = useState(initialStatus);
 
   useEffect(() => watchAccountStatusFromBrowser(setStatus), []);
@@ -31,6 +36,8 @@ export function AccountSection({ initialStatus }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <GoogleAccountLink status={status} />
+      <PremiumSection status={status} subscription={subscription} />
+      <DeleteAccountSection status={status} />
     </div>
   );
 }

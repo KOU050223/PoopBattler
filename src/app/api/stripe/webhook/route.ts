@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 
+import { cancelSubscriptionNow } from "@/features/billing/cancel-subscription";
 import { getStripeWebhookSecret } from "@/features/billing/stripe-env";
 import { resolveStripeEvent } from "@/features/billing/stripe-event";
 import { updateSubscriptionStatusByCustomer, upsertSubscription } from "@/lib/supabase/subscription-write";
@@ -93,10 +94,22 @@ export async function POST(request: Request) {
         stripeSubscriptionId: outcome.stripeSubscriptionId,
         status: outcome.status,
         currentPeriodEnd: outcome.currentPeriodEnd,
+        cancelAtPeriodEnd: outcome.cancelAtPeriodEnd,
         eventCreatedAt: outcome.eventCreatedAt,
       });
 
   if (result.status === "error") {
+    // アカウント削除済みユーザーの購読イベントは、auth.users 削除の cascade で
+    // subscriptions に行を置けず FK 違反（23503）になる。
+    // 「アカウントは無いのに課金だけ残る」状態を作らないため、
+    // 購読そのものを止めてから受領する（アカウント削除処理の最後の防線）。
+    if (result.reason === "23503" && outcome.kind === "upsert") {
+      const canceled = await cancelSubscriptionNow(outcome.record.stripeSubscriptionId);
+      if (canceled) {
+        return new Response("User deleted; subscription canceled", { status: 200 });
+      }
+    }
+
     // 書き込みに失敗したまま 200 を返すと、権利が付かないのに
     // Stripe 側は成功扱いで再送しない。500 で再送させる。
     return new Response(`Failed to persist subscription: ${result.reason}`, { status: 500 });

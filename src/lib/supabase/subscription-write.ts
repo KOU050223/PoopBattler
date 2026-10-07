@@ -20,6 +20,8 @@ export type SubscriptionRecord = {
   stripeSubscriptionId: string;
   status: string;
   currentPeriodEnd: string | null;
+  /** Stripe の cancel_at_period_end。期間末解約の予約の有無。 */
+  cancelAtPeriodEnd: boolean;
 };
 
 /**
@@ -53,6 +55,7 @@ export async function upsertSubscription(record: SubscriptionRecord): Promise<Su
         stripe_subscription_id: record.stripeSubscriptionId,
         status: record.status,
         current_period_end: record.currentPeriodEnd,
+        cancel_at_period_end: record.cancelAtPeriodEnd,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" },
@@ -83,12 +86,14 @@ export async function updateSubscriptionStatusByCustomer({
   stripeSubscriptionId,
   status,
   currentPeriodEnd,
+  cancelAtPeriodEnd,
   eventCreatedAt,
 }: {
   stripeCustomerId: string;
   stripeSubscriptionId: string;
   status: string;
   currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
   eventCreatedAt: string;
 }): Promise<SubscriptionWriteResult> {
   const supabase = createServiceRoleClient();
@@ -97,6 +102,7 @@ export async function updateSubscriptionStatusByCustomer({
     .update({
       status,
       current_period_end: currentPeriodEnd,
+      cancel_at_period_end: cancelAtPeriodEnd,
       last_event_at: eventCreatedAt,
       updated_at: new Date().toISOString(),
     })

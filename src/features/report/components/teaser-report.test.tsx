@@ -2,10 +2,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 
-vi.mock("./manage-subscription-link", () => ({
-  ManageSubscriptionLink: () => <span>購読を管理する</span>,
-}));
-
 vi.mock("./purchase-call-to-action", () => ({
   PurchaseCallToAction: ({ account }: { account: { isAnonymous: boolean; hasGoogleIdentity: boolean } }) => (
     <span>{account.isAnonymous || !account.hasGoogleIdentity ? "Googleアカウントを連携する" : "プレミアムを購入する"}</span>
@@ -34,11 +30,10 @@ const anonymousAccount: AccountStatus = {
 function render(
   teaser: { bowelCount: number; recordedDays: number },
   account: AccountStatus,
-  hasSubscription = false,
 ) {
   return renderToStaticMarkup(
     <NextIntlClientProvider locale="ja" messages={messages}>
-      <TeaserReport teaser={teaser} account={account} hasSubscription={hasSubscription} />
+      <TeaserReport teaser={teaser} account={account} />
     </NextIntlClientProvider>,
   );
 }
@@ -82,20 +77,6 @@ describe("TeaserReport", () => {
 
     expect(markup).toContain("Googleアカウントを連携する");
     expect(markup).not.toContain("プレミアムを購入する");
-  });
-
-  // 支払いに失敗して past_due になった人は、購入し直すのではなく
-  // 支払い方法を直す必要がある。導線が無いとStripeへ辿り着けない。
-  it("購読はあるが権利が無い人には支払い方法の管理へ導線を出す", () => {
-    const markup = render({ bowelCount: 3, recordedDays: 2 }, linkedAccount, true);
-
-    expect(markup).toContain("購読を管理する");
-  });
-
-  it("購読が無い人には管理の導線を出さない", () => {
-    const markup = render({ bowelCount: 3, recordedDays: 2 }, linkedAccount, false);
-
-    expect(markup).not.toContain("購読を管理する");
   });
 
   it("記録が0件でもレポートの形を見せる", () => {

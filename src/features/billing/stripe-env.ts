@@ -17,6 +17,22 @@ export function getStripeEnvironment() {
   return { secretKey, priceId, appUrl };
 }
 
+/**
+ * APIキーだけを返す。Checkout の作成以外（購読のキャンセル・取得など）
+ * priceId や appUrl を必要としない経路はこちらを使う。
+ * getStripeEnvironment で全部を要求すると、販売を止めて STRIPE_PRICE_ID を
+ * 外した環境で、既存購読者がアカウント削除すらできなくなる。
+ */
+export function getStripeSecretKey() {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+
+  if (!secretKey) {
+    throw new Error("Stripe の接続情報が設定されていません。");
+  }
+
+  return secretKey;
+}
+
 /** Webhook の署名検証に使う秘密。用途が違うので別関数にする。 */
 export function getStripeWebhookSecret() {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;

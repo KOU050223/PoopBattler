@@ -20,15 +20,7 @@ export type ReportTeaser = {
  */
 export type ReportResult =
   | { entitled: true; report: WeeklyReport }
-  | {
-      entitled: false;
-      teaser: ReportTeaser;
-      /**
-       * 権利は無いが購読の行はある（支払い失敗・解約直後など）。
-       * この人には購入ではなく、支払い方法を直す導線を出す必要がある。
-       */
-      hasSubscription: boolean;
-    };
+  | { entitled: false; teaser: ReportTeaser };
 
 /**
  * 本人の記録だけを読み、権利があれば今週のレポートを、無ければ件数だけを返す。
@@ -56,12 +48,11 @@ export async function getWeeklyReportAction(now = new Date().toISOString()): Pro
 
   const range = getWeeklyReportRange(now);
   if (!hasActiveEntitlement(subscription, new Date(now))) {
+    // 支払いに失敗した人（購読行はあるが権利なし）への導線はアカウント画面が
+    // 持つ（PremiumSection の lapsed 分岐）。ここでは権利の有無だけを返す。
     return {
       entitled: false,
       teaser: await fetchTeaser(supabase, user.id, range),
-      // 支払いに失敗して past_due になった人が、購入ボタンしか出ない画面に
-      // 取り残されるのを防ぐ。行があるなら管理画面への導線を出す。
-      hasSubscription: subscription !== null,
     };
   }
 

@@ -46,7 +46,6 @@ export default async function ReportPage({ searchParams }: Props) {
         <TeaserReport
           teaser={result.teaser}
           account={account}
-          hasSubscription={result.hasSubscription}
         />
       </div>
     );

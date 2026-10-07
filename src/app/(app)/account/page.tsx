@@ -6,6 +6,7 @@ import { getAccountStatusAction } from "@/features/account/actions";
 import { readAuthErrorCode, readAuthLinked } from "@/features/account/callback-params";
 import { AccountSection } from "@/features/account/components/account-section";
 import { AuthCallbackNotice } from "@/features/account/components/auth-callback-notice";
+import { getSubscriptionSnapshotAction } from "@/features/billing/actions";
 
 export const metadata: Metadata = {
   title: "アカウント",
@@ -17,7 +18,11 @@ export default async function AccountPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const params = await searchParams;
-  const [accountStatus, t] = await Promise.all([getAccountStatusAction(), getTranslations("Pages.account")]);
+  const [accountStatus, subscription, t] = await Promise.all([
+    getAccountStatusAction(),
+    getSubscriptionSnapshotAction(),
+    getTranslations("Pages.account"),
+  ]);
 
   return (
     <>
@@ -31,7 +36,7 @@ export default async function AccountPage({
         errorCode={readAuthErrorCode(params)}
       />
 
-      <AccountSection initialStatus={accountStatus} />
+      <AccountSection initialStatus={accountStatus} subscription={subscription} />
     </>
   );
 }
