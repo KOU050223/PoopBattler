@@ -37,14 +37,14 @@ AI駆動でうんこ支援開発するぞ
 npm ci
 
 # 2. 環境変数ファイルを作成
-cp .env.local.example .env.local
+cp apps/web/.env.local.example apps/web/.env.local
 
 # 3. .env.local に Supabase の値を記入する
 ```
 
 ## 環境変数
 
-`.env.local` に以下を設定する。値は Supabase Dashboard の
+`apps/web/.env.local` に以下を設定する。値は Supabase Dashboard の
 **Project Settings > API** から取得する。
 
 | 変数名 | 内容 |
@@ -58,11 +58,11 @@ cp .env.local.example .env.local
 - `NEXT_PUBLIC_` を付けた変数のみがブラウザへ配信される。付けない変数はサーバー側
   （Server Component / Server Action / Route Handler）からのみ参照できる。
 - `.env.local` は `.gitignore` 済みでコミットされない。コミットするのは
-  `.env.local.example` のみ。
+  `apps/web/.env.local.example` のみ。
 
 ### 秘密鍵の扱い
 
-- **Service Role Key はリポジトリにも `.env.local.example` にも置かない。**
+- **Service Role Key はリポジトリにも `apps/web/.env.local.example` にも置かない。**
 - 秘密情報に `NEXT_PUBLIC_` を付けない。付けるとクライアントバンドルへ埋め込まれる。
 - 秘密鍵を要する処理は Server Action または Route Handler に置く。
 - Vercel へは Dashboard の Environment Variables から設定する。
@@ -172,7 +172,7 @@ npm run lint    # ESLint
 ```bash
 supabase start           # 未起動なら起動する
 supabase db reset        # migrations を適用してスキーマを最新にする
-npm run db:types         # src/types/database.types.ts を生成する
+npm run db:types         # apps/web/src/types/database.types.ts を生成する
 ```
 
 `supabase start` は既存のDBを立ち上げるだけで、**追加したマイグレーションを
@@ -189,17 +189,17 @@ npm run db:types:check   # 生成物がマイグレーションと一致する�
 ```
 
 **マイグレーションを追加・変更したら必ず上記の手順で型を生成し直し、生成された
-`src/types/database.types.ts` を同じコミットに含める。** 再生成漏れは pre-commit
+`apps/web/src/types/database.types.ts` を同じコミットに含める。** 再生成漏れは pre-commit
 フック（型がステージされていなければ落ちる）と CI（実際に生成し直して差分を検証）
 の2段階で検出する。
 
-生成された型は `src/lib/supabase/` の各クライアントに型引数として渡してあるため、
+生成された型は `apps/web/src/lib/supabase/` の各クライアントに型引数として渡してあるため、
 テーブル名・カラム名・列挙値の補完と検査がそのまま効く。
 
 ### データアクセスの境界
 
 Supabase クライアントを生成してよいのは `features/<機能名>/actions.ts`、
-`lib/supabase/`、`src/proxy.ts` の3か所だけ。ESLint は **`src/` 全体を既定で
+`lib/supabase/`、`apps/web/src/proxy.ts` の3か所だけ。ESLint は **`apps/web/src/` 全体を既定で
 禁止し、この3か所だけを解除する**許可リスト方式で構成してある。新しく
 ディレクトリが増えても自動的に禁止側に入るため、黙って穴が空かない。
 
@@ -225,12 +225,12 @@ Vercel の Preview Deployment か HTTPS トンネルを使って検証する。
 このプロジェクトは Next.js 16 を使う。訓練データや過去バージョンと異なる点があるため、
 実装前に `node_modules/next/dist/docs/` の該当ガイドを確認する。
 
-- **ディレクトリ**: ソースは `src/` 配下に置く（`docs/architecture.md` の構成に準拠）。
-  パスエイリアス `@/*` は `src/*` を指す。
-- **App Router**: ルーティングと画面の組み立てのみを `src/app/` に置く。
+- **ディレクトリ**: ソースは `apps/web/src/` 配下に置く（`docs/architecture.md` の構成に準拠）。
+  パスエイリアス `@/*` は `apps/web/src/*` を指す。
+- **App Router**: ルーティングと画面の組み立てのみを `apps/web/src/app/` に置く。
   ゲームロジックや DB アクセスは書かない（`docs/architecture.md` の責務ルール参照）。
 - **Proxy**: Next.js 16 で `middleware` は **`proxy` に改称**された（機能は同じ）。
-  リクエスト完了前に実行する処理は、`app/` と同じ階層である **`src/proxy.ts`** に書く。
+  リクエスト完了前に実行する処理は、`app/` と同じ階層である **`apps/web/src/proxy.ts`** に書く。
   1プロジェクトにつき1ファイルのみ。
   関数は default export または名前付き `proxy` export として公開する。
   Supabase のセッション Cookie 更新はここで行う。

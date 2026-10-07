@@ -19,15 +19,15 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-if [ ! -f .env.local ]; then
-  echo "エラー: .env.local が無い。.env.local.example をコピーして値を埋めること。" >&2
+if [ ! -f apps/web/.env.local ]; then
+  echo "エラー: apps/web/.env.local が無い。apps/web/.env.local.example をコピーして値を埋めること。" >&2
   exit 1
 fi
 
 # set -a で、この後の代入を自動的に export する。
 set -a
 # shellcheck disable=SC1091
-. ./.env.local
+. ./apps/web/.env.local
 # Supabase CLI は supabase/.env を自分で読む。ここで読むのは、下の検査で
 # 値の有無を見るためだけ（読めなくても CLI 側の解決には影響しない）。
 # shellcheck disable=SC1091
@@ -100,4 +100,4 @@ if grep -qs '^enabled = true' <(sed -n '/\[auth.external.google\]/,/^\[auth\.ext
 fi
 
 echo ""
-npm run dev
+npm run dev -w apps/web
