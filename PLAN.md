@@ -61,7 +61,15 @@
 - 触ってよいファイル：`supabase/migrations/**`（新規追加のみ・適用はローカルのみ可）, `apps/web/src/app/api/iap/**`, `apps/web/src/features/billing/**`, `apps/web/src/lib/supabase/subscription-write.ts`, `packages/domain/src/billing/**`, `packages/domain/src/types/database.types.ts`, `scripts/sql/rls-verify.sql`
 - 完成の条件：vitestで 署名/シークレット不正は拒否・購入/更新/期限切れ/返金の各イベントでsubscriptions状態が正しく遷移・他人の行を書けない、`db:test:rls`、全テスト通過
 - 依存：T-003
-- 状態：dispatched（ctx_18b8d331ccc1 / worktree t005-iap-webhook。RevenueCat利用は人間が承認済み。決済・権限のため第1段階後に最終レビュー必須）
+- 状態：dispatched（ctx_91738917f725 / worktree t005-iap-webhook で fix1 作業中。RevenueCat利用は人間が承認済み。決済・権限のため最終レビュー済み→指摘5件を修正中）
+
+### T-005-fix1 IAP webhook レビュー指摘の修正
+- 種類：logic（決済・権限のため修正後も最終レビュー相当の確認を行う）
+- やること：最終レビュー指摘5件の修正。①upsertにlast_event_at順序ガード（遅延INITIAL_PURCHASEで失効権利が復活しない）②TRANSFER対応（transferred_from行削除＋upsert時の別ユーザーtx_id衝突防御）③provider切替時のID null化をやめ、更新突合にprovider条件を追加（二重課金・解約手段消失の防止）④NON_RENEWING_PURCHASEをignoreへ⑤apple行向けエラーメッセージ修正
+- 触ってよいファイル：.orch/t005-fix1-spec.md 記載の範囲
+- 完成の条件：specの検証コマンド全通過＋陽性/陰性を同一実行で検査
+- 依存：T-005の未コミット差分（同worktree）
+- 状態：dispatched
 
 ### T-007 native レポート/アカウント/課金
 - 種類：ui（課金・認証 → 最終レビュー必須）
