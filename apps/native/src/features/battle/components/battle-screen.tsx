@@ -8,6 +8,7 @@ import {
   isOutcomeOverlayDismissLocked,
   resolveBattleScreenView,
 } from "@poopbattler/domain/battle/battle-screen-view";
+import { usesCompanionshipAr } from "@poopbattler/domain/battle/companionship-ar";
 import { parsePartyLineup } from "@poopbattler/domain/records/party-lineup";
 
 import { keyValueStorage } from "@/adapters/storage";
@@ -33,7 +34,8 @@ import { useBattleHydrated } from "../use-battle-hydration";
 import { useBattleRenderMode } from "../use-battle-render-mode";
 import { useBattleSpeed } from "../use-battle-speed";
 import { useBattleTicker } from "../use-battle-ticker";
-import { BattleCompletionFlow } from "./battle-completion-flow";
+import { BattleCompletionFlow, type BattleCompletedPayload } from "./battle-completion-flow";
+import { CompanionshipArStage } from "./companionship-ar-stage";
 import { BattleControls } from "./battle-controls";
 import { BattleStage } from "./battle-stage";
 import { BattleStage3D } from "./battle-stage-3d";
@@ -53,6 +55,8 @@ export function BattleScreen() {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState<Completed | null>(null);
+  const [mealPhotoId, setMealPhotoId] = useState<string | null>(null);
+  const [arDone, setArDone] = useState(false);
   const [preview, setPreview] = useState<PartyPreviewMember[]>([]);
   const overlayShownAt = useRef(0);
 
@@ -157,9 +161,11 @@ export function BattleScreen() {
     setError(null);
   }, []);
 
-  const handleCompleted = useCallback((result: Completed) => {
+  const handleCompleted = useCallback((payload: BattleCompletedPayload) => {
     // DB 確定に成功したときだけ復元用のバトルを破棄する。
-    setCompleted(result);
+    setCompleted(payload.result);
+    setMealPhotoId(payload.mealPhotoId);
+    setArDone(false);
     useBattleStore.getState().reset();
     setAccepted(false);
   }, []);
@@ -180,6 +186,17 @@ export function BattleScreen() {
   }
 
   if (completed) {
+    // 食事ログを使った完了なら、結果画面の前に AR ガチャ（仲間化演出）を挟む。
+    // カメラ非対応・権限拒否はステージ内で静止背景のフォールバックに逃がす。
+    if (usesCompanionshipAr(completed) && !arDone) {
+      return (
+        <CompanionshipArStage
+          result={completed}
+          mealPhotoId={mealPhotoId}
+          onDone={() => setArDone(true)}
+        />
+      );
+    }
     return (
       <View style={[styles.screen, pad, styles.gap]}>
         <View style={styles.card}>
