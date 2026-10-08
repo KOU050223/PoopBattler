@@ -188,6 +188,21 @@ describe("createBillingPortalSessionAction", () => {
     expect(mocks.portalCreate).not.toHaveBeenCalled();
   });
 
+  // Apple IAP の購読は stripe_customer_id を持たず Stripe ポータルを開けない。
+  // 「見つかりません」と返すと行があるのに誤解を招くため、
+  // App Store 側の管理方法を案内する。
+  it("Apple の購読には App Store の管理導線を案内する", async () => {
+    mocks.createClient.mockResolvedValue(
+      createSupabase(linkedUser, { provider: "apple", stripe_customer_id: null }),
+    );
+
+    const result = await createBillingPortalSessionAction();
+
+    expect(result).toMatchObject({ status: "error" });
+    expect((result as { message: string }).message).toContain("App Store");
+    expect(mocks.portalCreate).not.toHaveBeenCalled();
+  });
+
   it("戻り先として呼び出し元の画面を使える", async () => {
     mocks.createClient.mockResolvedValue(createSupabase(linkedUser, { stripe_customer_id: "cus_1" }));
     mocks.portalCreate.mockResolvedValue({ url: "https://billing.stripe.test/session" });
@@ -343,6 +358,24 @@ describe("cancelPremiumAction", () => {
     );
 
     await expect(cancelPremiumAction()).resolves.toEqual({ status: "not-subscribed" });
+    expect(mocks.subscriptionUpdate).not.toHaveBeenCalled();
+  });
+
+  // Apple IAP の購読は Stripe の解約APIを呼べない。汎用の再試行案内だと
+  // 永久に失敗し続けるため、App Store の管理画面を案内する。
+  it("Apple の購読には Stripe の解約ではなく App Store の導線を返す", async () => {
+    mocks.createClient.mockResolvedValue(
+      createSupabase(linkedUser, {
+        ...activeSubscription,
+        provider: "apple",
+        stripe_subscription_id: null,
+      }),
+    );
+
+    const result = await cancelPremiumAction();
+
+    expect(result).toMatchObject({ status: "error" });
+    expect((result as { message: string }).message).toContain("App Store");
     expect(mocks.subscriptionUpdate).not.toHaveBeenCalled();
   });
 
