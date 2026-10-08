@@ -1,8 +1,5 @@
-import { useTranslation } from "react-i18next";
+import { AccountScreen } from "@/features/account/components/account-screen";
 
-import { ScreenPlaceholder } from "@/components/ScreenPlaceholder";
-
-export default function AccountScreen() {
-  const { t } = useTranslation();
-  return <ScreenPlaceholder title={t("Pages.account.title")} description={t("Pages.account.description")} />;
+export default function AccountTab() {
+  return <AccountScreen />;
 }

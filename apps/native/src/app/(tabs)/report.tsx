@@ -1,8 +1,5 @@
-import { useTranslation } from "react-i18next";
+import { ReportScreen } from "@/features/report/components/report-screen";
 
-import { ScreenPlaceholder } from "@/components/ScreenPlaceholder";
-
-export default function ReportScreen() {
-  const { t } = useTranslation();
-  return <ScreenPlaceholder title={t("Report.entryTitle")} description={t("Report.entryDescription")} />;
+export default function ReportTab() {
+  return <ReportScreen />;
 }

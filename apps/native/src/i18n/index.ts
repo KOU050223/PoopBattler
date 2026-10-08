@@ -2,6 +2,7 @@ import { getLocales } from "expo-localization";
 import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
 
+import { accountBillingEn, accountBillingJa } from "./account-billing";
 import { battleMessagesEn, battleMessagesJa } from "./battle-messages";
 import { defaultLocale, resolveLocale } from "./locale";
 // web と同じ辞書を相対参照で共有する（コピーしない）。
@@ -16,8 +17,8 @@ const withBattle = <T extends { Battle: object }>(base: T, extra: object): T => 
 
 void i18next.use(initReactI18next).init({
   resources: {
-    ja: { translation: withBattle(ja, battleMessagesJa) },
-    en: { translation: withBattle(en, battleMessagesEn) },
+    ja: { translation: { ...withBattle(ja, battleMessagesJa), ...accountBillingJa } },
+    en: { translation: { ...withBattle(en, battleMessagesEn), ...accountBillingEn } },
   },
   lng: resolveLocale(getLocales()[0]?.languageCode),
   fallbackLng: defaultLocale,
