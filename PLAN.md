@@ -79,7 +79,7 @@
 - 触ってよいファイル：`apps/native/**`（src・app.json等config含む）、ルート `package-lock.json`。`packages/domain/` は読むだけ（変更したくなったらask）
 - 完成の条件：typecheck、`npm test -w apps/native`（検出判定ロジックのテスト含む）、`npx expo export` 成功（モデルがasset解決されること）、`npx expo prebuild --clean` が通ること（config plugin検証）
 - 依存：T-012（完了フロー確定済み）
-- 状態：dispatched（ctx_146e1ad038d8 / worktree t009a-toilet-detect）
+- 状態：completed（マージ済 a8eca4c。実機での検出動作確認はT-009bの人間レビューで行う）
 
 ### T-009b native ガチャAR統合
 - 種類：ui
