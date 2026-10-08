@@ -2,7 +2,7 @@
   "name": "@poop-battler/native",
   "version": "0.1.0",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "index.ts",
   "scripts": {
     "start": "expo start --dev-client",
     "ios": "expo run:ios",
@@ -38,10 +38,14 @@
     "react": "19.2.3",
     "react-i18next": "17.0.16",
     "react-native": "0.86.3",
+    "react-native-fast-tflite": "2.0.0",
     "react-native-safe-area-context": "5.7.0",
     "react-native-screens": "4.26.0",
     "react-native-url-polyfill": "4.0.0",
+    "react-native-vision-camera": "4.7.3",
+    "react-native-worklets-core": "1.6.3",
     "three": "0.185.1",
+    "vision-camera-resize-plugin": "3.2.0",
     "zustand": "5.0.15"
   },
   "devDependencies": {
