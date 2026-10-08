@@ -96,7 +96,7 @@
 - 触ってよいファイル：`apps/native/src/features/battle/**`（AR/gacha系新規サブディレクトリ）, `apps/native/src/features/meal/**`（写真取得）, `apps/native/src/features/poopm-3d/**`, `apps/native/src/i18n/**`
 - 完成の条件：typecheck、`expo export`、ガチャステートマシンのvitest
 - 依存：T-009a, T-010b
-- 状態：pending
+- 状態：dispatched（ctx_7b54ff4ecec0 / worktree t009b-gacha-ar）
 
 ### T-010a native 3D基盤（expo-gl + three + R3F 導入・GLBロードPoC）
 - 種類：logic
