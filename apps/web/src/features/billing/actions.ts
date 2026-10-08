@@ -30,6 +30,13 @@ const UNKNOWN_ERROR_MESSAGE = "決済ページを開けませんでした。時�
 
 const ALREADY_SUBSCRIBED_MESSAGE = "すでにプレミアムをご利用中です。";
 
+// Apple IAP の購読は Stripe のポータルも解約APIも使えない。
+// 「見つかりません」や再試行の案内だと永久に失敗し続ける操作へ誘導するため、
+// App Store 側の管理方法を明示する。
+const APPLE_MANAGED_MESSAGE =
+  "この購読はApp Storeで購入されています。管理・解約はiPhoneの設定の"
+  + "「Apple Account」→「サブスクリプション」から行えます。";
+
 function createStripeClient() {
   const { secretKey } = getStripeEnvironment();
   return new Stripe(secretKey);
@@ -123,12 +130,18 @@ export async function createBillingPortalSessionAction(
 
   const { data: subscription, error: subscriptionError } = await supabase
     .from("subscriptions")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id, provider")
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (subscriptionError || !subscription) {
     return { status: "error", message: "購読の情報が見つかりませんでした。" };
+  }
+
+  // Apple IAP の購読は Stripe ポータルを開けない。行はあるのに
+  // 「見つかりません」と返すと誤解を招くため、App Store の導線を案内する。
+  if (subscription.provider === "apple" || !subscription.stripe_customer_id) {
+    return { status: "error", message: APPLE_MANAGED_MESSAGE };
   }
 
   let environment;
@@ -185,7 +198,7 @@ export async function cancelPremiumAction(): Promise<CancelPremiumResult> {
 
   const { data: subscription, error: subscriptionError } = await supabase
     .from("subscriptions")
-    .select("status, current_period_end, stripe_subscription_id, cancel_at_period_end")
+    .select("status, current_period_end, stripe_subscription_id, cancel_at_period_end, provider")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -200,6 +213,12 @@ export async function cancelPremiumAction(): Promise<CancelPremiumResult> {
   // Webhook 反映済みの行に対して再度解約を押されても、Stripe を二度触らない。
   if (subscription.cancel_at_period_end) {
     return { status: "scheduled", periodEnd: subscription.current_period_end };
+  }
+
+  // Apple IAP の購読は Stripe を触れない。解約は App Store 側で行うため、
+  // 汎用の再試行案内（永久に失敗する）ではなく管理場所を案内する。
+  if (subscription.provider === "apple" || !subscription.stripe_subscription_id) {
+    return { status: "error", message: APPLE_MANAGED_MESSAGE };
   }
 
   let stripe: Stripe;

@@ -240,38 +240,44 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          apple_original_transaction_id: string | null
           cancel_at_period_end: boolean
           created_at: string
           current_period_end: string | null
           id: string
           last_event_at: string | null
+          provider: string
           status: string
-          stripe_customer_id: string
-          stripe_subscription_id: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          apple_original_transaction_id?: string | null
           cancel_at_period_end?: boolean
           created_at?: string
           current_period_end?: string | null
           id?: string
           last_event_at?: string | null
+          provider?: string
           status: string
-          stripe_customer_id: string
-          stripe_subscription_id: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          apple_original_transaction_id?: string | null
           cancel_at_period_end?: boolean
           created_at?: string
           current_period_end?: string | null
           id?: string
           last_event_at?: string | null
+          provider?: string
           status?: string
-          stripe_customer_id?: string
-          stripe_subscription_id?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string
           user_id?: string
         }
