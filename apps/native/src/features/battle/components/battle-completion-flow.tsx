@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { isBattleGoneMessage } from "@poopbattler/domain/battle/complete-battle-error";
 import {
+  lastSessionPhotoId,
   postBattleCompleteLabel,
   postBattleMealChanceCopy,
 } from "@poopbattler/domain/battle/post-battle-meal-session";
@@ -24,9 +25,15 @@ import { Button } from "./ui";
 
 type Completed = Extract<CompleteBattleResult, { success: true }>;
 
+/** 完了結果 + 投げ入れ演出に使う食事写真（この回の最後の記録。未記録なら null）。 */
+export type BattleCompletedPayload = {
+  result: Completed;
+  mealPhotoId: string | null;
+};
+
 type BattleCompletionFlowProps = {
   battleId: string;
-  onCompleted: (result: Completed) => void;
+  onCompleted: (payload: BattleCompletedPayload) => void;
   onAbandon: () => void;
 };
 
@@ -74,7 +81,7 @@ export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: Battl
         setError(result.message);
         return;
       }
-      onCompleted(result);
+      onCompleted({ result, mealPhotoId: lastSessionPhotoId(sessionLogs) });
     } catch {
       setError(t("Battle.completeError"));
     } finally {
