@@ -61,7 +61,7 @@
 - 触ってよいファイル：`supabase/migrations/**`（新規追加のみ・適用はローカルのみ可）, `apps/web/src/app/api/iap/**`, `apps/web/src/features/billing/**`, `apps/web/src/lib/supabase/subscription-write.ts`, `packages/domain/src/billing/**`, `packages/domain/src/types/database.types.ts`, `scripts/sql/rls-verify.sql`
 - 完成の条件：vitestで 署名/シークレット不正は拒否・購入/更新/期限切れ/返金の各イベントでsubscriptions状態が正しく遷移・他人の行を書けない、`db:test:rls`、全テスト通過
 - 依存：T-003
-- 状態：dispatched（ctx_91738917f725 / worktree t005-iap-webhook で fix1 作業中。RevenueCat利用は人間が承認済み。決済・権限のため最終レビュー済み→指摘5件を修正中）
+- 状態：**completed**（マージ済 `7c5f397` / merge `80fa900`。レビュー指摘5件は T-005-fix1 で修正済み、指示役再検証で全合格）
 
 ### T-005-fix1 IAP webhook レビュー指摘の修正
 - 種類：logic（決済・権限のため修正後も最終レビュー相当の確認を行う）
@@ -69,7 +69,7 @@
 - 触ってよいファイル：.orch/t005-fix1-spec.md 記載の範囲
 - 完成の条件：specの検証コマンド全通過＋陽性/陰性を同一実行で検査
 - 依存：T-005の未コミット差分（同worktree）
-- 状態：dispatched
+- 状態：completed（指示役再検証: typecheck 0・web335+domain260+native140・db:types:check一致・RLS全OK含むapple行）
 
 ### T-007 native レポート/アカウント/課金
 - 種類：ui（課金・認証 → 最終レビュー必須）
@@ -96,7 +96,7 @@
 - 触ってよいファイル：`apps/native/src/features/battle/**`（AR/gacha系新規サブディレクトリ）, `apps/native/src/features/meal/**`（写真取得）, `apps/native/src/features/poopm-3d/**`, `apps/native/src/i18n/**`
 - 完成の条件：typecheck、`expo export`、ガチャステートマシンのvitest
 - 依存：T-009a, T-010b
-- 状態：dispatched（ctx_7b54ff4ecec0 / worktree t009b-gacha-ar）
+- 状態：needs-human-review（マージ済 `b4c601c` / merge `34d1e23`。指示役検証: typecheck 0・native166tests(+16)・export iosでtflite+GLB全バンドル。実機でのAR動作・便器検出・重力連動の確認待ち）
 
 ### T-010a native 3D基盤（expo-gl + three + R3F 導入・GLBロードPoC）
 - 種類：logic
@@ -125,12 +125,13 @@
 ## 実行順
 
 ```
-即着手可: T-010a → T-010b（逐次）
-承認待ち: T-005 → T-007／T-013（実機確認待ち）
-後続:     T-009 → T-011
+即着手可: T-007（T-005マージ済みで解除）
+後続:     T-011（全タスク後）
+人間確認待ち: T-009b, T-010b, T-012, T-004, T-006, T-008
 ```
 
 ## 人間に確認したい点
-1. T-005: IAPにRevenueCatを使ってよいか（月額課金が発生しうる／自前StoreKit検証も可）— 承認待ちのまま
-2. T-013: FULL_SCREEN修正が実機で効いたか。効いていれば構造変更は不要
-3. T-009の便器検出手法（nativeでcoco-ssd相当を何でやるか）は着手時に調査結果を提示する
+1. ~~T-005: IAPにRevenueCatを使ってよいか~~ → 承認済み・実装マージ済
+2. ~~T-013: FULL_SCREEN修正が実機で効いたか~~ → 実機確認済み・completed
+3. ~~T-009の便器検出手法~~ → A案選択済み・T-009a/b実装済
+4. T-007のRevenueCat SDK導入に先立ち、人間側でRevenueCatダッシュボードの設定（プロジェクト・entitlement・商品・webhook共有シークレット）が必要。コード側はダミーキーで進められる
