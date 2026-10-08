@@ -33,7 +33,8 @@
           "cameraPermission": "食事の写真を撮って記録し、バトルで便器を自動検出するために、カメラを使用します。",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
