@@ -78,7 +78,7 @@
 - 触ってよいファイル：`apps/native/src/features/{report,account,billing}/**`、対応する `app/` 画面
 - 完成の条件：native側vitestでgateway/アダプタのテスト、typecheck、`expo export`＋**非課金時に実値がペイロード/UIに載らないテスト**
 - 依存：T-003, T-004, T-005
-- 状態：pending
+- 状態：dispatched（ctx_8e5a0ccc7d51 / worktree t007-native-report-iap）
 
 ### T-009a native 便器検出基盤（vision-camera + fast-tflite）
 - 種類：logic
