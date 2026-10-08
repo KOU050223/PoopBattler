@@ -78,7 +78,7 @@
 - 触ってよいファイル：`apps/native/src/features/{report,account,billing}/**`、対応する `app/` 画面
 - 完成の条件：native側vitestでgateway/アダプタのテスト、typecheck、`expo export`＋**非課金時に実値がペイロード/UIに載らないテスト**
 - 依存：T-003, T-004, T-005
-- 状態：dispatched（ctx_8e5a0ccc7d51 / worktree t007-native-report-iap）
+- 状態：needs-human-review（マージ済 `a22e7f3` / merge `93f2b07`。指示役検証: typecheck 0・native200tests・export ios成功。実機確認待ち: Google連携・購入/復元フロー・レポート/ティーザー表示。人間側にRevenueCat/Supabase/App Store Connect設定が必要）
 
 ### T-009a native 便器検出基盤（vision-camera + fast-tflite）
 - 種類：logic
@@ -125,9 +125,8 @@
 ## 実行順
 
 ```
-即着手可: T-007（T-005マージ済みで解除）
 後続:     T-011（全タスク後）
-人間確認待ち: T-009b, T-010b, T-012, T-004, T-006, T-008
+人間確認待ち: T-007, T-009b, T-010b, T-012, T-004, T-006, T-008
 ```
 
 ## 人間に確認したい点
