@@ -11,6 +11,8 @@ const pinned = ["react", "react-native"].map((name) => ({
 }));
 
 config.resolver.assetExts.push("glb");
+config.resolver.assetExts.push("tflite");
+
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   for (const { name, dir } of pinned) {

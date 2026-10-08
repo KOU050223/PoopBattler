@@ -20,10 +20,17 @@
       "expo-font",
       "expo-localization",
       [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "食事の写真を撮って記録し、バトルで便器を自動検出するために、カメラを使用します。",
+          "enableFrameProcessors": true
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "食事の写真を選んで記録するために、写真ライブラリへアクセスします。",
-          "cameraPermission": "食事の写真を撮って記録するために、カメラを使用します。",
+          "cameraPermission": "食事の写真を撮って記録し、バトルで便器を自動検出するために、カメラを使用します。",
           "microphonePermission": false
         }
       ]
