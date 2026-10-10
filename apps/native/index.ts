@@ -1,3 +1,7 @@
+// latin1 対応の TextDecoder 補完は、fast-png を import する全モジュールより
+// 先に評価される必要があるためエントリの先頭で行う。
+import "./src/lib/textdecoder-latin1";
+
 // エントリは expo-router に委譲する。
 import "expo-router/entry";
 
