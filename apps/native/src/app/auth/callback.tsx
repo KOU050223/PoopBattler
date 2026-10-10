@@ -9,5 +9,5 @@ import { Redirect } from "expo-router";
  * google-identity.ts が openAuthSessionAsync の戻り値で行う）。
  */
 export default function AuthCallback() {
-  return <Redirect href="/(tabs)/account" />;
+  return <Redirect href="/account" />;
 }

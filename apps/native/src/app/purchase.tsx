@@ -124,7 +124,7 @@ export default function PurchaseScreen() {
   const needsLink = !account.signedIn || account.isAnonymous || !account.hasGoogleIdentity;
   const goBack = () => {
     if (router.canGoBack()) router.back();
-    else router.replace("/(tabs)/report");
+    else router.replace("/report");
   };
 
   return (
@@ -147,7 +147,7 @@ export default function PurchaseScreen() {
           <View style={styles.buttonColumn}>
             <Button
               label={t("Billing.openReport")}
-              onPress={() => router.replace("/(tabs)/report")}
+              onPress={() => router.replace("/report")}
             />
           </View>
         </View>
@@ -158,7 +158,7 @@ export default function PurchaseScreen() {
           <View style={styles.buttonColumn}>
             <Button
               label={t("Report.linkAccount")}
-              onPress={() => router.push("/(tabs)/account")}
+              onPress={() => router.push("/account")}
               icon={<Ionicons name="link" size={16} color={colors.paperWhite} />}
             />
           </View>

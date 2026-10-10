@@ -1,9 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Tabs } from "expo-router";
+import { router, Tabs } from "expo-router";
 import { useTranslation } from "react-i18next";
-import type { TextStyle, ViewStyle } from "react-native";
+import { Pressable, type TextStyle, type ViewStyle } from "react-native";
 
-import { colors, fontSize, fonts } from "@/theme";
+import { colors, fontSize, fonts, spacing } from "@/theme";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -24,21 +24,39 @@ const tabBarStyle = {
   borderTopColor: colors.cottonPink,
   position: "relative",
 } satisfies ViewStyle;
+const headerTitleStyle = {
+  fontFamily: fonts.black,
+  color: colors.charcoal,
+  position: "relative",
+} satisfies TextStyle;
 
+// web のボトムナビゲーションと同じ3項目に揃える。
+// レポートは記録画面内のカード経由、アカウントはヘッダー右上経由。
 const tabs: { name: string; label: string; icon: IconName; iconActive: IconName }[] = [
-  { name: "index", label: "Navigation.battle", icon: "flash-outline", iconActive: "flash" },
+  { name: "battle", label: "Navigation.battle", icon: "flash-outline", iconActive: "flash" },
   { name: "logs", label: "Navigation.logs", icon: "calendar-outline", iconActive: "calendar" },
   { name: "collection", label: "Navigation.collection", icon: "albums-outline", iconActive: "albums" },
-  { name: "report", label: "Report.entryTitle", icon: "stats-chart-outline", iconActive: "stats-chart" },
-  { name: "account", label: "Pages.account.title", icon: "person-outline", iconActive: "person" },
 ];
 
 export default function TabsLayout() {
   const { t } = useTranslation();
   return (
     <Tabs
+      initialRouteName="battle"
       screenOptions={{
-        headerShown: false,
+        headerTitle: t("Common.headerAppNameShort"),
+        headerTitleStyle: headerTitleStyle,
+        headerRight: () => (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("Pages.account.title")}
+            onPress={() => router.push("/account")}
+            style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.xs }}
+            hitSlop={8}
+          >
+            <Ionicons name="person-circle-outline" size={26} color={colors.charcoal} />
+          </Pressable>
+        ),
         tabBarActiveTintColor: colors.flushEdge,
         tabBarInactiveTintColor: colors.pencilGray,
         tabBarLabelStyle,

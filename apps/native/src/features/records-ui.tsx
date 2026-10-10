@@ -51,11 +51,12 @@ export function Segmented<T extends string>({ options, value, onChange }: {
   );
 }
 
-export function EmptyState({ title, description }: { title: string; description?: string }) {
+export function EmptyState({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
   return (
     <View style={styles.empty}>
       <Text style={styles.emptyTitle}>{title}</Text>
       {description ? <Text style={styles.emptyDescription}>{description}</Text> : null}
+      {actions ? <View style={styles.emptyActions}>{actions}</View> : null}
     </View>
   );
 }
@@ -101,6 +102,7 @@ const styles = StyleSheet.create({
   empty: { ...cardStyle, padding: spacing.xl, gap: spacing.xs, alignItems: "center" },
   emptyTitle: { fontFamily: fonts.bold, fontSize: fontSize.body, color: colors.charcoal, textAlign: "center" },
   emptyDescription: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.pencilGray, textAlign: "center" },
+  emptyActions: { marginTop: spacing.sm, flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: spacing.sm },
   chip: { minHeight: 36, paddingHorizontal: spacing.md, borderRadius: 18, backgroundColor: colors.paperWhite, borderWidth: 1, borderColor: colors.cottonPink, justifyContent: "center" },
   chipSelected: { backgroundColor: colors.flushEdge, borderColor: colors.flushEdge },
   chipLabel: { fontFamily: fonts.bold, fontSize: 13, color: colors.charcoal },

@@ -90,7 +90,7 @@ function PurchaseCallToAction({ account }: { account: AccountStatus }) {
         <View style={styles.ctaButton}>
           <Button
             label={t("Report.linkAccount")}
-            onPress={() => router.push("/(tabs)/account")}
+            onPress={() => router.push("/account")}
             icon={<Ionicons name="link" size={16} color={colors.paperWhite} />}
           />
         </View>

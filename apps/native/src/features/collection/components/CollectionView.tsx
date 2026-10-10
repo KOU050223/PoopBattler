@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
@@ -9,7 +10,7 @@ import { keyValueStorage } from "@/adapters/storage";
 import { colors, fontSize, fonts, spacing } from "@/theme";
 
 import { collectionGateway } from "../../gateways";
-import { cardStyle, Chip, dateFormatter, EmptyState } from "../../records-ui";
+import { Button, cardStyle, Chip, dateFormatter, EmptyState } from "../../records-ui";
 import { useLoader } from "../../use-loader";
 import { readPartyLineup, writePartyLineup } from "../party-lineup-storage";
 
@@ -106,7 +107,20 @@ export function CollectionView({ bottomInset }: { bottomInset: number }) {
       refreshing={loading}
       onRefresh={() => void reload()}
       ListHeaderComponent={header}
-      ListEmptyComponent={loading || error ? null : <EmptyState title={t("Collection.noCharacters")} description={t("Collection.noCharactersHint")} />}
+      ListEmptyComponent={
+        loading || error ? null : (
+          <EmptyState
+            title={t("Collection.noCharacters")}
+            description={t("Collection.noCharactersHint")}
+            actions={
+              <>
+                <Button label={t("Collection.logMeal")} variant="secondary" onPress={() => router.push("/meals")} />
+                <Button label={t("Collection.goToBattle")} onPress={() => router.push("/battle")} />
+              </>
+            }
+          />
+        )
+      }
       contentContainerStyle={[styles.list, { paddingBottom: bottomInset + spacing.xxl }]}
     />
   );
