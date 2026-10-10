@@ -1,6 +1,6 @@
 // T-009a 検証用。画面からは参照しない（export / prebuild で配線とアセット解決を確認する用）。
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import { Linking, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 import { Camera, useCameraDevice } from "react-native-vision-camera";
 
 import { toiletDebugCopy } from "@poopbattler/domain/battle/toilet-detection";
@@ -70,7 +70,11 @@ export function ToiletDetectProbe() {
             <Pressable style={styles.permissionButton} onPress={() => void requestCameraPermission()}>
               <Text style={styles.permissionButtonText}>カメラを許可する</Text>
             </Pressable>
-          ) : null}
+          ) : (
+            <Pressable style={styles.permissionButton} onPress={() => void Linking.openSettings()}>
+              <Text style={styles.permissionButtonText}>設定アプリを開く</Text>
+            </Pressable>
+          )}
         </View>
       ) : null}
     </View>

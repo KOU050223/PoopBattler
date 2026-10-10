@@ -54,10 +54,17 @@ export type UseToiletDetectionResult = {
   frameProcessor: ReadonlyFrameProcessor;
 };
 
-function toUiPermission(status: CameraPermissionStatus): ToiletCameraPermission {
+function toUiPermission(
+  status: CameraPermissionStatus,
+  requestedThisSession: boolean,
+): ToiletCameraPermission {
   if (status === "granted") return "granted";
   if (status === "not-determined") return "undetermined";
-  return "denied"; // denied / restricted はどちらもリクエストで許可できない
+  // Android では「一度も要求していない」も denied と返る
+  // （shouldShowRequestPermissionRationale は未要求・永久拒否の両方で false）。
+  // このセッションでまだ要求していない denied は要求可能とみなす。
+  // 要求後に denied へ戻った場合のみ本当の拒否（永久拒否含む）として扱う。
+  return requestedThisSession ? "denied" : "undetermined";
 }
 
 /**
@@ -80,12 +87,16 @@ export function useToiletDetection(options: UseToiletDetectionOptions): UseToile
     });
     return () => sub.remove();
   }, []);
+  const [permissionRequested, setPermissionRequested] = useState(false);
   const requestCameraPermission = useCallback(async () => {
+    setPermissionRequested(true);
     const granted = await requestPermission();
     setPermissionStatus(Camera.getCameraPermissionStatus());
     return granted;
   }, [requestPermission]);
-  const cameraPermission = hasPermission ? "granted" : toUiPermission(permissionStatus);
+  const cameraPermission = hasPermission
+    ? "granted"
+    : toUiPermission(permissionStatus, permissionRequested);
 
   const plugin = useTensorflowModel(TOILET_DETECTOR_MODEL);
   const model = plugin.state === "loaded" ? plugin.model : undefined;
