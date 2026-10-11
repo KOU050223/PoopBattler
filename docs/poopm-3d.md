@@ -91,7 +91,7 @@ Blender 側は `-Y` を正面にモデリングし、アーマチュアはデフ
 
 実行時はメッシュノードをホワイトリスト（`poopm-3d-model.tsx` の `VISIBLE_MESH_NODES`）で絞って表示する。現行GLBは残骸なしだが、将来の再エクスポートで編集残骸が混じっても映り込まない。
 
-図鑑のようなカード内の単体表示は `PoopmFigure3D`（`poopm-figure-3d.tsx`）を使う。内部の `Poopm3DSolo` はカードごとのCanvasを持つが、`useInView`（framer-motion）で viewport ±500px 内にある分だけマウントし、離れたものは外して WebGL コンテキスト上限（〜16個）を越えないようにしている。カード内にCanvasがあるため、共有Canvas + drei `View` の scissor 描画と違いスクロール時の描画遅延も出ない。SSR では `role="img"` の器だけが出て、Canvasはクライアントで遅延マウントされる。
+図鑑のようなカード内の単体表示は `PoopmFigure3D`（`poopm-figure-3d.tsx`）を使う。`useInView`（framer-motion）で viewport ±500px 内にある枠だけが `poopm-figure-pool.ts` のプールからCanvasを借りる。プールは canvas 要素＋`createRoot` のR3Fルートを最大10個保持し、枠の離脱時にDOMから外して回収、満杯時はviewportに最も近い待機枠へ最遠スロットを再割り当てする。WebKit は `loseContext()` してもコンテキストを解放しない（WebKit #218305）ため、マウント/アンマウントでCanvasを作り捨てると上限超過で表示中のCanvasが強制ロストして白抜きになる — プールでコンテキストを作り捨てないことがその対策。カード内にCanvasがあるため、共有Canvas + drei `View` の scissor 描画と違いスクロール時の描画遅延も出ない。SSR では `role="img"` の器だけが出て、Canvasはクライアントで遅延マウントされる。
 
 ## バリアント追加の手順
 

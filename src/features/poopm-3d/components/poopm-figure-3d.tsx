@@ -1,20 +1,10 @@
 "use client";
 
-import { useRef } from "react";
-import dynamic from "next/dynamic";
+import { useEffect, useRef } from "react";
 import { useInView } from "framer-motion";
 
 import type { Poopm3DAppearance } from "@/features/poopm-3d/components/poopm-3d-model";
 import type { Poopm3DBattleMotion } from "@/features/poopm-3d/poopm-3d.motion";
-
-// three を SSR バンドルに入れないよう、ステージ本体はクライアントだけで読み込む。
-const Poopm3DSolo = dynamic(
-  () =>
-    import("@/features/poopm-3d/components/poopm-3d-solo").then(
-      (module) => module.Poopm3DSolo,
-    ),
-  { ssr: false, loading: () => null },
-);
 
 export type PoopmFigure3DProps = {
   appearance: Poopm3DAppearance;
@@ -25,10 +15,11 @@ export type PoopmFigure3DProps = {
 
 // 2D PoopmFigure の3D版ドロップイン。カード内の1体表示など
 // モーション連鎖を持たない用途向け。
-// 1体ごとにCanvas（= WebGLコンテキスト）を持つため、図鑑のように多数並ぶ
-// 画面では viewport 周辺の分だけマウントし、離れたものは外してコンテキスト
-// 上限（〜16個）を越えないようにする。マージン分を先読みして表示前に
-// 準備する。
+// WebGLコンテキストは貴重なので（上限〜16個）、1枠=1Canvasの常駐化はしない。
+// 画面周辺の枠だけがプールのcanvasを借りる（viewport ±500px）。
+// プールのcanvasは枠間を移動して使い回すため、スクロールでコンテキストを
+// 作り捨てない — WebKit は loseContext してもコンテキストを解放しない
+// （#218305）ので、使い回しがないと表示中のCanvasが強制ロストで白抜きになる。
 export function PoopmFigure3D({
   appearance,
   motion = "idle",
@@ -37,21 +28,35 @@ export function PoopmFigure3D({
 }: PoopmFigure3DProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const inView = useInView(hostRef, { margin: "500px" });
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!inView || !host) return;
+
+    // three を SSR バンドル・初期バンドルに入れないよう遅延ロードする。
+    let release: (() => void) | undefined;
+    let alive = true;
+    void import("@/features/poopm-3d/components/poopm-figure-pool").then(
+      (pool) => {
+        if (!alive || !hostRef.current) return;
+        release = pool.claimFigureCanvas(hostRef.current, {
+          appearance,
+          motion: { name: motion, nonce: 0 },
+        });
+      },
+    );
+    return () => {
+      alive = false;
+      release?.();
+    };
+  }, [inView, appearance, motion]);
+
   return (
     <div
       ref={hostRef}
       role="img"
       aria-label={label}
       className={["relative", className].filter(Boolean).join(" ")}
-    >
-      <div aria-hidden="true" className="absolute inset-0">
-        {inView ? (
-          <Poopm3DSolo
-            appearance={appearance}
-            motion={{ name: motion, nonce: 0 }}
-          />
-        ) : null}
-      </div>
-    </div>
+    />
   );
 }
