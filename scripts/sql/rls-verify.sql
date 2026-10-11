@@ -463,7 +463,8 @@ $$;
 -- 通るケース（個体差が出る・開始時の値がスナップショットに載る）と
 -- 落ちるケース（戦っても3値が変わらない・他人の個体は読めない）を同じ実行で出す。
 --
--- 育成は無い。3値は仲間化した瞬間に確定し、以後どのバトルでも変わらない。
+-- 3値（個体値）は仲間化した瞬間に確定し、バトルでは変わらない。
+-- 育成は合成（凸）と進化（★）だけが行い、個体値ではなく tier / rank に記録する（Issue #196）。
 --
 -- 専用の user_c を使う。他のケースが作った activeバトルや所有行を引き継ぐと、
 -- start_battle が再開扱いになってスナップショットが空のまま検査を通ってしまう。
@@ -578,7 +579,7 @@ begin
 
   select * into after_row from public.user_characters where id = uc1;
 
-  -- 育成が無いことの本体。出して勝っても3値は1も動かない。
+  -- バトルで個体値が伸びないことの本体。出して勝っても3値は1も動かない。
   perform pg_temp.expect(
     '出して戦っても所持個体の3値は変わらない',
     after_row.hp = before_row.hp
@@ -700,7 +701,7 @@ $$;
 
 -- 初期値の抽選: レアリティで基準値と振れ幅が上がること
 -- ---------------------------------------------------------------------------
--- 育成が無いぶん、引いた瞬間の値が全て。抽選式そのものを直接確かめる。
+-- 個体値は合成・進化でも書き換えないので、引いた瞬間の値が一生付いて回る。抽選式そのものを直接確かめる。
 -- 乱数を含むので1回の値ではなく、多数回の分布が設計どおりかを見る。
 reset role;
 do $$
@@ -1165,6 +1166,270 @@ begin
   raise notice 'ok: 公開ロールに TRUNCATE 権限が無い';
 end;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- 合成（凸）と進化（★）（Issue #196）
+-- ---------------------------------------------------------------------------
+-- 通るべき: 同じ種族の合成・確認済みの育成済み素材・4凸からの進化・実効値の反映。
+-- 落ちるべき: 別種族・同一個体・他人の個体・未確認の育成済み素材・凸上限超え・
+--   進行中バトルの個体・4凸未満や★3の進化・クライアントからの直接更新。
+-- どの拒否も「行が変わっていないこと」まで確かめる。例外だけ見ると、
+-- 素材を消したあとで落ちる実装でも合格してしまう。
+reset role;
+
+-- SQL を実行し、投げられた SQLSTATE を返す（成功なら null）。
+-- become 後に呼ぶため、postgres ロールのうちに作っておく。
+create or replace function pg_temp.sqlstate_of(p_sql text)
+returns text
+language plpgsql
+as $$
+begin
+  execute p_sql;
+  return null;
+exception
+  when others then
+    return sqlstate;
+end;
+$$;
+
+do $$
+declare
+  m uuid := gen_random_uuid();
+  other_user uuid := gen_random_uuid();
+  -- common（curry-poop）: 合成1回で+1凸。
+  c_base uuid := gen_random_uuid();
+  c_mat1 uuid := gen_random_uuid();
+  c_mat_enhanced uuid := gen_random_uuid();
+  c_mat3 uuid := gen_random_uuid();
+  c_mat4 uuid := gen_random_uuid();
+  c_mat5 uuid := gen_random_uuid();
+  c_in_battle uuid := gen_random_uuid();
+  -- 別種族（meat-poop）。
+  meat uuid := gen_random_uuid();
+  -- epic（yogurt-poop）: +2凸。
+  e_base uuid := gen_random_uuid();
+  e_mat uuid := gen_random_uuid();
+  -- legendary（golden-poop）: +4凸。
+  l_base uuid := gen_random_uuid();
+  l_mat uuid := gen_random_uuid();
+  -- rare（spicy-poop）: +1凸。
+  r_base uuid := gen_random_uuid();
+  r_mat uuid := gen_random_uuid();
+  -- 仲間化済みで、その個体が合成で消えた完了バトル / 仲間化しなかった完了バトル。
+  consumed_battle uuid := gen_random_uuid();
+  plain_battle uuid := gen_random_uuid();
+  retried record;
+  -- ★3・4凸（最大）。
+  maxed uuid := gen_random_uuid();
+  -- 他人の同種族個体。
+  others uuid := gen_random_uuid();
+  merged record;
+  started record;
+  state text;
+begin
+  insert into auth.users (id, instance_id, aud, role, is_anonymous, created_at, updated_at)
+  values
+    (m, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', true, now(), now()),
+    (other_user, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', true, now(), now());
+
+  insert into public.user_characters (id, user_id, character_id, hp, power, speed, tier, rank)
+  values
+    (c_base, m, 'curry-poop', 240, 20, 20, 0, 0),
+    (c_mat1, m, 'curry-poop', 250, 22, 18, 0, 0),
+    (c_mat_enhanced, m, 'curry-poop', 240, 20, 20, 1, 2),
+    (c_mat3, m, 'curry-poop', 240, 20, 20, 0, 0),
+    (c_mat4, m, 'curry-poop', 240, 20, 20, 0, 0),
+    (c_mat5, m, 'curry-poop', 240, 20, 20, 0, 0),
+    (c_in_battle, m, 'curry-poop', 240, 20, 20, 0, 0),
+    (meat, m, 'meat-poop', 240, 20, 20, 0, 0),
+    (e_base, m, 'yogurt-poop', 384, 32, 32, 0, 0),
+    (e_mat, m, 'yogurt-poop', 384, 32, 32, 0, 0),
+    (l_base, m, 'golden-poop', 456, 38, 38, 0, 0),
+    (l_mat, m, 'golden-poop', 456, 38, 38, 0, 0),
+    (r_base, m, 'spicy-poop', 312, 26, 26, 0, 0),
+    (r_mat, m, 'spicy-poop', 312, 26, 26, 0, 0),
+    (maxed, m, 'curry-poop', 240, 20, 20, 2, 4),
+    (others, other_user, 'curry-poop', 240, 20, 20, 0, 0);
+
+  -- 仲間化済み（個体の行は無い = 素材として消費済み）と、仲間化しなかった完了バトル。
+  insert into public.battle_results (id, user_id, enemy_character_id, enemy_attribute, status, companionship_result, completed_at)
+  values
+    (consumed_battle, m, 'meat-poop', 'meat', 'completed', true, now()),
+    (plain_battle, m, 'curry-poop', 'curry', 'completed', false, now());
+
+  perform pg_temp.become(m);
+
+  -- 合成できる: 素材は消え、ベースは+1凸 -----------------------------------
+  select * into merged from public.merge_characters(c_base, c_mat1);
+  perform pg_temp.expect(
+    'common の合成でベースが1凸上がる',
+    merged.user_character_id = c_base and merged.tier = 0 and merged.rank = 1
+      and (select rank = 1 from public.user_characters where id = c_base),
+    true);
+  perform pg_temp.expect(
+    '合成した素材の行は消える',
+    not exists (select 1 from public.user_characters where id = c_mat1),
+    true);
+  perform pg_temp.expect(
+    '合成してもベースの個体値は変わらない',
+    (select hp = 240 and power = 20 and speed = 20 from public.user_characters where id = c_base),
+    true);
+
+  -- 別種族・同一個体・他人の個体は拒否 -------------------------------------
+  state := pg_temp.sqlstate_of(format('select * from public.merge_characters(%L, %L)', c_base, meat));
+  perform pg_temp.expect('別種族は合成できない (22023)', state = '22023', true);
+  state := pg_temp.sqlstate_of(format('select * from public.merge_characters(%L, %L)', c_base, c_base));
+  perform pg_temp.expect('同じ個体同士は合成できない (22023)', state = '22023', true);
+  state := pg_temp.sqlstate_of(format('select * from public.merge_characters(%L, %L)', c_base, others));
+  perform pg_temp.expect('他人の個体を素材にできない (42501)', state = '42501', true);
+  state := pg_temp.sqlstate_of(format('select * from public.merge_characters(%L, %L)', others, c_mat3));
+  perform pg_temp.expect('他人の個体をベースにできない (42501)', state = '42501', true);
+  perform pg_temp.expect(
+    '拒否された合成では素材もベースも変わらない',
+    exists (select 1 from public.user_characters where id = meat)
+      and exists (select 1 from public.user_characters where id = c_mat3)
+      and (select rank = 1 from public.user_characters where id = c_base),
+    true);
+
+  -- 育成済みの素材は確認フラグが要る ---------------------------------------
+  state := pg_temp.sqlstate_of(format('select * from public.merge_characters(%L, %L)', c_base, c_mat_enhanced));
+  perform pg_temp.expect('育成済みの素材は確認なしだと拒否される (PBM01)', state = 'PBM01', true);
+  state := pg_temp.sqlstate_of(format('select * from public.merge_characters(%L, %L, false)', c_base, c_mat_enhanced));
+  perform pg_temp.expect('育成済みの素材は確認 false でも拒否される (PBM01)', state = 'PBM01', true);
+  perform pg_temp.expect(
+    '未確認で拒否された育成済み素材は消えていない',
+    exists (select 1 from public.user_characters where id = c_mat_enhanced),
+    true);
+
+  select * into merged from public.merge_characters(c_base, c_mat_enhanced, true);
+  perform pg_temp.expect(
+    '確認済みなら育成済みの素材も合成できる（★・凸は引き継がず+1だけ）',
+    merged.rank = 2
+      and not exists (select 1 from public.user_characters where id = c_mat_enhanced),
+    true);
+
+  -- 進行中バトルのパーティにいる個体は合成できない --------------------------
+  select * into started from public.start_battle(array[c_in_battle]);
+  state := pg_temp.sqlstate_of(format('select * from public.merge_characters(%L, %L)', c_base, c_in_battle));
+  perform pg_temp.expect('バトル中の個体を素材にできない (PBM03)', state = 'PBM03', true);
+  state := pg_temp.sqlstate_of(format('select * from public.merge_characters(%L, %L)', c_in_battle, c_mat3));
+  perform pg_temp.expect('バトル中の個体をベースにできない (PBM03)', state = 'PBM03', true);
+  -- パーティにいない個体同士なら、バトル中でも合成できる。
+  select * into merged from public.merge_characters(c_base, c_mat3);
+  perform pg_temp.expect('バトルに出ていない個体同士は合成できる', merged.rank = 3, true);
+  perform public.complete_battle(started.battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+
+  select * into merged from public.merge_characters(c_base, c_mat4);
+  perform pg_temp.expect('4凸まで上がる', merged.rank = 4, true);
+
+  -- 凸上限を超える合成は拒否（溢れを黙って捨てない） -------------------------
+  state := pg_temp.sqlstate_of(format('select * from public.merge_characters(%L, %L)', c_base, c_mat5));
+  perform pg_temp.expect('4凸を超える合成は拒否される (PBM02)', state = 'PBM02', true);
+  perform pg_temp.expect(
+    '凸上限で拒否された素材は消えていない',
+    exists (select 1 from public.user_characters where id = c_mat5),
+    true);
+
+  -- レアリティごとの凸の上がり幅 --------------------------------------------
+  select * into merged from public.merge_characters(e_base, e_mat);
+  perform pg_temp.expect('epic の合成は+2凸', merged.rank = 2, true);
+  select * into merged from public.merge_characters(l_base, l_mat);
+  perform pg_temp.expect('legendary の合成は+4凸', merged.rank = 4, true);
+  select * into merged from public.merge_characters(r_base, r_mat);
+  perform pg_temp.expect('rare の合成は+1凸', merged.rank = 1, true);
+
+  -- 進化 ---------------------------------------------------------------------
+  state := pg_temp.sqlstate_of(format('select * from public.evolve_character(%L)', e_base));
+  perform pg_temp.expect('4凸未満は進化できない (PBM04)', state = 'PBM04', true);
+  state := pg_temp.sqlstate_of(format('select * from public.evolve_character(%L)', maxed));
+  perform pg_temp.expect('★3は進化できない (PBM04)', state = 'PBM04', true);
+  state := pg_temp.sqlstate_of(format('select * from public.evolve_character(%L)', others));
+  perform pg_temp.expect('他人の個体は進化できない (42501)', state = '42501', true);
+
+  select * into merged from public.evolve_character(c_base);
+  perform pg_temp.expect(
+    '4凸の個体は★2・0凸へ進化する',
+    merged.tier = 1 and merged.rank = 0
+      and (select tier = 1 and rank = 0 from public.user_characters where id = c_base),
+    true);
+
+  -- ★2になれば、さっき上限で拒否された素材を合成できる。
+  select * into merged from public.merge_characters(c_base, c_mat5);
+  perform pg_temp.expect('進化後は再び合成できる', merged.tier = 1 and merged.rank = 1, true);
+
+  -- 実効値がスナップショットに載る ------------------------------------------
+  -- c_base は common ★2・1凸 = 進行度5 → ×1.25。240→300、20→25。
+  -- maxed は common ★3・4凸 = 進行度12 → ×1.60。240→384、20→32。
+  -- l_base は legendary ★1・4凸 = 進行度4 → ×1.40。456→638（638.4）、38→53（53.2）。
+  select * into started from public.start_battle(array[c_base, maxed, l_base]);
+  perform pg_temp.expect(
+    'スナップショットに★と凸を掛けた実効値が載る',
+    (started.party_snapshot -> 0 ->> 'hp')::integer = 300
+      and (started.party_snapshot -> 0 ->> 'power')::integer = 25
+      and (started.party_snapshot -> 1 ->> 'hp')::integer = 384
+      and (started.party_snapshot -> 1 ->> 'power')::integer = 32
+      and (started.party_snapshot -> 1 ->> 'speed')::integer = 32
+      and (started.party_snapshot -> 2 ->> 'hp')::integer = 638
+      and (started.party_snapshot -> 2 ->> 'power')::integer = 53,
+    true);
+  perform public.complete_battle(started.battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+
+  -- rare / epic も TS の effectiveStat と同じ値になる（character-growth.test.ts と同じ表）。
+  -- e_base は epic ★1・2凸 = 進行度2 → ×1.16。384→445（445.44）、32→37（37.12）。
+  -- r_base は rare ★1・1凸 = 進行度1 → ×1.07。312→334（333.84）、26→28（27.82）。
+  select * into started from public.start_battle(array[e_base, r_base]);
+  perform pg_temp.expect(
+    'rare / epic の実効値もスナップショットに載る',
+    (started.party_snapshot -> 0 ->> 'hp')::integer = 445
+      and (started.party_snapshot -> 0 ->> 'power')::integer = 37
+      and (started.party_snapshot -> 1 ->> 'hp')::integer = 334
+      and (started.party_snapshot -> 1 ->> 'power')::integer = 28,
+    true);
+  perform public.complete_battle(started.battle_id, 4::smallint, 'normal', 'brown', 'easy', null);
+
+  -- 仲間化した個体を素材にしたあとでも、完了済みバトルの再呼び出しは同じ結果を返す。
+  -- 行を引き直す実装だと character_id が null になり、クライアントが契約違反として
+  -- エラーを出し続ける。仲間化しなかったバトルは null のまま（陰性）。
+  select * into retried
+  from public.complete_battle(consumed_battle, 4::smallint, 'normal', 'brown', 'easy', null);
+  perform pg_temp.expect(
+    '素材で消えた仲間でも、完了済みバトルの再呼び出しは種族IDを返す',
+    retried.companionship_result = true and retried.character_id = 'meat-poop',
+    true);
+  select * into retried
+  from public.complete_battle(plain_battle, 4::smallint, 'normal', 'brown', 'easy', null);
+  perform pg_temp.expect(
+    '仲間化しなかった完了済みバトルの再呼び出しは character_id を返さない',
+    retried.companionship_result = false and retried.character_id is null,
+    true);
+
+  -- クライアントは★・凸を直接書けず、個体を直接消せない ----------------------
+  perform pg_temp.expect(
+    'クライアントは tier / rank を直接更新できない',
+    pg_temp.allowed(format('update public.user_characters set tier = 2, rank = 4 where id = %L', meat)),
+    false);
+  perform pg_temp.expect(
+    'クライアントは所持個体を直接削除できない',
+    pg_temp.allowed(format('delete from public.user_characters where id = %L', meat)),
+    false);
+
+  reset role;
+  -- anon は公開ラッパー自体を実行できない。実際に anon で呼ぶ形にしないのは、
+  -- ローカルの Postgres 17.6 イメージで「anon ロールのまま例外ブロック内で関数を
+  -- 呼ぶ」とバックエンドが落ちるため。権限の有無そのものを見る。
+  perform pg_temp.expect(
+    'anon は merge_characters / evolve_character を実行できない',
+    has_function_privilege('anon', 'public.merge_characters(uuid, uuid, boolean)', 'execute')
+      or has_function_privilege('anon', 'public.evolve_character(uuid)', 'execute'),
+    false);
+  perform pg_temp.expect(
+    'authenticated は merge_characters / evolve_character を実行できる',
+    has_function_privilege('authenticated', 'public.merge_characters(uuid, uuid, boolean)', 'execute')
+      and has_function_privilege('authenticated', 'public.evolve_character(uuid)', 'execute'),
+    true);
+end;
+$$;
+reset role;
 
 -- ---------------------------------------------------------------------------
 -- アカウント削除（auth.users の DELETE）でユーザー固有の行がすべて消えること

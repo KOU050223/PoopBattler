@@ -14,6 +14,7 @@ import {
   swapLineupSlot,
   writePartyLineup,
 } from "../party-lineup";
+import { CharacterGrowthSheet } from "./character-growth-sheet";
 import { CollectionList, InventoryHint } from "./collection-list";
 
 type InventoryScreenProps = {
@@ -56,6 +57,10 @@ export function InventoryScreen({ characters }: InventoryScreenProps) {
     [ownedIds, storedJson],
   );
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  // 個体そのものではなくIDを持つ。合成・進化のあとで props が新しい値に
+  // 置き換わっても、シートは最新の個体を指し続ける（素材で消えたら閉じる）。
+  const [growthId, setGrowthId] = useState<string | null>(null);
+  const growthCharacter = characterByOwnership(characters, growthId) ?? null;
 
   const starterIds = useMemo(
     () => new Set(lineup.filter((id): id is string => id != null)),
@@ -143,8 +148,16 @@ export function InventoryScreen({ characters }: InventoryScreenProps) {
           starterIds={starterIds}
           swapEnabled={selectedSlot != null}
           onPick={pickCharacter}
+          onOpenGrowth={setGrowthId}
         />
       </section>
+
+      <CharacterGrowthSheet
+        character={growthCharacter}
+        characters={characters}
+        starterIds={starterIds}
+        onClose={() => setGrowthId(null)}
+      />
     </div>
   );
 }
