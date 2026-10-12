@@ -25,8 +25,8 @@ issue #171「ガチャ演出AR化検証」。検証レポートに加え、検�
 
 | ファイル | 変更種別 | 懸念度 |
 |---------|---------|--------|
-| docs/gacha-ar-feasibility.md | Added→Modified | 🟢 |
-| docs/pr/, docs/reviews/ | Added | 🟢 |
+| docsArchive/gacha-ar-feasibility.md | Added→Modified | 🟢 |
+| docsArchive/pr/, docsArchive/reviews/ | Added | 🟢 |
 | companionship-gravity.ts | Modified (+`gravityUpVec`/`smoothGravityVec3`) | 🟢 |
 | use-gravity-floor.ts | Modified (`useGravityFloorAngle`→`useGravityFloor`) | 🟢 |
 | toilet-detection.ts | Modified (`sizeFraction` 追加) | 🟢 |
@@ -104,7 +104,7 @@ reveal中の出現位置を「投げ入れ時の固定点」から「いま写�
 実機依存の挙動（検出精度・モーション権限・傾きの体感）はコード上確認できない
 ため、マージ前に実機チェックリストの確認をお願いします。
 
-詳細: docs/reviews/pr_review_guriguri00451_issue-171-gacha-ar-feasibility_20261003.md
+詳細: docsArchive/reviews/pr_review_guriguri00451_issue-171-gacha-ar-feasibility_20261003.md
 ```
 
 ## ✅ チェックリスト

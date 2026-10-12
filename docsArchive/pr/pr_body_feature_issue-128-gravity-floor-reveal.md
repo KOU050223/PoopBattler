@@ -10,7 +10,7 @@ Closes #128
 - ぽんで成否を分岐する。揺れ中は文字・紙吹雪・うんちくんを出さない
 - 成功時だけ、投げ入れ先と同じ点に `PoopmFigure` を立てる（加速度の重力。取れなければ画面上が上）
 - カメラ拒否時は静止背景を同じ拍で揺らす
-- 演出の拍は [`docs/companionship-crawl.md`](../companionship-crawl.md)
+- 演出の拍は [`docs/companionship-crawl.md`](../../docs/companionship-crawl.md)
 
 ## 動作確認（AI検証済み）
 
