@@ -4,7 +4,7 @@ Closes #171
 
 「床面で方角を認識して法線方向を確定し、画像認識した座標からうんちくんが飛び出す」演出を検証し、**実現可能と判断した上で擬似ARルートで実装**した。
 
-検証結論（`docs/gacha-ar-feasibility.md`）: 重力ベクトル＋便器bboxアンカー＋2D再アンカーなら追加依存なしで iOS/Android 両対応。真の平面検出・6DoFは WebXR `immersive-ar` が必要で iOS Safari 非対応のため採用見送り。
+検証結論（`docsArchive/gacha-ar-feasibility.md`）: 重力ベクトル＋便器bboxアンカー＋2D再アンカーなら追加依存なしで iOS/Android 両対応。真の平面検出・6DoFは WebXR `immersive-ar` が必要で iOS Safari 非対応のため採用見送り。
 
 ## 変更内容
 
@@ -34,8 +34,8 @@ Closes #171
 ## 関連
 
 - issue #171: https://github.com/KOU050223/PoopBattler/issues/171
-- 検証レポート: `docs/gacha-ar-feasibility.md`
-- ローカルレビュー: `docs/reviews/pr_review_guriguri00451_issue-171-gacha-ar-feasibility_20261003.md`
+- 検証レポート: `docsArchive/gacha-ar-feasibility.md`
+- ローカルレビュー: `docsArchive/reviews/pr_review_guriguri00451_issue-171-gacha-ar-feasibility_20261003.md`
 - WebXR採用可否の先行調査: issue #130
 
 🤖 Generated with [Devin](https://devin.ai) / dev-flow skill

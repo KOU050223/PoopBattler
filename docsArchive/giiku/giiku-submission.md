@@ -7,15 +7,15 @@
 
 ## 作品紹介スライド
 
-`docs/slides-giiku.pdf`（10ページ・247KB、PDF形式）
+`docsArchive/giiku/slides-giiku.pdf`（10ページ・247KB、PDF形式）
 
-`slides-merp.pdf`（18ページ）から抜粋・再構成。構成:
+`docsArchive/merp/slides-merp.pdf`（18ページ）から抜粋・再構成。構成:
 タイトル → どんなゲームか → 逆転（遊ぶと記録が残る）→ ユーザーループ → 機能
 → 写真撮り → バトル → 排便記録 → ARガチャ → ターゲットは全人類（オチ）
 
 ## 紹介画像
 
-`docs/giiku-intro.png`（705KB、PNG）
+`docsArchive/giiku/giiku-intro.png`（705KB、PNG）
 
 ロゴ＋うんちくん3D（前面ビュー切り出し）を黒背景で合成。
 

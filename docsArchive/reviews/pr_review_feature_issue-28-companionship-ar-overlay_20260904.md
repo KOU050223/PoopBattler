@@ -89,7 +89,7 @@
 ```
 レビューしました。抽選を触らず、カメラ停止とフォールバックも入っているので APPROVE です。
 実機のカメラ許可・投げ入れ・這い出りはマージ前に目視してください。
-詳細は docs/reviews/pr_review_feature_issue-28-companionship-ar-overlay_20260904.md を参照。
+詳細は docsArchive/reviews/pr_review_feature_issue-28-companionship-ar-overlay_20260904.md を参照。
 ```
 
 ---
