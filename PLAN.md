@@ -120,7 +120,7 @@
 - 種類：logic
 - やること：EAS設定、README/`docs/native` 更新、CIにnative typecheck/test/export追加、`docs/web-spec.md` とnativeの差分の最終照合
 - 依存：全部
-- 状態：pending
+- 状態：partial（EAS設定・CI native-export ジョブ・README/docs更新は実施。web-spec との最終照合は未実施）
 
 ## 実行順
 

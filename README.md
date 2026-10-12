@@ -18,6 +18,19 @@ AI駆動でうんこ支援開発するぞ
 | 認証・DB・画像 | Supabase (`@supabase/supabase-js`, `@supabase/ssr`) |
 | デプロイ | Vercel |
 
+## Native アプリ（Expo）
+
+`apps/native` は同じ Supabase を使う React Native 版。ネイティブモジュール（vision-camera / fast-tflite / expo-gl）を使うため Expo Go では動かず、dev build が必要。
+
+```bash
+cp apps/native/.env.example apps/native/.env.local   # EXPO_PUBLIC_SUPABASE_URL / ANON_KEY を設定
+npm run ios -w apps/native       # 初回は prebuild + ビルド
+npm run start -w apps/native     # 2回目以降は dev client へ接続
+```
+
+実機・クラウドビルドは `apps/native/eas.json`（development / preview / production）を使う。課金は RevenueCat 経由で、`EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY` が未設定だと購入は利用不可として扱われる（`iap-gateway.ts` の `no-api-key`）。
+画面構成は [`docs/native/screen-sequence.md`](docs/native/screen-sequence.md)、仕様の正本は [`docs/web-spec.md`](docs/web-spec.md)。
+
 ## 必要環境
 
 - Node.js 24（`flake.nix` で固定）
