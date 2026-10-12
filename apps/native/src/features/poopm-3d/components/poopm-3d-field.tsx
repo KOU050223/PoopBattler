@@ -9,73 +9,7 @@ const SKY_HORIZON = "#e6f3fc";
 // fog は地平線色に合わせて地面の端を空へ溶かす。
 const FOG_COLOR = SKY_HORIZON;
 const GRASS_BASE = "#79c466";
-const GRASS_BLOTCHES = ["#8dd17d", "#69b75b", "#72bf62"];
 const TUFT_COLOR = "#5aa74f";
-
-// テクスチャ生成だけは毎回同じ見た目にしたいので固定シードの簡易乱数。
-function mulberry32(seed: number) {
-  let a = seed;
-  return () => {
-    a += 0x6d2b79f5;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-// RN には canvas が無いので、色むらをピクセル配列へ直接描いて DataTexture にする。
-// タイリングで継ぎ目が出ないよう、楕円は端でラップさせて塗る。
-function makeGrassTexture(): THREE.DataTexture {
-  const size = 256;
-  const base = new THREE.Color(GRASS_BASE);
-  const blotches = GRASS_BLOTCHES.map((c) => new THREE.Color(c));
-  const pixels = new Uint8Array(size * size * 4);
-  const rgb = [base.r, base.g, base.b].map((v) => v * 255);
-  for (let i = 0; i < size * size; i += 1) {
-    pixels[i * 4] = rgb[0];
-    pixels[i * 4 + 1] = rgb[1];
-    pixels[i * 4 + 2] = rgb[2];
-    pixels[i * 4 + 3] = 255;
-  }
-  const rng = mulberry32(0xc0ffee);
-  for (let i = 0; i < 90; i += 1) {
-    const r = 8 + rng() * 26;
-    const ry = r * (0.5 + rng() * 0.7);
-    const angle = rng() * Math.PI;
-    const alpha = 0.06 + rng() * 0.1;
-    const cx = rng() * size;
-    const cy = rng() * size;
-    const color = blotches[i % blotches.length];
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    const reach = Math.ceil(Math.max(r, ry));
-    for (let dy = -reach; dy <= reach; dy += 1) {
-      for (let dx = -reach; dx <= reach; dx += 1) {
-        const u = (dx * cos + dy * sin) / r;
-        const v = (-dx * sin + dy * cos) / ry;
-        if (u * u + v * v > 1) continue;
-        const x = (((Math.floor(cx) + dx) % size) + size) % size;
-        const y = (((Math.floor(cy) + dy) % size) + size) % size;
-        const o = (y * size + x) * 4;
-        pixels[o] += (color.r * 255 - pixels[o]) * alpha;
-        pixels[o + 1] += (color.g * 255 - pixels[o + 1]) * alpha;
-        pixels[o + 2] += (color.b * 255 - pixels[o + 2]) * alpha;
-      }
-    }
-  }
-
-  const texture = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(5, 5);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.generateMipmaps = false;
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.needsUpdate = true;
-  return texture;
-}
 
 // 草の房。キャラの立ち位置（±1.2 以内）を避けて散らす。
 const TUFTS: readonly { x: number; z: number; s: number; r: number }[] = [
@@ -127,7 +61,6 @@ const SKY_FRAGMENT = /* glsl */ `
 `;
 
 export function Poopm3DField() {
-  const grassTexture = useMemo(() => makeGrassTexture(), []);
   const skyMaterial = useMemo(
     () =>
       new THREE.ShaderMaterial({
@@ -182,7 +115,6 @@ export function Poopm3DField() {
 
   useEffect(
     () => () => {
-      grassTexture.dispose();
       skyMaterial.dispose();
       tuftGeometry.dispose();
       stemGeometry.dispose();
@@ -194,7 +126,6 @@ export function Poopm3DField() {
       for (const material of flowerMaterials) material.dispose();
     },
     [
-      grassTexture,
       skyMaterial,
       tuftGeometry,
       stemGeometry,
@@ -220,8 +151,10 @@ export function Poopm3DField() {
         <group position-y={STAGE_GROUND_Y}>
           {/* 草原 */}
           <mesh rotation-x={-Math.PI / 2}>
-            <circleGeometry args={[26, 48]} />
-            <meshStandardMaterial map={grassTexture} roughness={1} />
+            {/* 中心から半径26へ伸びる扇形の大三角形はカメラ背面へ突き抜け、EXGL では縞状に欠ける。
+                細かく分割した板にして、1枚ごとの三角形を小さく保つ（端は fog で空色に溶ける）。 */}
+            <planeGeometry args={[56, 56, 28, 28]} />
+            <meshStandardMaterial color={GRASS_BASE} roughness={1} />
           </mesh>
           {/* 立ち位置まわりの淡いアリーナ円。ポケモンの円形フィールドっぽさ。
               中心は両者の中間あたり（player z=1.4 / enemy z=-4.4）。 */}
@@ -231,7 +164,18 @@ export function Poopm3DField() {
             scale={[1.25, 1, 1]}
           >
             <circleGeometry args={[3.9, 40]} />
-            <meshStandardMaterial color="#a3dd93" roughness={1} transparent opacity={0.55} />
+            {/* 草原と同一平面に近いため、Y のオフセットだけでは深度精度次第で z-fighting する。
+                polygonOffset で深度比較を手前にずらし、depthWrite 無効で透過の重なりも避ける。 */}
+            <meshStandardMaterial
+              color="#a3dd93"
+              roughness={1}
+              transparent
+              opacity={0.55}
+              depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-2}
+              polygonOffsetUnits={-2}
+            />
           </mesh>
 
           {/* 草の房（3本の細い円錐を1房として散らす） */}

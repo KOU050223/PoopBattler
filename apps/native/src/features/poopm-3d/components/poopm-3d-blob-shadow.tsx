@@ -51,7 +51,7 @@ export function Poopm3DBlobShadow({
   return (
     <mesh rotation-x={-Math.PI / 2} position={[x, y + 0.012, z]} renderOrder={1}>
       <planeGeometry args={[size, size]} />
-      <meshBasicMaterial map={texture} transparent depthWrite={false} />
+      <meshBasicMaterial map={texture} transparent depthWrite={false} polygonOffset polygonOffsetFactor={-4} polygonOffsetUnits={-4} />
     </mesh>
   );
 }

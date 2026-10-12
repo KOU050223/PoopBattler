@@ -26,7 +26,9 @@ export function Poopm3DStage({ player, enemy, speed = 1, onMotionFinished }: Poo
   return (
     <Canvas
       // 初期値はワイドショット。以降のカメラ制御は CameraRig が持つ。
-      camera={{ position: [...STAGE_CAMERA_WIDE.position], fov: STAGE_CAMERA_WIDE.fov }}
+      // near/far は R3F 既定の 0.1/1000 だと深度精度が足りず、地面と同一平面の円（+0.004）が
+      // z-fighting する。カメラは被写体から 3 以上離れ、空ドームは最遠でも約 50 なので、この範囲で足りる。
+      camera={{ position: [...STAGE_CAMERA_WIDE.position], fov: STAGE_CAMERA_WIDE.fov, near: 1, far: 80 }}
       gl={{ antialias: true, alpha: true }}
       style={{ flex: 1 }}
     >
