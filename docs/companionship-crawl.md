@@ -2,7 +2,7 @@
 
 戦闘後ガチャの **reveal**。抽選・投げ入れ・便器検出は既存のまま。投げ入れのあと、カメラを揺らして便器が震えているように見せ、**ぶるぶる → ぶるぶる → ぽん** で成否を出す。
 
-ループ全体は [`IDEA.md`](./IDEA.md) §6、抽選の確定は [`architecture.md`](./architecture.md)、見た目パーツは [`poopm.md`](./poopm.md)。Issue は [#128](https://github.com/KOU050223/PoopBattler/issues/128)。
+ループ全体は [`IDEA.md`](./IDEA.md) §6、抽選の確定は [`architecture.md`](./architecture.md)、見た目パーツは [`poopm-3d.md`](./poopm-3d.md)。Issue は [#128](https://github.com/KOU050223/PoopBattler/issues/128)。
 
 
 ## 空間

@@ -1,6 +1,8 @@
-# うんちくん (poopm)
+# うんちくん (poopm) — 旧2D仕様
 
-敵・仲間・図鑑に出るキャラクターの見た目ルール。ゲームループは [`IDEA.md`](./IDEA.md)、データは [`architecture.md`](./architecture.md) の `characters` を参照。
+> このファイルは [`docs/poopm-3d.md`](../docs/poopm-3d.md) に統合済み。参照はそちらへ。
+
+敵・仲間・図鑑に出るキャラクターの見た目ルール。ゲームループは [`IDEA.md`](../docs/IDEA.md)、データは [`architecture.md`](../docs/architecture.md) の `characters` を参照。
 
 <!-- デザインスケッチ ./assets/poopm-sketch.jpg は未コミット。入手したら docs/assets/ に置いて画像行を復活させる -->
 
@@ -74,4 +76,4 @@ DBに見た目の列は持たない。シードからハッシュで決定的に
 
 後ろ姿は別パーツを描かない。目と口を消し、頭だけ左右反転する。胴体と手足はそのまま。
 
-置き場・型・`characters.id` との対応は [`architecture.md`](./architecture.md) の「うんちくんの描画（poopm）」。
+置き場・型・`characters.id` との対応は [`architecture.md`](../docs/architecture.md) の「うんちくんの描画（poopm）」。

@@ -9,6 +9,6 @@
 | `issue-NNN/` | issue単位の仕様草案・進捗メモ・スクリーンショット |
 | `giiku/` `merp/` | 技育祭・発表用の資料（スライド・原稿） |
 | `native-diagrams/` | RN移行図を作ったときの作業メモ（成果物は `docs/native/`） |
-| ルートのmd | 旧版IDEA、ガチャAR可否検証、i18n比較などの単発資料 |
+| ルートのmd | 旧版IDEA・旧poopm（2D仕様）、ガチャAR可否検証、i18n比較などの単発資料 |
 
 ファイルをここへ移したら、中の `docs/...` パス参照も `docsArchive/...` に書き換える。
