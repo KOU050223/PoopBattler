@@ -8,11 +8,20 @@ appId: jp.poopbattler.app
     # 権限ダイアログ（モーション/カメラ）で止まらないよう事前許可しておく
     permissions:
       all: allow
-- openLink: exp+poop-battler://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081&disableOnboarding=1
-# clearState 後の初回は dev menu のオンボーディングが画面を覆うため、URL 側で抑止している。
+- openLink: exp+poop-battler://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081
+# clearState 後の初回は dev menu が自動で開き、UI を覆う（URL の disableOnboarding=1 では
+# 抑止できなかった）。バンドル読み込み完了を待ってから、メニューが出ていれば閉じる。
+- extendedWaitUntil:
+    visible: "Reload|はじめる|Start"
+    timeout: 120000
+- runFlow:
+    when:
+      visible: "Reload"
+    commands:
+      - tapOn: "Close"
 - extendedWaitUntil:
     visible: "はじめる|Start"
-    timeout: 120000
+    timeout: 30000
 - tapOn: "はじめる|Start"
 - extendedWaitUntil:
     visible: "バトルを始める|Start battle"
