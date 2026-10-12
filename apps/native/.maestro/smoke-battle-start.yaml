@@ -1,0 +1,25 @@
+# スモーク: 起動 → タイトル → バトル画面 → バトル開始まで。
+# 前提: ローカル Supabase 起動済み・Metro (npm run start -w apps/native) 起動済み・dev build 導入済み。
+# 端末ロケールが ja/en どちらでも通るよう、文言は正規表現で両方を許容する。
+appId: jp.poopbattler.app
+---
+- launchApp:
+    clearState: true
+    # 権限ダイアログ（モーション/カメラ）で止まらないよう事前許可しておく
+    permissions:
+      all: allow
+- openLink: exp+poop-battler://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081&disableOnboarding=1
+# clearState 後の初回は dev menu のオンボーディングが画面を覆うため、URL 側で抑止している。
+- extendedWaitUntil:
+    visible: "はじめる|Start"
+    timeout: 120000
+- tapOn: "はじめる|Start"
+- extendedWaitUntil:
+    visible: "バトルを始める|Start battle"
+    timeout: 30000
+- tapOn: "バトルを始める|Start battle"
+# 開始後はステージ操作（倍速/表示切替）が出る。start_battle RPC の成否もここで分かる。
+- extendedWaitUntil:
+    visible: "倍速にする|Speed up|等倍に戻す|Normal speed"
+    timeout: 60000
+- takeScreenshot: battle-started
