@@ -4,6 +4,8 @@ import type { Group } from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 
+import { PngDataUriTextureLoader } from "./poopm-3d.glb-texture-loader";
+
 // RN の fetch は file:// を扱えないため FileLoader/load() を使わず、
 // ローカルへ展開したファイルをバイト列で読んで parse() に渡す。
 export async function loadGlbArrayBuffer(moduleId: number): Promise<ArrayBuffer> {
@@ -14,7 +16,15 @@ export async function loadGlbArrayBuffer(moduleId: number): Promise<ArrayBuffer>
 
 export function parseGlb(buffer: ArrayBuffer): Promise<GLTF> {
   return new Promise((resolve, reject) => {
-    new GLTFLoader().parse(buffer, "", resolve, reject);
+    const loader = new GLTFLoader();
+    // 標準の TextureLoader/ImageBitmapLoader は RN で動かない。poopm_base.glb の埋め込みPNG（目・口）が
+    // 読めずに parse 全体が失敗していたため、純JSデコーダへ差し替える。
+    loader.register((parser) => {
+      // load() の形だけ満たせば GLTFParser は使える（型は TextureLoader 固定のため cast）。
+      parser.textureLoader = new PngDataUriTextureLoader(parser.options.manager) as unknown as typeof parser.textureLoader;
+      return { name: "PngDataUriTextureLoader" };
+    });
+    loader.parse(buffer, "", resolve, reject);
   });
 }
 
