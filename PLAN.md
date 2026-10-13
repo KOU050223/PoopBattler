@@ -120,7 +120,8 @@
 - 種類：logic
 - やること：EAS設定、README/`docs/native` 更新、CIにnative typecheck/test/export追加、`docs/web-spec.md` とnativeの差分の最終照合
 - 依存：全部
-- 状態：partial（EAS設定・CI native-export ジョブ・README/docs更新は実施。web-spec との最終照合は未実施）
+- 状態：completed（EAS設定・CI・README/docs更新済み。web-spec 最終照合を実施）
+- 照合結果：失敗時の結果文言（再抽選不可／食事ログなし）の2分岐を修正。**未対応の差分**: ①サインアウト導線が native に無い ②退会は「準備中」表示のみ（サーバー経路なし）③PWAインストール促進は native 対象外
 
 ## 実行順
 

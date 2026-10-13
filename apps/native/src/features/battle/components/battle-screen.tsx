@@ -204,7 +204,7 @@ export function BattleScreen() {
           <Text style={styles.body}>
             {completed.acquiredCharacter
               ? t("Battle.resultCompanion", { name: completed.acquiredCharacter.name })
-              : t("Battle.resultNoCompanion")}
+              : t(completed.usedMealLog ? "Battle.resultNoCompanion" : "Battle.resultNoCompanionNoMeal")}
           </Text>
           {completed.acquiredCharacter ? (
             <View style={styles.figure}>
