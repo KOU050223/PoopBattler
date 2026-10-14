@@ -1,3 +1,4 @@
+import * as Haptics from "expo-haptics";
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from "react-native";
 
@@ -21,13 +22,16 @@ export function Button({ label, onPress, variant = "primary", disabled, style, c
       accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
       onPress={onPress}
+      onPressIn={() => {
+        if (!disabled) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+      }}
       style={({ pressed }) => [
         styles.button,
         variant === "primary" && styles.primary,
         variant === "secondary" && styles.secondary,
         variant === "special" && styles.special,
         disabled && styles.disabled,
-        pressed && !disabled && styles.pressed,
+        pressed && !disabled && (variant === "secondary" ? styles.pressedFlat : styles.pressed),
         style,
       ]}
     >
@@ -43,7 +47,7 @@ export function Button({ label, onPress, variant = "primary", disabled, style, c
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 52,
+    minHeight: 54,
     borderRadius: radius.md,
     paddingHorizontal: spacing.lg,
     alignItems: "center",
@@ -51,11 +55,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "transparent",
   },
-  primary: { backgroundColor: colors.flushEdge },
-  special: { backgroundColor: colors.nightInk },
+  // 下辺に濃い縁を付けて厚みを出し、押下で沈ませる（平らなベタ塗りより押せる感が出る）。
+  primary: { backgroundColor: colors.flushEdge, borderBottomWidth: 4, borderBottomColor: colors.flushDeep },
+  special: { backgroundColor: colors.nightInk, borderBottomWidth: 4, borderBottomColor: "#000020" },
   secondary: { backgroundColor: colors.paperWhite, borderColor: colors.cottonPink },
   disabled: { backgroundColor: colors.paperWhite, borderColor: colors.fadedGray, opacity: 0.7 },
-  pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
+  pressed: { transform: [{ translateY: 3 }], borderBottomWidth: 1 },
+  pressedFlat: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   label: { fontFamily: fonts.bold, fontSize: fontSize.body + 1 },
   labelOnColor: { color: colors.paperWhite },
   labelSecondary: { color: colors.charcoal },
