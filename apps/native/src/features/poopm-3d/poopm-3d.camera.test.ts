@@ -36,23 +36,9 @@ describe("stageCameraCue", () => {
     expect(stageCameraCue("idle", "enemy")).toBeNull();
   });
 
-  it("attack: 攻撃側へ寄る1回切りのショット", () => {
-    const cue = mustCue("attack", "player");
-    const anchor = STAGE_ANCHOR.player.position;
-    expect(distance(cue.position, anchor)).toBeLessThan(
-      distance(STAGE_CAMERA_WIDE.position, anchor),
-    );
-    expect(cue.hold).toEqual({ kind: "timed", seconds: expect.any(Number) });
-    expect(cue.source).toEqual({ side: "player", name: "attack" });
-  });
-
-  it("hit: 被弾側へ寄り + シェイク付き", () => {
-    const cue = mustCue("hit", "enemy");
-    expect(cue.shake).toBeGreaterThan(0);
-    const anchor = STAGE_ANCHOR.enemy.position;
-    expect(distance(cue.position, anchor)).toBeLessThan(
-      distance(STAGE_CAMERA_WIDE.position, anchor),
-    );
+  it("attack / hit は通常ターンの頻出モーションなのでカメラを動かさない", () => {
+    expect(stageCameraCue("attack", "player")).toBeNull();
+    expect(stageCameraCue("hit", "enemy")).toBeNull();
   });
 
   it("special_charge: 溜め側へ寄り、モーションが続く間保持", () => {
@@ -87,13 +73,9 @@ describe("stageCameraCue", () => {
   });
 
   it("優先度: 同 tick の組み合わせで意味の通る側を撮る", () => {
-    // 通常交差: 攻撃側 > 被弾側
-    expect(mustCue("attack", "player").priority).toBeGreaterThan(
-      mustCue("hit", "enemy").priority,
-    );
-    // 必殺着弾: 発射 > 被弾
+    // 必殺着弾: 発射 > 交代（被弾はキューなし）
     expect(mustCue("special_fire", "player").priority).toBeGreaterThan(
-      mustCue("hit", "enemy").priority,
+      mustCue("swap_in", "enemy").priority,
     );
     // 勝利: 勝者寄り > 倒れた側。敗北: 俯瞰 > 勝者寄り。
     expect(mustCue("win", "player").priority).toBeGreaterThan(
@@ -130,11 +112,11 @@ describe("diffCameraSides", () => {
 describe("resolveCameraCue", () => {
   it("同時に2キュー来たら優先度の高い方を採る", () => {
     const motions: StageMotions = {
-      player: { name: "attack", nonce: 1 },
-      enemy: { name: "hit", nonce: 1 },
+      player: { name: "special_fire", nonce: 1 },
+      enemy: { name: "swap_in", nonce: 1 },
     };
     const result = resolveCameraCue(["player", "enemy"], motions, null);
-    expect(result.cue?.source).toEqual({ side: "player", name: "attack" });
+    expect(result.cue?.source).toEqual({ side: "player", name: "special_fire" });
     expect(result.release).toBe(false);
   });
 
@@ -160,11 +142,11 @@ describe("resolveCameraCue", () => {
   });
 
   it("timed キューはモーション終了を待たず時間で切れる（releaseしない）", () => {
-    const attack = mustCue("attack", "player");
+    const fire = mustCue("special_fire", "player");
     const result = resolveCameraCue(
       ["player"],
       { player: { name: "idle", nonce: 2 }, enemy: { name: "idle", nonce: 0 } },
-      attack,
+      fire,
     );
     expect(result.release).toBe(false);
   });
@@ -172,7 +154,8 @@ describe("resolveCameraCue", () => {
 
 describe("softenStageCameraCue", () => {
   it("寄りを弱めてシェイクを消す", () => {
-    const cue = mustCue("hit", "enemy");
+    // 現行キューに shake を持つものは無いので、揺れ付きの値を明示して消えることを見る。
+    const cue = { ...mustCue("special_fire", "enemy"), shake: 0.2 };
     const soft = softenStageCameraCue(cue, 0.35);
     expect(soft.shake).toBe(0);
     const anchor = STAGE_ANCHOR.enemy.position;
