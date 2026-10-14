@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { colors, fontSize, fonts, radius, spacing } from "@/theme";
+import { colors, elevation, fontSize, fonts, radius, spacing } from "@/theme";
 
 export function ScreenFrame({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   const insets = useSafeAreaInsets();
@@ -72,8 +72,7 @@ export function Chip({ label, selected, onPress }: { label: string; selected?: b
 export const cardStyle = {
   backgroundColor: colors.paperWhite,
   borderRadius: radius.lg,
-  borderWidth: 1,
-  borderColor: colors.cottonPink,
+  ...elevation.card,
 } as const;
 
 export const dateFormatter = (locale: string, value: string) =>
@@ -85,11 +84,11 @@ const styles = StyleSheet.create({
   title: { fontFamily: fonts.black, fontSize: fontSize.title, color: colors.charcoal },
   description: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.pencilGray },
   button: { minHeight: 48, borderRadius: radius.md, paddingHorizontal: spacing.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
-  primary: { backgroundColor: colors.flushEdge },
+  primary: { backgroundColor: colors.flushEdge, borderBottomWidth: 4, borderBottomColor: colors.flushDeep },
   secondary: { backgroundColor: colors.paperWhite, borderWidth: 1, borderColor: colors.cottonPink },
   danger: { backgroundColor: colors.paperWhite, borderWidth: 1, borderColor: colors.dangerEdge },
   disabled: { opacity: 0.5 },
-  pressed: { opacity: 0.8 },
+  pressed: { opacity: 0.85, transform: [{ translateY: 2 }] },
   buttonLabel: { fontFamily: fonts.bold, fontSize: fontSize.body },
   labelOnPrimary: { color: colors.paperWhite },
   labelSecondary: { color: colors.charcoal },

@@ -13,7 +13,7 @@ import type { BowelLog } from "@poopbattler/domain/records/bowel-log.types";
 import { getMealFoodGroupLabel } from "@poopbattler/domain/records/meal.types";
 
 import { getSupabase } from "@/lib/supabase";
-import { colors, fontSize, fonts, radius, spacing } from "@/theme";
+import { colors, elevation, fontSize, fonts, radius, spacing } from "@/theme";
 
 import { mealGateway } from "../../gateways";
 import { MealLogForm } from "../../meal/components/MealLogForm";
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   gap: { gap: spacing.md },
   scrollBottom: { paddingBottom: spacing.xxl },
-  card: { backgroundColor: colors.paperWhite, borderRadius: radius.lg, padding: spacing.xl, gap: spacing.sm },
+  card: { backgroundColor: colors.paperWhite, borderRadius: radius.lg, padding: spacing.xl, gap: spacing.sm, ...elevation.card },
   title: { fontFamily: fonts.black, fontSize: fontSize.title, color: colors.charcoal },
   body: { fontFamily: fonts.regular, fontSize: fontSize.body, lineHeight: 22, color: colors.charcoal },
   hint: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.pencilGray },

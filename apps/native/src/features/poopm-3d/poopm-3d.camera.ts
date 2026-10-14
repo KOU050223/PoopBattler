@@ -144,30 +144,17 @@ function pushShot(
 }
 
 // モーション → カメラキューの対応。優先度は「同じ tick に出る組み合わせ」で
-// 意味が通る順に決める（attack > hit で攻撃側へ寄る、fire > hit で発射を見せる、
-// 終端の lose > win > ko）。
+// 意味が通る順に決める（fire > hit で発射を見せる、終端の lose > win > ko）。
 export function stageCameraCue(
   motion: Poopm3DBattleMotion,
   side: StageSide,
 ): StageCameraCue | null {
   switch (motion) {
+    // 通常攻撃・被弾は毎ターン出るので、寄りや揺れを入れると画面が落ち着かない。
+    // ワイドのまま動かさず、節目の演出（必殺・交代・決着）だけカメラを使う。
     case "attack":
-      return pushShot(motion, side, {
-        dist: 4.4,
-        height: 0.6,
-        fov: 34,
-        hold: { kind: "timed", seconds: 0.55 },
-        priority: 20,
-      });
     case "hit":
-      return pushShot(motion, side, {
-        dist: 5.2,
-        height: 0.8,
-        fov: 31,
-        shake: 0.16,
-        hold: { kind: "timed", seconds: 0.4 },
-        priority: 10,
-      });
+      return null;
     case "special_charge":
       return pushShot(motion, side, {
         dist: 4.3,
