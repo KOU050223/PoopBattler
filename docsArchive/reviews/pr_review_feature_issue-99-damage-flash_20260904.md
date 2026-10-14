@@ -32,8 +32,8 @@ Issue #99 の要件に沿って、バトル中に被ダメージ側の名前/HP�
 
 - `src/features/battle/components/battle-figure.tsx`: Modified, 懸念度 低
 - `src/features/battle/components/battle-screen.tsx`: Modified, +4 / -0, 懸念度 低
-- `docs/pr/pr_body_feature_issue-99-damage-flash.md`: Added, +36 / -0, 懸念度 低
-- `docs/reviews/pr_review_feature_issue-99-damage-flash_20260904.md`: Added, +100 / -0, 懸念度 低
+- `docsArchive/pr/pr_body_feature_issue-99-damage-flash.md`: Added, +36 / -0, 懸念度 低
+- `docsArchive/reviews/pr_review_feature_issue-99-damage-flash_20260904.md`: Added, +100 / -0, 懸念度 低
 
 ---
 

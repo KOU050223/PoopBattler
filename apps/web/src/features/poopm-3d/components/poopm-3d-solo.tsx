@@ -14,7 +14,7 @@ import { STAGE_GROUND_Y } from "@/features/poopm-3d/poopm-3d.camera";
 import type { Poopm3DBattleMotion } from "@/features/poopm-3d/poopm-3d.motion";
 import type { GravityVec3 } from "@poopbattler/domain/battle/companionship-gravity";
 
-export type Poopm3DSoloProps = {
+export type Poopm3DSoloSceneProps = {
   appearance: Poopm3DAppearance;
   motion: Poopm3DMotionRequest;
   onMotionFinished?: (name: Poopm3DBattleMotion) => void;
@@ -23,6 +23,9 @@ export type Poopm3DSoloProps = {
    * 実際の床に立つ向きへ傾く。null/省略は恒等姿勢（直立）。
    */
   gravityUp?: GravityVec3 | null;
+};
+
+export type Poopm3DSoloProps = Poopm3DSoloSceneProps & {
   /**
    * 描画領域を親の箱より何倍広く取るか（中心固定）。画角も同率で広げるので
    * 箱の中のモデルの見かけは変わらず、周囲に余白だけが増える。
@@ -81,22 +84,16 @@ function GravityAligned({ up, children }: { up: GravityVec3 | null | undefined; 
   );
 }
 
-// うんちくん1体だけを透明背景で描く小型ステージ。
-// ガチャの這い出しや結果カードなど、DOM上の任意の位置に重ねて使う。
-export function Poopm3DSolo({
+// Canvas 内に描く中身。Poopm3DSolo（ReactのCanvas）と
+// プール用の createRoot 直描き（poopm-figure-pool）の両方から使う。
+export function Poopm3DSoloScene({
   appearance,
   motion,
   onMotionFinished,
   gravityUp = null,
-  overscan = 1,
-}: Poopm3DSoloProps) {
-  const canvas = (
-    <Canvas
-      camera={{ position: [0, 0.7, 6.6], fov: overscanFovDeg(overscan) }}
-      gl={{ antialias: true, alpha: true }}
-      dpr={[1, 2]}
-      style={{ background: "transparent" }}
-    >
+}: Poopm3DSoloSceneProps) {
+  return (
+    <>
       <ambientLight intensity={0.75} />
       <hemisphereLight args={["#e8f2ff", "#8a7f76", 0.45]} />
       <directionalLight position={[3, 5, 4]} intensity={1.3} />
@@ -115,6 +112,32 @@ export function Poopm3DSolo({
         </GravityAligned>
       </Suspense>
       <SoloCamera />
+    </>
+  );
+}
+
+// うんちくん1体だけを透明背景で描く小型ステージ。
+// ガチャの這い出しや結果カードなど、DOM上の任意の位置に重ねて使う。
+export function Poopm3DSolo({
+  appearance,
+  motion,
+  onMotionFinished,
+  gravityUp = null,
+  overscan = 1,
+}: Poopm3DSoloProps) {
+  const canvas = (
+    <Canvas
+      camera={{ position: [0, 0.7, 6.6], fov: overscanFovDeg(overscan) }}
+      gl={{ antialias: true, alpha: true }}
+      dpr={[1, 2]}
+      style={{ background: "transparent" }}
+    >
+      <Poopm3DSoloScene
+        appearance={appearance}
+        motion={motion}
+        onMotionFinished={onMotionFinished}
+        gravityUp={gravityUp}
+      />
     </Canvas>
   );
 

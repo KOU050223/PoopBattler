@@ -172,11 +172,11 @@ src/
 
 ## うんちくんの描画（poopm）
 
-見た目の約束は [`poopm.md`](./poopm.md)。コードは `features/poopm/`。バトルと図鑑はここを import する。
+見た目の約束は [`poopm-3d.md`](./poopm-3d.md)。コードは `features/poopm/`。バトルと図鑑はここを import する。
 
 パーツは `public/assets/poopm_parts/<部位>/` にリポジトリ同梱する。現状は胴体の色変えも含めてすべて PNG。`poopm.assets.test.ts` が TS マップの全パスについてファイルの実在を検査する。
 
-見た目は [`poopm.md`](./poopm.md)「個体差の決め方」のとおり、種族（`characters.id`）で色を、個体シードのハッシュで頭・目・口を決める。`poopm.appearances.ts` は種族の代表見た目と色のマップとして残る。`characters.image_key` は読まない。列は残してよい。見た目用の列は足さない。
+見た目は [`poopm-3d.md`](./poopm-3d.md)「個体差の決め方」のとおり、種族（`characters.id`）で色を、個体シードのハッシュで頭・目・口を決める。`poopm.appearances.ts` は種族の代表見た目と色のマップとして残る。`characters.image_key` は読まない。列は残してよい。見た目用の列は足さない。
 
 型は次の3層に分ける。後ろ向きはマップに持たない。
 
@@ -234,7 +234,7 @@ type PoopmFigureProps = {
 | `meal_logs` | `user_id → profiles.id`、食事日時、画像パス、料理タグ、任意メモ |
 | `bowel_logs` | `user_id → profiles.id`、`battle_result_id → battle_results.id`（一意）、硬さ、量、色、出しやすさ、記録日時 |
 | `characters` | マスター。`id` / `name` / `attribute` / `rarity`。見た目はコードのマップ（上記 poopm）。`image_key` は使わない |
-| `user_characters` | `user_id → profiles.id`、`character_id → characters.id`、`acquired_from_battle_id → battle_results.id`、`hp` / `power` / `speed`（個体ごとの数値。詳細は [`battle.md`](./battle.md)） |
+| `user_characters` | `user_id → profiles.id`、`character_id → characters.id`、`acquired_from_battle_id → battle_results.id`、`hp` / `power` / `speed`（個体値。詳細は [`battle.md`](./battle.md)）、`tier` / `rank`（★と凸。詳細は [`merge.md`](./merge.md)） |
 | `battle_results` | `user_id → profiles.id`、`meal_log_id → meal_logs.id`（nullable。ガチャで写真を投げ入れた場合のみ入る）、敵キャラクター・属性・敵の3値、`party_snapshot`（開始時に出した個体と3値）、勝敗、抽選状態、開始・完了日時 |
 
 ステータスはマスターの `characters` ではなく `user_characters` に置く。同じ
@@ -245,7 +245,8 @@ type PoopmFigureProps = {
 バトルを始められないよう、サーバーが `user_characters` から読んだ値をここに固定する。
 「どの個体で戦ったか」の記録も兼ねる。
 
-個体の3値は仲間化時に確定し、以後変わらない（育成は行わない）。
+個体の3値（個体値）は仲間化時に確定し、以後変わらない。育成は合成・進化の RPC が
+`tier` / `rank` だけを書き換え、実効値は `start_battle` がスナップショットを作るときに掛け合わせる（[`merge.md`](./merge.md)）。
 
 すべてのユーザー固有テーブルでRLSを有効にし、本人の行だけを `auth.uid() = user_id` で読み書き可能にする。食事画像は端末内のIndexedDBへ保存し、`meal_logs` には画像データではなくローカル画像IDを保存する。画像はサーバーへ送信しないため、Storageの公開URL・署名URL・Storageポリシーは使わない。
 
