@@ -24,6 +24,27 @@ jobs:
 
       - run: npm test
 
+  # typecheck/test では検出できない、Metro のバンドル解決（GLB・TFLite 等の
+  # アセット登録、native 依存の import 解決）の壊れを検出する。
+  # EXPO_PUBLIC_* はビルド時に埋め込まれるだけなので、ダミー値で足りる。
+  native-export:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: http://localhost:54321
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: dummy
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx expo export --platform ios
+        working-directory: apps/native
+
   # DBを起動する検査はここにまとめる。マイグレーションを変更したPRで、
   # 型の再生成漏れとRLSの退行を同じジョブで捕まえる。
   # pre-commit では Docker を要する検査を行わないため、ここが唯一の砦になる。

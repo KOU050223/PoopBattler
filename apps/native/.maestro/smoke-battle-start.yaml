@@ -1,0 +1,75 @@
+# スモーク: 起動 → タイトル → バトル画面 → バトル開始まで。
+# 前提: ローカル Supabase 起動済み・Metro (npm run start -w apps/native) 起動済み・dev build 導入済み。
+# Android 実機の場合は、実行前に `adb reverse tcp:8081 tcp:8081` と `adb reverse tcp:54321 tcp:54321` が必要
+# （EXPO_PUBLIC_SUPABASE_URL が 127.0.0.1 を指すため。無いと start_battle が失敗する）。
+# 端末ロケールが ja/en どちらでも通るよう、文言は正規表現で両方を許容する。
+appId: jp.poopbattler.app
+---
+- launchApp:
+    clearState: true
+    # 権限ダイアログ（モーション/カメラ）で止まらないよう事前許可しておく
+    permissions:
+      all: allow
+- openLink: exp+poop-battler://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081
+# clearState 後の初回は dev menu が自動で開き、UI を覆う（URL の disableOnboarding=1 では
+# 抑止できなかった）。バンドル読み込み完了を待ってから、メニューが出ていれば閉じる。
+# Android 15+ (16KB ページ端末) の debug ビルドは、アクティビティ起動のたびに OS が互換性ダイアログを
+# 出して UI を覆う（clearState で「次回から表示しない」も消える）。出る時機が不定なので、
+# 目的の画面が見えるまで「出ていれば閉じる」を繰り返す。iOS では when が常に偽で素通りする。
+- repeat:
+    while:
+      notVisible: "Development Servers|DEVELOPMENT SERVERS|Continue|Reload|はじめる|Start"
+    times: 30
+    commands:
+      - runFlow:
+          when:
+            visible: "Android アプリの互換性|Android app compatibility"
+          commands:
+            - tapOn: "OK"
+      - waitForAnimationToEnd:
+          timeout: 2000
+# ダイアログ表示中に開いたリンクは dev launcher に届かないので、launcher のままなら開き直す。
+- runFlow:
+    when:
+      visible: "Development Servers|DEVELOPMENT SERVERS"
+    commands:
+      - openLink: exp+poop-battler://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081
+      - repeat:
+          while:
+            notVisible: "Continue|Reload|はじめる|Start"
+          times: 30
+          commands:
+            - runFlow:
+                when:
+                  visible: "Android アプリの互換性|Android app compatibility"
+                commands:
+                  - tapOn: "OK"
+            - waitForAnimationToEnd:
+                timeout: 2000
+- extendedWaitUntil:
+    visible: "Continue|Reload|はじめる|Start"
+    timeout: 120000
+# 初回は dev menu のオンボーディング（Continue）→ メニュー本体（Reload / Close）の順で出る。
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- runFlow:
+    when:
+      visible: "Reload"
+    commands:
+      - tapOn: "Close"
+- extendedWaitUntil:
+    visible: "はじめる|Start"
+    timeout: 30000
+- tapOn: "はじめる|Start"
+- extendedWaitUntil:
+    visible: "バトルを始める|Start battle"
+    timeout: 30000
+- tapOn: "バトルを始める|Start battle"
+# 開始後はステージ操作（倍速/表示切替）が出る。start_battle RPC の成否もここで分かる。
+- extendedWaitUntil:
+    visible: "倍速にする|Speed up|等倍に戻す|Normal speed"
+    timeout: 60000
+- takeScreenshot: battle-started

@@ -76,13 +76,13 @@ npm run db:test:rls
 スキーマを変更したら、TypeScriptの型を必ず生成し直してコミットする。
 
 ```bash
-npm run db:types      # src/types/database.types.ts を生成する
+npm run db:types      # packages/domain/src/types/database.types.ts を生成する
 ```
 
 再生成漏れは2段階で検出する。
 
 - **pre-commit（lefthook）**: `supabase/migrations/` を変更したコミットに
-  `src/types/database.types.ts` が含まれていなければ落とす。Dockerは使わず即座に終わる。
+  `packages/domain/src/types/database.types.ts` が含まれていなければ落とす。Dockerは使わず即座に終わる。
 - **CI**: 実際に型を生成し直し、コミットされた内容と差分がないかを検証する。
   手元では `npm run db:types:check` で同じ検査を実行できる。
 
@@ -361,7 +361,7 @@ Client ID / Secret は Dashboard 側に入っているので `.env.local` には
 
 ## 型安全なアクセス
 
-`src/types/database.types.ts` はマイグレーションから生成したスキーマの型で、
+`packages/domain/src/types/database.types.ts` はマイグレーションから生成したスキーマの型で、
 `src/lib/supabase/` の各クライアントに `createBrowserClient<Database>` のように
 型引数として渡している。これによりテーブル名・カラム名のタイポや、戻り値の
 取り違えがコンパイル時に検出される。
@@ -371,7 +371,7 @@ Client ID / Secret は Dashboard 側に入っているので `.env.local` には
 これを参照すること。
 
 ```ts
-import type { Database } from "@/types/database.types";
+import type { Database } from "@poopbattler/domain/types/database.types";
 
 type CharacterAttribute = Database["public"]["Enums"]["character_attribute"];
 // "curry" | "vegetable" | "spicy" | "meat" | "sweet" | "dairy" | "normal"

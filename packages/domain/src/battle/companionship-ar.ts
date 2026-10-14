@@ -1,0 +1,221 @@
+import type { UserMediaCameraStatus } from "../ports";
+import { clampPercent } from "./toilet-detection";
+import type {
+  PercentPoint,
+  ToiletModelStatus,
+  ToiletSight,
+} from "./toilet-detection";
+
+export type CompanionshipArPhase = "staging" | "throw" | "shake" | "reveal" | "summary";
+
+export const REVEAL_SUCCESS_COPY = "成功";
+export const REVEAL_FAIL_COPY = "失敗";
+
+export const COMPANIONSHIP_PHASE_MS = {
+  throw: 900,
+  shake: 700,
+} as const;
+
+export const VIDEO_SHAKE_ANIMATE = {
+  x: [0, -3, 4, -3, 2, -7, 8, -6, 5, 0],
+  y: [0, 2, -2, 1, -2, 4, -5, 3, -3, 0],
+  rotate: [0, -1.2, 1.2, -0.8, 0.6, -2.4, 2.2, -1.8, 1.4, 0],
+};
+
+export const VIDEO_SHAKE_TRANSITION = {
+  duration: 0.7,
+  times: [0, 0.08, 0.16, 0.24, 0.32, 0.4, 0.5, 0.6, 0.7, 1],
+  ease: "linear" as const,
+};
+
+export const GACHA_SWIPE_MIN_DISTANCE_PX = 56;
+const GACHA_SWIPE_MAX_ANGLE_RAD = (65 * Math.PI) / 180;
+const GACHA_SWIPE_NEAR_TARGET_PX = 24;
+
+// reveal モデルの見かけサイズを便器の見え方（=距離の手がかり）に連動させる。
+// bbox 高さが表示高さのこの割合のとき scale=1。実機調整前提の仮値。
+export const GACHA_AR_SCALE_REF_FRACTION = 0.5;
+export const GACHA_AR_SCALE_MIN = 0.6;
+export const GACHA_AR_SCALE_MAX = 1.8;
+
+export type PixelPoint = {
+  x: number;
+  y: number;
+};
+
+export function usesCompanionshipAr(result: { usedMealLog: boolean }) {
+  return result.usedMealLog;
+}
+
+export function shouldPlayThrow(photoId: string | null | undefined) {
+  return Boolean(photoId);
+}
+
+export function shouldCrawlOut(acquiredCharacter: { id: string } | null | undefined) {
+  return acquiredCharacter != null;
+}
+
+export function isLiveCameraOverlay(status: UserMediaCameraStatus) {
+  return status === "ready" || status === "starting";
+}
+
+export function isCameraFallback(status: UserMediaCameraStatus) {
+  return (
+    status === "insecure"
+    || status === "unsupported"
+    || status === "denied"
+    || status === "busy"
+    || status === "unavailable"
+    || status === "error"
+  );
+}
+
+export function canAdvanceFromStaging(status: UserMediaCameraStatus) {
+  return status === "ready" || isCameraFallback(status);
+}
+
+/** 便器 hit、または検出できないときにタップで投げ入れ先を決めたあとだけ、スワイプで開始できる。 */
+export function canStartGachaBySwipe(input: {
+  phase: CompanionshipArPhase;
+  cameraStatus: UserMediaCameraStatus;
+  modelStatus: ToiletModelStatus;
+  sight: ToiletSight;
+  hasAimPoint: boolean;
+}) {
+  if (input.phase !== "staging") return false;
+  if (!canAdvanceFromStaging(input.cameraStatus)) return false;
+  if (input.sight.kind === "hit") return true;
+  if (input.modelStatus === "loading" || input.modelStatus === "idle") return false;
+  return input.hasAimPoint;
+}
+
+export function clientPointFromPercent(
+  point: { x: number; y: number },
+  rect: { left: number; top: number; width: number; height: number },
+): PixelPoint {
+  return {
+    x: rect.left + (point.x / 100) * rect.width,
+    y: rect.top + (point.y / 100) * rect.height,
+  };
+}
+
+/** reveal モデルのスケール。便器が大きく写る＝近いので、モデルも大きくする。 */
+export function gachaRevealScale(sight: ToiletSight): number {
+  if (sight.kind !== "hit" || sight.sizeFraction <= 0) return 1;
+  const scale = sight.sizeFraction / GACHA_AR_SCALE_REF_FRACTION;
+  return Math.min(GACHA_AR_SCALE_MAX, Math.max(GACHA_AR_SCALE_MIN, scale));
+}
+
+/**
+ * reveal 中の出現位置。便器が hit している間は現在の検出座標へ追従し、
+ * 見失った瞬間は直前の位置（fallback）を維持してジャンプを防ぐ。
+ */
+export function resolveRevealTarget(input: {
+  sight: ToiletSight;
+  fallback: PercentPoint;
+}): PercentPoint {
+  if (input.sight.kind === "hit") return input.sight.target;
+  return input.fallback;
+}
+
+// reveal モデルの表示箱（= 224px）。クランプと描画側で同じ値を使う。
+export const REVEAL_MODEL_BOX_PX = 224;
+// モデル箱がステージ実寸を超えると必ず見切れるので、
+// 表示スケール自体も枠に収まるよう抑える（bbox=近い=でかい、の勢いは殺さない程度に）。
+const REVEAL_STAGE_FILL = 0.92;
+
+/** 表示スケールをステージ実寸に収まる範囲へ抑える。 */
+export function clampRevealScale(input: {
+  scale: number;
+  stageWidth: number;
+  stageHeight: number;
+}): number {
+  const { scale, stageWidth, stageHeight } = input;
+  if (stageWidth <= 0 || stageHeight <= 0) return scale;
+  return Math.min(
+    scale,
+    (stageWidth * REVEAL_STAGE_FILL) / REVEAL_MODEL_BOX_PX,
+    (stageHeight * REVEAL_STAGE_FILL) / REVEAL_MODEL_BOX_PX,
+  );
+}
+
+/**
+ * 出現位置（=モデル中心）は検出枠の中心へ正確に合わせる。
+ * 見切れ防止で内側へ寄せると、検出枠が画面端寄りのときにアンカーが
+ * 枠の中心からずれて「立っていない」見た目になるため、位置はクランプしない。
+ * 枠が画面端にあるときモデルの一部が画面外へ出るのは AR として自然なので許容する。
+ */
+export function clampRevealSpawn(input: { target: PercentPoint }): PercentPoint {
+  const { target } = input;
+  return { x: clampPercent(target.x), y: clampPercent(target.y) };
+}
+
+export function isThrowSwipe(start: PixelPoint, end: PixelPoint, target: PixelPoint) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const swipeLen = Math.hypot(dx, dy);
+  if (swipeLen < GACHA_SWIPE_MIN_DISTANCE_PX) return false;
+
+  const toTargetX = target.x - start.x;
+  const toTargetY = target.y - start.y;
+  const toTargetLen = Math.hypot(toTargetX, toTargetY);
+  if (toTargetLen < GACHA_SWIPE_NEAR_TARGET_PX) return dy > 0;
+
+  const cos = (dx * toTargetX + dy * toTargetY) / (swipeLen * toTargetLen);
+  return cos >= Math.cos(GACHA_SWIPE_MAX_ANGLE_RAD);
+}
+
+export function nextCompanionshipArPhase(
+  phase: CompanionshipArPhase,
+  hasPhoto: boolean,
+  reduceMotion = false,
+): CompanionshipArPhase {
+  if (phase === "staging") {
+    if (hasPhoto) return "throw";
+    return reduceMotion ? "reveal" : "shake";
+  }
+  if (phase === "throw") return reduceMotion ? "reveal" : "shake";
+  if (phase === "shake") return "reveal";
+  return "summary";
+}
+
+export function companionshipPhaseDelay(
+  phase: CompanionshipArPhase,
+  reduceMotion: boolean,
+): number | null {
+  // reveal は這い出しをじっくり見られるよう、タップされるまで待機する。
+  if (phase === "staging" || phase === "summary" || phase === "reveal") return null;
+  if (reduceMotion) return 0;
+  if (phase === "throw") return COMPANIONSHIP_PHASE_MS.throw;
+  return COMPANIONSHIP_PHASE_MS.shake;
+}
+
+export function gachaCameraStatusMessage(status: UserMediaCameraStatus): string | null {
+  switch (status) {
+    case "starting":
+      return "カメラを起動しています";
+    case "insecure":
+      return "カメラはHTTPS環境でのみ利用できます。静止背景で結果を表示します。";
+    case "unsupported":
+      return "このブラウザはカメラに対応していません。静止背景で結果を表示します。";
+    case "denied":
+      return "カメラの利用が許可されませんでした。静止背景で結果を表示します。";
+    case "busy":
+      return "カメラは他のアプリで使用中です。静止背景で結果を表示します。";
+    case "unavailable":
+      return "利用できるカメラが見つかりませんでした。静止背景で結果を表示します。";
+    case "error":
+      return "カメラを起動できませんでした。静止背景で結果を表示します。";
+    default:
+      return null;
+  }
+}
+
+export function companionshipRevealCopy(input: {
+  acquired: boolean;
+  usedMealLog: boolean;
+}) {
+  if (input.acquired) return REVEAL_SUCCESS_COPY;
+  if (input.usedMealLog) return REVEAL_FAIL_COPY;
+  return "この回は仲間になりません。食事ログがないと、仲間化抽選は行いません。";
+}

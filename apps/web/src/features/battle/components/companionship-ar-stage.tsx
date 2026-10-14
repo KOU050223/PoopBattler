@@ -1,0 +1,541 @@
+"use client";
+
+import { useEffect, useRef, useState, type PointerEvent, type Ref } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+
+import type { CompleteBattleResult } from "@/features/battle/actions";
+import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
+import {
+  canStartGachaBySwipe,
+  clampRevealScale,
+  clampRevealSpawn,
+  clientPointFromPercent,
+  companionshipPhaseDelay,
+  companionshipRevealCopy,
+  gachaCameraStatusMessage,
+  gachaRevealScale,
+  GACHA_SWIPE_MIN_DISTANCE_PX,
+  isLiveCameraOverlay,
+  isThrowSwipe,
+  nextCompanionshipArPhase,
+  REVEAL_MODEL_BOX_PX,
+  resolveRevealTarget,
+  shouldCrawlOut,
+  shouldPlayThrow,
+  VIDEO_SHAKE_ANIMATE,
+  VIDEO_SHAKE_TRANSITION,
+  type CompanionshipArPhase,
+} from "@poopbattler/domain/battle/companionship-ar";
+import { useGachaCamera } from "@/features/battle/hooks/use-gacha-camera";
+import { useGravityFloor } from "@/features/battle/hooks/use-gravity-floor";
+import type { GravityVec3 } from "@poopbattler/domain/battle/companionship-gravity";
+import { useToiletDetection } from "@/features/battle/hooks/use-toilet-detection";
+import {
+  DEFAULT_THROW_TARGET,
+  percentPointFromClient,
+  resolveThrowTarget,
+  toiletDebugCopy,
+  type PercentPoint,
+  type ToiletModelStatus,
+  type ToiletSight,
+} from "@poopbattler/domain/battle/toilet-detection";
+import { getMealPhoto } from "@/features/meal/meal-photo-storage";
+import { GachaStage3D } from "@/features/battle/components/gacha-stage-3d";
+import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
+import type { UserMediaCameraStatus } from "@poopbattler/domain/ports";
+import { captionTextClass, mutedTextClass, secondaryButtonClass } from "@/lib/ui-classes";
+
+type CompletionSuccess = Extract<CompleteBattleResult, { success: true }>;
+
+// 前傾でモデルがカメラ側へ倒れると、直立でぴったりの 224px 箱から出て
+// キャンバス端で切れる。箱の周囲に余白を取って描画する。
+const REVEAL_CANVAS_OVERSCAN = 1.8;
+
+export type CompanionshipArFrameProps = {
+  result: CompletionSuccess;
+  mealPhotoUrl: string | null;
+  phase: CompanionshipArPhase;
+  status: UserMediaCameraStatus;
+  reduceMotion: boolean;
+  onSkip: () => void;
+  videoRef?: Ref<HTMLVideoElement>;
+  toiletSight?: ToiletSight;
+  detectionStatus?: ToiletModelStatus;
+  throwTarget?: PercentPoint;
+  /** reveal 中の出現位置。便器検出に追従するため throwTarget と分けている。 */
+  spawnTarget?: PercentPoint;
+  floorAngleDeg?: number;
+  /** 床法線（カメラ空間の世界の上向き）。3D モデルへそのまま渡す。 */
+  gravityUp?: GravityVec3 | null;
+  /** bbox 高さから推定したモデルスケール。 */
+  modelScale?: number;
+  aimPoint?: PercentPoint | null;
+  onAim?: (point: PercentPoint) => void;
+  onThrowStart?: () => void;
+};
+
+const CONFETTI_PIECES = [
+  { x: 10, delay: 0, color: "#ff7aac", w: 8, h: 12, rot: 22 },
+  { x: 22, delay: 0.04, color: "#1cb0f6", w: 7, h: 11, rot: -16 },
+  { x: 34, delay: 0.08, color: "#ffb3d0", w: 9, h: 10, rot: 8 },
+  { x: 46, delay: 0.02, color: "#ffffff", w: 6, h: 12, rot: -28 },
+  { x: 58, delay: 0.1, color: "#ff7aac", w: 8, h: 9, rot: 14 },
+  { x: 70, delay: 0.06, color: "#1cb0f6", w: 7, h: 13, rot: -10 },
+  { x: 82, delay: 0.12, color: "#ffb3d0", w: 8, h: 11, rot: 26 },
+  { x: 16, delay: 0.16, color: "#ffffff", w: 6, h: 10, rot: -6 },
+  { x: 40, delay: 0.18, color: "#ff7aac", w: 9, h: 8, rot: 18 },
+  { x: 64, delay: 0.14, color: "#1cb0f6", w: 7, h: 12, rot: -22 },
+  { x: 88, delay: 0.2, color: "#c94d7f", w: 8, h: 10, rot: 12 },
+  { x: 28, delay: 0.22, color: "#ffffff", w: 6, h: 11, rot: -14 },
+] as const;
+
+function phaseLabel(phase: CompanionshipArPhase, canSwipe: boolean) {
+  if (phase === "throw") return "食事を便器へ投げ入れています";
+  if (phase === "shake") return "便器が揺れています";
+  if (phase === "reveal") return "タップで結果を確認";
+  return canSwipe ? "スワイプして食事を投げ入れてください" : "便器にカメラを向けてください";
+}
+
+function RevealConfetti({ reduceMotion }: { reduceMotion: boolean }) {
+  return (
+    <div aria-hidden="true" data-confetti="true" className="pointer-events-none absolute inset-0 z-[35] overflow-hidden">
+      {CONFETTI_PIECES.map((piece, index) => (
+        <motion.span
+          key={index}
+          className="absolute top-[-8%] rounded-sm"
+          style={{
+            left: `${piece.x}%`,
+            width: piece.w,
+            height: piece.h,
+            backgroundColor: piece.color,
+          }}
+          initial={reduceMotion ? false : { y: "-8%", rotate: piece.rot, opacity: 1 }}
+          animate={{ y: "118%", rotate: piece.rot + 120, opacity: 0.15 }}
+          transition={reduceMotion ? { duration: 0 } : { duration: 1.15, delay: piece.delay, ease: "easeOut" }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ToiletDebugOverlay({ sight }: { sight: ToiletSight }) {
+  if (sight.kind === "none") return null;
+  const dashed = sight.kind === "low";
+  return (
+    <div
+      data-toilet-box={sight.kind}
+      data-toilet-score={sight.box.score.toFixed(2)}
+      aria-hidden="true"
+      className={`pointer-events-none absolute z-10 rounded-md border-2 ${
+        dashed ? "border-dashed border-amber-200" : "border-paper-white"
+      }`}
+      style={{
+        left: sight.box.x,
+        top: sight.box.y,
+        width: sight.box.width,
+        height: sight.box.height,
+      }}
+    />
+  );
+}
+
+export function CompanionshipArFrame({
+  result,
+  mealPhotoUrl,
+  phase,
+  status,
+  reduceMotion,
+  onSkip,
+  videoRef,
+  toiletSight = { kind: "none" },
+  detectionStatus = "idle",
+  throwTarget = DEFAULT_THROW_TARGET,
+  spawnTarget,
+  floorAngleDeg = 0,
+  gravityUp = null,
+  modelScale = 1,
+  aimPoint = null,
+  onAim,
+  onThrowStart,
+}: CompanionshipArFrameProps) {
+  const character = result.acquiredCharacter;
+  const acquired = shouldCrawlOut(character);
+  const showCamera = phase !== "summary";
+  const live = showCamera && isLiveCameraOverlay(status);
+  const shaking = phase === "shake" && !reduceMotion;
+  const statusMessage = gachaCameraStatusMessage(status);
+  const detectionMessage = showCamera ? toiletDebugCopy(detectionStatus, toiletSight, phase === "staging") : null;
+  const canSwipe = canStartGachaBySwipe({
+    phase,
+    cameraStatus: status,
+    modelStatus: detectionStatus,
+    sight: toiletSight,
+    hasAimPoint: aimPoint != null,
+  });
+  const revealCopy = companionshipRevealCopy({
+    acquired,
+    usedMealLog: result.usedMealLog,
+  });
+  const pointerStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  // 表示スケールを枠の実寸へ収めるため実寸を追う（位置のクランプには使わない）。
+  const [stageSize, setStageSize] = useState<{ width: number; height: number } | null>(null);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setStageSize((prev) =>
+        prev && Math.round(prev.width) === Math.round(width) && Math.round(prev.height) === Math.round(height)
+          ? prev
+          : { width, height },
+      );
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // reveal でモデルが頭まで見えるよう、ステージがビューポート内に来るよう
+  // 最小限スクロールする（画面外にスクロールしてると出現位置が見切れる）。
+  useEffect(() => {
+    if (phase === "reveal") {
+      stageRef.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [phase]);
+
+  // bboxスケールが大きいとモデル箱がステージ自体を上回って必ず見切れるので、
+  // 表示スケールも枠の実寸に収める。
+  const displayScale = clampRevealScale({
+    scale: modelScale,
+    stageWidth: stageSize?.width ?? 0,
+    stageHeight: stageSize?.height ?? 0,
+  });
+
+  // spawnTarget が省略されたら投げ入れ先と同じ点に出す（従来どおり）。
+  // 位置は検出枠の中心へ忠実に合わせる。見切れは許容する。
+  const spawn = clampRevealSpawn({ target: spawnTarget ?? throwTarget });
+
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if ((phase !== "staging" && phase !== "reveal") || !event.isPrimary) return;
+    pointerStartRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
+    if ((phase !== "staging" && phase !== "reveal") || !event.isPrimary) return;
+    const start = pointerStartRef.current;
+    pointerStartRef.current = null;
+    if (!start || start.id !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const end = { x: event.clientX, y: event.clientY };
+    const distance = Math.hypot(end.x - start.x, end.y - start.y);
+
+    // reveal 中のタップは自動遷移の代わりに結果画面へ進む操作。
+    // スワイプ相当の移動は誤操作として無視する。
+    if (phase === "reveal") {
+      if (distance < GACHA_SWIPE_MIN_DISTANCE_PX) onSkip();
+      return;
+    }
+
+    if (distance < GACHA_SWIPE_MIN_DISTANCE_PX) {
+      if (onAim && toiletSight.kind !== "hit") {
+        const point = percentPointFromClient(end.x, end.y, rect);
+        if (point) onAim(point);
+      }
+      return;
+    }
+
+    if (!canSwipe || !onThrowStart) return;
+    const target = clientPointFromPercent(throwTarget, rect);
+    if (!isThrowSwipe({ x: start.x, y: start.y }, end, target)) return;
+    onThrowStart();
+  }
+
+  function handlePointerCancel(event: PointerEvent<HTMLDivElement>) {
+    pointerStartRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  if (phase === "summary") {
+    return <BattleCompletionResult result={result} />;
+  }
+
+  return (
+    <section className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1 text-center">
+        <p className="text-xl font-bold text-charcoal">{phaseLabel(phase, canSwipe)}</p>
+        <p className={`text-sm ${mutedTextClass}`}>
+          仲間化の抽選はすでに確定しています。この画面ではやり直しません。
+        </p>
+      </div>
+
+      <div
+        ref={stageRef}
+        className="relative min-h-[20rem] max-h-[62svh] touch-none select-none overflow-hidden rounded-2xl border-2 border-faded-gray bg-night-ink shadow-raised-gray aspect-[3/4]"
+        data-gacha-swipe={canSwipe ? "ready" : "blocked"}
+        aria-label={
+          phase === "reveal"
+            ? "仲間化の結果。タップで結果を確認"
+            : canSwipe
+              ? "便器へ投げ入れる。スワイプで開始"
+              : "便器が写ったらスワイプできます"
+        }
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+      >
+        <motion.div
+          className="pointer-events-none absolute -inset-[8%]"
+          data-video-shake={shaking ? "on" : "off"}
+          animate={shaking ? VIDEO_SHAKE_ANIMATE : { x: 0, y: 0, rotate: 0 }}
+          transition={shaking ? VIDEO_SHAKE_TRANSITION : { duration: 0 }}
+        >
+          {live ? (
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              autoPlay
+              aria-label="便器に向けたカメラ"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-[radial-gradient(circle_at_50%_78%,var(--color-blush-wash)_0%,transparent_42%),linear-gradient(180deg,#1a1d3a_0%,var(--color-night-ink)_100%)]"
+            />
+          )}
+        </motion.div>
+
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-2/5 bg-gradient-to-t from-night-ink/80 to-transparent" />
+
+        <ToiletDebugOverlay sight={toiletSight} />
+
+        {aimPoint && toiletSight.kind !== "hit" ? (
+          <div
+            aria-hidden="true"
+            data-aim-point="true"
+            className="pointer-events-none absolute z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-paper-white"
+            style={{ left: `${aimPoint.x}%`, top: `${aimPoint.y}%` }}
+          />
+        ) : null}
+
+        {mealPhotoUrl && phase === "throw" ? (
+          <motion.img
+            src={mealPhotoUrl}
+            alt="便器へ投げ入れる食事の写真"
+            data-throw-x={throwTarget.x.toFixed(1)}
+            data-throw-y={throwTarget.y.toFixed(1)}
+            className="absolute z-20 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-2xl object-cover shadow-raised-gray"
+            initial={reduceMotion ? false : { left: "50%", top: "14%", scale: 1, rotate: -8, opacity: 1 }}
+            animate={{
+              left: `${throwTarget.x}%`,
+              top: `${throwTarget.y}%`,
+              scale: 0.28,
+              rotate: 16,
+              opacity: 0.55,
+            }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          />
+        ) : null}
+
+        {phase === "reveal" && acquired ? <RevealConfetti reduceMotion={reduceMotion} /> : null}
+
+        {phase === "reveal" && acquired && character ? (
+          // left/top をアニメーションして検出 bbox の移動に追従させる。
+          // translate は framer-motion が transform を管理する関係で内側へ逃がす。
+          <motion.div
+            className="pointer-events-none absolute z-30"
+            data-spawn-x={spawn.x.toFixed(1)}
+            data-spawn-y={spawn.y.toFixed(1)}
+            initial={false}
+            animate={{ left: `${spawn.x}%`, top: `${spawn.y}%` }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+          >
+            {/* アンカー点=モデル中心。検出枠の中心にうんちくんが立って見えるよう
+                足元ではなく箱の中央を合わせる。 */}
+            <div className="-translate-x-1/2 -translate-y-1/2">
+              {/* canvas の祖先に transform を置かない。R3F のサイズ計測は
+                  transform 込みの bounding rect 基準で、transform 途中の値が
+                  焼き付くとモデルがアンカーからずれる。スケールは箱の実寸、
+                  出現演出は GLB 側の swap_in クリップが担う。 */}
+              <div
+                role="img"
+                aria-label={character.name}
+                data-gravity-floor="true"
+                data-gravity-angle={floorAngleDeg.toFixed(1)}
+                data-model-scale={displayScale.toFixed(2)}
+                className="relative"
+                style={{
+                  width: REVEAL_MODEL_BOX_PX * displayScale,
+                  height: REVEAL_MODEL_BOX_PX * displayScale,
+                }}
+              >
+                <GachaStage3D
+                  appearance={appearanceForCharacter(character.id)}
+                  reduceMotion={reduceMotion}
+                  gravityUp={gravityUp}
+                  overscan={REVEAL_CANVAS_OVERSCAN}
+                />
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
+
+        {phase === "reveal" ? (
+          <p
+            role="status"
+            data-reveal-result={acquired ? "success" : "fail"}
+            className={`absolute inset-x-3 top-4 z-40 text-center text-3xl font-black ${
+              acquired ? "text-flush-pink" : "text-charcoal"
+            }`}
+          >
+            {revealCopy}
+          </p>
+        ) : null}
+      </div>
+
+      {statusMessage ? (
+        <p role="status" className={captionTextClass}>{statusMessage}</p>
+      ) : null}
+
+      {detectionMessage ? (
+        <p role="status" data-toilet-debug="true" className={captionTextClass}>{detectionMessage}</p>
+      ) : null}
+
+      <button type="button" className={secondaryButtonClass} onClick={onSkip}>
+        結果を見る
+      </button>
+    </section>
+  );
+}
+
+function useMealPhotoUrl(photoId: string | null) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!photoId) return;
+
+    let active = true;
+    let objectUrl: string | undefined;
+
+    void getMealPhoto(photoId)
+      .then((photo) => {
+        if (!active || !photo) return;
+        objectUrl = URL.createObjectURL(photo);
+        setUrl(objectUrl);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [photoId]);
+
+  return photoId ? url : null;
+}
+
+export function CompanionshipArStage({
+  result,
+  mealPhotoId,
+}: {
+  result: CompletionSuccess;
+  mealPhotoId: string | null;
+}) {
+  const reduceMotion = useReducedMotion();
+  const { stream, status, stop } = useGachaCamera();
+  const { angleDeg: floorAngleDeg, up: gravityUp } = useGravityFloor();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const mealPhotoUrl = useMealPhotoUrl(mealPhotoId);
+  const [phase, setPhase] = useState<CompanionshipArPhase>("staging");
+  const [aimPoint, setAimPoint] = useState<PercentPoint | null>(null);
+  const [heldTarget, setHeldTarget] = useState<PercentPoint>(DEFAULT_THROW_TARGET);
+  const hasPhoto = shouldPlayThrow(mealPhotoId);
+  // reveal 中も検出を回し続け、投げ入れ先ではなく「いま写っている便器」に
+  // 這い出し位置を追従させる（AR のアンカー再配置に相当）。
+  const detectEnabled = phase !== "summary" && isLiveCameraOverlay(status);
+  const { status: detectionStatus, sight } = useToiletDetection(videoRef, detectEnabled);
+  const liveTarget = resolveThrowTarget({ sight, tap: aimPoint });
+  const liveTargetRef = useRef(liveTarget);
+  const throwTarget = phase === "staging" ? liveTarget : heldTarget;
+  // reveal で hit が続く間は検出座標へ追従、見失ったら投げ入れ先に留まる。
+  const spawnTarget = resolveRevealTarget({ sight, fallback: throwTarget });
+  // スケールも同じく、hit 中は検出値・見失ったら投げ入れ時の値を維持する。
+  const [heldScale, setHeldScale] = useState(1);
+  const modelScale = sight.kind === "hit" ? gachaRevealScale(sight) : heldScale;
+
+  // 仲間がいるときだけ、staging の間にガチャ3Dのチャンクと GLB を先読みする。
+  // reveal 開始時に useGLTF のロード待ちで這い出しが遅れないようにするため。
+  useEffect(() => {
+    if (!shouldCrawlOut(result.acquiredCharacter)) return;
+    void import("@/features/poopm-3d/components/poopm-3d-gacha");
+  }, [result.acquiredCharacter]);
+
+  useEffect(() => {
+    liveTargetRef.current = liveTarget;
+  }, [liveTarget]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !stream) return;
+    video.srcObject = stream;
+    void video.play().catch(() => undefined);
+    return () => {
+      video.srcObject = null;
+    };
+  }, [stream]);
+
+  useEffect(() => {
+    if (phase === "summary") {
+      stop();
+    }
+  }, [phase, stop]);
+
+  useEffect(() => {
+    const delay = companionshipPhaseDelay(phase, Boolean(reduceMotion));
+    if (delay == null) return;
+    const timer = window.setTimeout(() => {
+      setPhase((current) => nextCompanionshipArPhase(current, hasPhoto, Boolean(reduceMotion)));
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [hasPhoto, phase, reduceMotion]);
+
+  function startThrowFromSwipe() {
+    setHeldTarget(liveTargetRef.current);
+    setHeldScale(gachaRevealScale(sight));
+    setPhase((current) => nextCompanionshipArPhase(current, hasPhoto, Boolean(reduceMotion)));
+  }
+
+  return (
+    <CompanionshipArFrame
+      result={result}
+      mealPhotoUrl={hasPhoto ? mealPhotoUrl : null}
+      phase={phase}
+      status={status}
+      reduceMotion={Boolean(reduceMotion)}
+      onSkip={() => {
+        setHeldTarget(liveTargetRef.current);
+        setHeldScale(gachaRevealScale(sight));
+        setPhase("summary");
+      }}
+      videoRef={videoRef}
+      toiletSight={sight}
+      detectionStatus={detectEnabled || phase !== "staging" ? detectionStatus : "failed"}
+      throwTarget={throwTarget}
+      spawnTarget={spawnTarget}
+      floorAngleDeg={floorAngleDeg}
+      gravityUp={gravityUp}
+      modelScale={modelScale}
+      aimPoint={aimPoint}
+      onAim={setAimPoint}
+      onThrowStart={startThrowFromSwipe}
+    />
+  );
+}

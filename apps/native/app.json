@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "踏ん張れ！ブリュレイド！！",
+    "slug": "poop-battler",
+    "scheme": "poopbattler",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "backgroundColor": "#ffe0ef",
+    "ios": {
+      "bundleIdentifier": "jp.poopbattler.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "jp.poopbattler.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-localization",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "食事の写真を撮って記録し、バトルで便器を自動検出するために、カメラを使用します。",
+          "enableFrameProcessors": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "食事の写真を選んで記録するために、写真ライブラリへアクセスします。",
+          "cameraPermission": "食事の写真を撮って記録し、バトルで便器を自動検出するために、カメラを使用します。",
+          "microphonePermission": false
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

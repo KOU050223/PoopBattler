@@ -1,20 +1,43 @@
-# PROGRESS: native-diagrams
+# PROGRESS: native-app
 
 | 日時 | タスク | 担当 | 段階 | 結果 | メモ |
 | --- | --- | --- | --- | --- | --- |
-| 2026-10-06 | 準備 | 指示役 | - | 完了 | ブランチ `orch/native-diagrams` 作成。ワーカーは `--worktree current` で同一ワークツリー稼働（docs生成のみ・コミットは指示役が行う）の方針に変更 |
-| 2026-10-06 | T-001 | devin ctx_89984234f583 | dispatch | dispatched | battle領域 |
-| 2026-10-06 | T-002 | devin ctx_1d444d7dc411 | dispatch | dispatched | 記録系 |
-| 2026-10-06 | T-003 | devin ctx_e24732862cbf | dispatch | dispatched | 基盤系 |
-| 2026-10-06 | T-002 | devin ctx_1d444d7dc411 | 第1段階 | completed | 57ファイル網羅・IndexedDB/localStorage経路をソース突合で確認。ワーカー解放済み |
-| 2026-10-06 | T-003 | devin ctx_e24732862cbf | 第1段階 | completed | 認証境界・Stripe経路を突合確認。ワーカー解放済み |
-| 2026-10-06 | T-001 | devin ctx_89984234f583 | 第1段階 | completed | バトルドメイン分離(commands/runtime/snapshot)を正確に記述。ワーカー解放済み |
-| 2026-10-06 | T-004 | devin ctx_c7a3dc6dd1e6 | dispatch | dispatched | 現状図統合 |
-| 2026-10-06 | T-005 | devin ctx_f58639384749 | dispatch | dispatched | 理想構成提案。完了後に人間レビューを挟む |
-| 2026-10-06 | T-004 | devin ctx_c7a3dc6dd1e6 | 第1段階 | completed | 4ブロックをシステムChrome+mmdcで描画検証済み。ワーカー解放済み |
-| 2026-10-06 | T-005 | devin ctx_f58639384749 | 第1段階 | needs-human-review | 推奨案C。§4の要決定4件を人間に確認中。ワーカー解放済み |
-| 2026-10-06 | T-005 | 人間 | 承認 | completed | 案C・3D維持・検出維持・課金ゲート現状同等で承認 |
-| 2026-10-06 | T-006 | devin ctx_3f08548c9e8b | dispatch | dispatched | 理想図作成 |
-| 2026-10-06 | T-006 | devin ctx_3f08548c9e8b | 第1段階 | completed | 5ブロック描画検証済み・12件対応表完備。ワーカー解放済み |
-| 2026-10-06 | T-007 | devin ctx_e4e44a894c1a | 第1段階 | completed | README索引+architecture.mdリンク。ワーカー解放済み |
-| 2026-10-06 | 統合 | 指示役 | - | - | migration-proposal.md を docs/native/ へ移動（git管理外参照の断線防止）、/.orch/ を gitignore へ |
+| 2026-10-07 | 準備 | 指示役 | - | 完了 | ブランチ orch/native-app 作成。決定: StyleSheet / dev build / iOS先行 / IAPのみ(RevenueCat) / T-001単独先行 |
+| 2026-10-07 | T-001 | devin ctx_9ee956be6679 | 第1段階 | completed | typecheck/530tests/lint(baseline警告1)通過、332 rename。注意: Vercel Root Directory=apps/web をダッシュボードで設定要。ワーカー解放済み |
+| 2026-10-07 | T-002a | devin ctx_bd03ee99209a | 第1段階 | completed | domainスケルトン+eslint依存禁止(陽性/陰性確認、自分でも再確認)。531tests。解放済み。※指示文作成時にheredocでバッククォートが展開され npm install/test が一度実行された（害なし・ツリー清浄）。教訓: 指示文は必ず 'EOF' クォート付きかwriteツールで作る |
+| 2026-10-07 | T-002/T-003/T-004 | devin x3 | dispatch | dispatched | T-002=ctx_d61ae6fe2465(database.types移動も担当) T-003=ctx_98298f9b687a T-004=ctx_7724e515a373。各々別worktree、マージは指示役 |
+| 2026-10-07 | T-004 | devin ctx_7724e515a373 | 第1段階 | needs-human-review | typecheck/native14tests通過、統合ブランチへマージ済。確認: apps/native/.env 作成→npm run ios -w apps/native。決定事項: アプリ名はmanifest実体「踏ん張れ！ブリュレイド！！」/bundleId jp.poopbattler.app(仮)/react,react-nativeはnative側に固定(metro resolveRequest) |
+| 2026-10-07 | T-004マージ | 指示役 | - | 完了 | package.json(scripts和集合)/package-lock(theirs採用→npm install再生成)の衝突を解消。typecheck/531+1+14 tests通過 |
+| 2026-10-07 | T-002 | devin ctx_d61ae6fe2465 | 第1段階 | completed | マージ済。532tests維持(web387+domain145)。ローカル複製型(BowelDraft/MotionPermission/UserMediaCameraStatus)はT-003後に統合要。battle-storeはzustand禁止のためweb残置、SyncKeyValueStorageをports追加 |
+| 2026-10-07 | T-003 | devin ctx_98298f9b687a | 第1段階 | completed | マージ済。532tests維持(web309+domain223)。保留: character.types/party-lineup。マージ衝突7件(import行)は指示役が解消。domain eslintの 'motion' 禁止がmotion/ディレクトリに誤マッチ→regexへ修正(陽性/陰性確認) |
+| 2026-10-07 | 片付け | 指示役 | - | 記録 | t002/t003 worktree削除(completed・マージ済・clean)。t004 worktreeは needs-human-review のため残すべきだったが誤って削除(cleanで未コミット無し、ブランチ guriguri00451/t004-native-scaffold は残存・マージ済み)。確認はorch/native-appのapps/nativeで可能 |
+| 2026-10-07 | T-002b / T-008 | devin x2 | dispatch | dispatched | T-002b=ctx_e5de713c0f92(current) T-008=ctx_8c6da3e6c837(worktree t008-native-battle)。T-005はユーザー承認待ち、T-006はT-002b待ち |
+| 2026-10-07 | T-002b | devin ctx_e5de713c0f92 | 第1段階 | completed | TODO(T-003)0件、532tests維持(web297+domain235)、typecheck/lint/build通過、コミット済 |
+| 2026-10-07 | T-006 | devin | dispatch | dispatched | worktree t006-native-records |
+| 2026-10-07 | T-008 | devin ctx_8c6da3e6c837 | 第1段階 | needs-human-review | マージ済、typecheck/297+235+56tests/lint通過。マージ後にT-002bの型改名(BowelDraft→BowelLogDraft)を指示役が追従。未対応(仕様範囲外): パーティ選出UI(図鑑側)、食事ログ紐づけ・症状入力。確認手順: バトルタブ→バトルを始める→戦闘→勝利→排便4項目→記録して完了(Supabase env要) |
+| 2026-10-07 | T-006 | devin ctx_bb9438e96385 | 第1段階 | needs-human-review | マージ済、297+235+84tests/lint通過。package.json依存和集合+lock再生成で衝突解消。注意: 記録タブは logs.tsx(既存タブ名)、expo-cameraは不採用(image-pickerで撮影)。確認: 記録タブ→ごはん記録→写真/食品群→保存→変更/削除、バトルタブで履歴、コレクションで先発枠編成(再起動後も維持) |
+| 2026-10-07 | 準備 | 指示役 | - | 完了 | web-spec.md・picker FULL_SCREEN暫定修正・PLAN更新を統合ブランチへコミット（9f4020b, 4b9b01b） |
+| 2026-10-07 | T-012 / T-013b | devin x2 | dispatch | dispatched | T-012=ctx_6b5e35588e3e(worktree t012-battle-complete-flow) T-013b=ctx_9e746953aa31(worktree t013b-layout-typecheck)。T-013からtypecheck修正を分割（app/**のみ、T-012と非衝突）。ピッカー①は実機確認待ちでT-013本体は保留 |
+| 2026-10-07 | T-013b | devin ctx_9e746953aa31 | 第1段階 | failed→差し戻し | 「install後は再現しない・変更不要」と報告したが、統合ブランチでは2エラー再現。原因: `.expo/types`+`expo-env.d.ts`（typed routes生成型、gitignore）の有無でscreenOptionsの型推論が変わる。陽性確認: t013bに生成ファイルをコピー→同エラー再現。指示文に `.expo/types` コピー済みと明記して同端末で再dispatch（ctx_17093e4d87eb）。教訓: 生成型の有無で検査対象が変わる—新規worktreeの素通りを疑う |
+| 2026-10-07 | T-012 | devin ctx_6b5e35588e3e | 第1段階 | needs-human-review | 指示役検証: typecheck/native92+web297+domain235tests/export ios+android 全通過、マージ済(29dfce3)。食事セッション・編成送信・症状入力、web実装に忠実。確認: コレクションで編成→バトル→勝利→排便4項目+症状→食事セッション(確率コピー・複数記録・スキップ可)→結果。ワーカー解放・ack済 |
+| 2026-10-07 | T-013b | devin ctx_17093e4d87eb | 第1段階 | completed | 真因: expo/typesのreact-native-web.d.ts interface拡張がexpo-router側RN型と衝突しtabBar*Styleがweb専用propsのみの型に。satisfies付き定数化+共有prop position:'relative'(デフォルト・無影響)で解消。worktreeで.expo存在下0エラー確認後マージ(7416805)。統合ブランチtypecheck 0エラー・92tests。ワーカー解放・ack済 |
+| 2026-10-07 | T-010分割 | 指示役 | - | 完了 | T-010を T-010a(3D基盤PoC・logic) / T-010b(ステージ統合・ui) に分割。ideal-architectureの「GLB1体PoCを早期に」推奨に沿う。新Run run_981c150faffb |
+| 2026-10-07 | T-010a | devin ctx_6eb77f1cc7c1 | dispatch | dispatched | worktree t010a-poopm-3d-base（orch/native-appから作成）。expo-gl+three 0.185.1+R3Fv9導入、GLBローダー、純ロジック移植がスコープ |
+| 2026-10-07 | T-010a | devin ctx_6eb77f1cc7c1 | 第1段階 | completed | 指示役検証: native typecheck 0/116tests(+24新規)、ルート web297+domain235+native116、export iosでGLB8個+PNGバンドル確認（一時importで実測後revert）。マージ済 2611390→orch/native-app。ワーカー解放・ack済。worktree t010a+t013b削除。残件: 実機でのGLBデコード/描画はT-010bで確認要 |
+| 2026-10-07 | T-010b | devin ctx_f0da8d53bd8d | dispatch | dispatched | worktree t010b-poopm-3d-stage。web poopm-3d components+battle-stage-motion 移植、バトル3D化、2D/3D切替（永続化）、結果フィギュア3D。ガチャARはT-009範囲で除外 |
+| 2026-10-07 | T-010b | devin ctx_f0da8d53bd8d | 第1段階 | needs-human-review | 指示役検証: worktree・統合ブランチとも typecheck 0・native140tests(+24: stage-motion15/render-mode4/png-rgba5)、ルート web297+domain235、export iosでGLB8個バンドル確認（画面import経由）。マージ済 f599da9。fast-png@8.0.0追加。ワーカー解放・ack済。確認: バトルタブで3Dステージ描画・攻撃/被弾/必殺/交代/勝敗のモーションとカメラワーク・2D/3D切替・勝利後結果の3Dフィギュア・端末のreduce-motion設定時の緩和 |
+| 2026-10-07 | T-013 | 人間 | 実機確認 | completed | FULL_SCREEN暫定修正がiOS実機で有効と人間が確認（「修正できた」報告）。構造変更不要 |
+| 2026-10-07 | T-005 | - | - | ready→dispatched | 人間がRevenueCat利用を承認。ctx_18b8d331ccc1 / worktree t005-iap-webhook。spec: .orch/t005-spec.md。許可ファイルを実態に修正（型生成はpackages/domain/src/types、書き込み層はlib/supabase/subscription-write.ts、rls-verify.sql追加）。決済・権限のため最終レビュー必須 |
+| 2026-10-07 | T-009分割 | 指示役 | - | 完了 | 便器検出方式は人間がA案（vision-camera+fast-tflite+resize-plugin+COCO系TFLite）を選択。T-009を T-009a(検出基盤・logic) / T-009b(ガチャAR統合・ui) に分割。domainのtoilet-detection.ts純ロジックは再利用、推論層のみ差し替え |
+| 2026-10-07 | T-009a | devin ctx_146e1ad038d8 | dispatch | dispatched | worktree t009a-toilet-detect。spec: .orch/t009a-spec.md。native依存追加＋config plugin＋モデル同梱＋検出フック＋PoCコンポーネント（画面非接続）。実機検証はdev build必須で完了後も残る |
+| 2026-10-07 | T-005質問対応 | 指示役→人間 | - | 回答済 | ワーカー質問「BILLING_ISSUEでstatus=billing_issueにすると期限内も権利なしになるが良いか」→ 人間が (a)「即座に権利なし（Stripe past_dueと同挙動）」を選択。reply msg_6532b915fff4 で回答済。report-access.ts変更不要 |
+| 2026-10-07 | T-005 | devin ctx_18b8d331ccc1 | 第1段階 | 検証合格 | 指示役検証: typecheck 0・全テスト通過・db:types:check一致・db:test:rls全OK（apple購読検査含む）。migration=provider CHECK stripe|apple + apple_original_transaction_id unique + stripe列NOT NULL解除。route=SHA-256ダイジェスト+timingSafeEqual・23503は200受領。provider切替時に相手IDをnull化する巻き戻し防止あり。最終レビューワーカー ctx_f625dda28983 稼働中 |
+| 2026-10-07 | T-009a | devin ctx_146e1ad038d8 | 第1段階 | completed | 指示役検証: worktree・統合ブランチとも typecheck 0・native150tests(+10: ssd-detections)、export iosで .tflite 4.2MB バンドル確認（index.ts資産登録経由）。vision-camera4.7.3/fast-tflite2.0.0/resize-plugin3.2.0/worklets-core1.6.3、COCO SSD MobileNetV1量子化・toilet=index70。マージ済 a8eca4c。ワーカー解放・worktree削除済。残: 実機検出・frame.orientation回転対応表の実機確認（T-009b人間レビューへ引継） |
+| 2026-10-07 | T-005 | devin ctx_f625dda28983（レビュー専用） | 最終レビュー | 指摘5件 | 致命的な権利窃取経路なし。高: ①upsertにlast_event_at順序ガード無し（遅延INITIAL_PURCHASEで失効済権利がactive復活）②TRANSFER後upsertがunique衝突23505→500無限再送＋旧ユーザに権利残留。他: provider切替のID null化で旧Stripe購読の解約手段消失（二重課金リスク）、NON_RENEWING_PURCHASEで購読行上書き、apple行のエラーメッセージ誤誘導。SWE-2同士のレビューのため人間の最終確認推奨 |
+| 2026-10-07 | T-005-fix1 | devin ctx_91738917f725 | dispatch | dispatched | t005-iap-webhook worktreeで修正中。方針: upsert順序ガード＋TRANSFER対応＋ID null化廃止してprovider条件で突合＋NON_RENEWING除外＋apple向け文言。spec: .orch/t005-fix1-spec.md |
+| 2026-10-07 | T-009b | devin ctx_7b54ff4ecec0 | dispatch | dispatched | worktree t009b-gacha-ar。spec: .orch/t009b-spec.md。ARステージstaging→throw→shake→reveal→summary、domain共有ロジック再利用、カメラ非対応/拒否は3Dのみフォールバック。実機検証は人間レビューへ |
+| 2026-10-09 | T-005-fix1 | devin ctx_91738917f725 | 完了 | completed | レビュー5件全対応。指示役再検証: typecheck 0・web335+domain260+native140全通過・db:types:check一致・RLS全OK（apple行の陽性/陰性含む）。T-005としてマージ済 7c5f397/80fa900。ワーカー解放済。残: 人間側RevenueCat設定 |
+| 2026-10-09 | T-009b | devin ctx_7b54ff4ecec0 | 第1段階 | needs-human-review | 指示役検証: typecheck 0・native166tests(+16 companionship-ar)・export iosでtflite4.2MB+GLB全バンドル確認。ARステージ staging→throw→shake→reveal→summary、expo-sensors重力連動、カメラ不可は静止背景+タップ照準フォールバック、スキップ常設。マージ済 b4c601c/34d1e23。実機確認待ち: AR動作・便器検出bbox・重力・権限フロー |
+| 2026-10-09 | T-007 | devin ctx_8e5a0ccc7d51 | dispatch | dispatched | worktree t007-native-report-iap。spec: .orch/t007-spec.md。レポート(JST月曜・react-native-svg・ティーザーはplaceholder)+アカウント(Google linkIdentity検証から)+react-native-purchases購入/復元。APIキーはenv・ハードコード禁止。課金・認証のためマージ前にレビュー必須 |
+| 2026-10-09 | 運用ミス | 指示役 | - | 対応済 | worker-startを誤って2回実行しctx_b7fc13073e27(worktree t007-native-report-iap-2)が重複起動。worker-stopで停止・worktree削除済（変更なし）。本命はctx_8e5a0ccc7d51 |
+| 2026-10-09 | T-007 | devin ctx_8e5a0ccc7d51 | 第1段階 | needs-human-review | 指示役検証: typecheck 0・native200tests(+34)・export ios成功。レポート=権利判定をSELECT前に行い非課金はlogged_atのみ取得、チャートreact-native-svg。アカウント=linkIdentityで匿名→Google連携+signInWithOAuth再ログイン（auth-jsソースで検証）、削除はサーバー経路無しで「準備中」。IAP=react-native-purchases lazy require+env EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY+app_user_id=supabase uuid+waitForEntitlement。マージ a22e7f3/93f2b07。統合ブランチでtyped routes stale→expo startでrouter.d.ts再生成して解消。人間側設定: RC/APIキー・webhook URL・Supabase manual linking有効化・poopbattler://リダイレクト許可・App Store商品 |

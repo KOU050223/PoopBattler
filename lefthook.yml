@@ -16,7 +16,7 @@ pre-commit:
       # 実際に再生成結果が一致するかの検証は CI が担当する。
       glob: "supabase/migrations/*.sql"
       run: |
-        if git diff --cached --name-only | grep -q '^src/types/database\.types\.ts$'; then
+        if git diff --cached --name-only | grep -q '^packages/domain/src/types/database\.types\.ts$'; then
           exit 0
         fi
         staged_sql=$(git diff --cached --name-only --diff-filter=ACMRD -- 'supabase/migrations/*.sql')
@@ -37,7 +37,7 @@ pre-commit:
         fi
         # 生成型は公開スキーマだけを見る。private 関数の差し替えだけでは型は変わらない。
         if echo "$ddl" | grep -viqE '^[+-][[:space:]]*(create([[:space:]]+or[[:space:]]+replace)?[[:space:]]+function|alter[[:space:]]+function|drop[[:space:]]+function([[:space:]]+if[[:space:]]+exists)?)[[:space:]].*\<private\.'; then
-          echo "エラー: 型定義に影響するマイグレーションを変更したが src/types/database.types.ts が更新されていない。"
+          echo "エラー: 型定義に影響するマイグレーションを変更したが packages/domain/src/types/database.types.ts が更新されていない。"
           echo "  npm run db:types を実行し、生成結果をステージしてからコミットすること。"
           exit 1
         fi

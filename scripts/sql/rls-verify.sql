@@ -1068,13 +1068,16 @@ $$;
 --
 -- 準備は postgres ロールで行う。クライアントは INSERT できないため、
 -- ここで（RLS適用前に）行を作っておく。
+-- sub_b は Apple IAP（provider='apple'）の行。Stripe のID列を持たない形で、
+-- apple 行にも同じ RLS が効くことを検査する。
 insert into public.subscriptions
-  (id, user_id, stripe_customer_id, stripe_subscription_id, status, current_period_end)
+  (id, user_id, provider, stripe_customer_id, stripe_subscription_id,
+   apple_original_transaction_id, status, current_period_end)
 values
   (pg_temp.fixture('sub_a'), pg_temp.fixture('user_a'),
-   'cus_test_a', 'sub_test_a', 'active', now() + interval '30 days'),
+   'stripe', 'cus_test_a', 'sub_test_a', null, 'active', now() + interval '30 days'),
   (pg_temp.fixture('sub_b'), pg_temp.fixture('user_b'),
-   'cus_test_b', 'sub_test_b', 'active', now() + interval '30 days');
+   'apple', null, null, 'otid_test_b', 'active', now() + interval '30 days');
 
 do $$
 declare
@@ -1099,6 +1102,16 @@ begin
     (select count(*) = 0 from public.subscriptions where id = sub_b),
     true);
 
+  -- Apple IAP の行も同じポリシーに乗ること。provider で扱いが変わると
+  -- アプリ内課金の権利だけ他人に見える/書ける抜け穴になる。
+  perform pg_temp.become(b);
+  perform pg_temp.expect(
+    '本人は自分の apple 購読を読める',
+    (select count(*) = 1 from public.subscriptions
+      where id = sub_b and provider = 'apple'),
+    true);
+  perform pg_temp.become(a);
+
   -- 書き込み -----------------------------------------------------------------
   -- INSERT / UPDATE / DELETE のポリシーを作っていないため、自分の行であっても
   -- 全て拒否される。ここが通ってしまうと、課金せずに権利を立てられる。
@@ -1113,6 +1126,14 @@ begin
       || ' (user_id, stripe_customer_id, stripe_subscription_id, status, current_period_end)'
       || ' values (%L, %L, %L, %L, now() + interval ''30 days'')',
       e, 'cus_forged', 'sub_forged', 'active')),
+    false);
+  perform pg_temp.expect(
+    '購読の無いユーザーでも apple 購読を作れない',
+    pg_temp.allowed(format(
+      'insert into public.subscriptions'
+      || ' (user_id, provider, apple_original_transaction_id, status, current_period_end)'
+      || ' values (%L, ''apple'', %L, ''active'', now() + interval ''30 days'')',
+      e, 'otid_forged')),
     false);
   perform pg_temp.become(a);
 
@@ -1130,8 +1151,19 @@ begin
     false);
 
   perform pg_temp.expect(
+    '他人の apple 購読の状態を書き換えられない',
+    pg_temp.allowed(format(
+      'update public.subscriptions set status = ''expired'' where id = %L', sub_b)),
+    false);
+
+  perform pg_temp.expect(
     '購読を削除できない',
     pg_temp.allowed(format('delete from public.subscriptions where id = %L', sub_a)),
+    false);
+
+  perform pg_temp.expect(
+    'apple 購読を削除できない',
+    pg_temp.allowed(format('delete from public.subscriptions where id = %L', sub_b)),
     false);
 
   reset role;

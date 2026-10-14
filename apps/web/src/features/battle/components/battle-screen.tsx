@@ -1,0 +1,538 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useTranslations } from "next-intl";
+import { motion, useReducedMotion } from "framer-motion";
+import { readBattleSpeed, subscribeBattleSpeed, writeBattleSpeed } from "@poopbattler/domain/battle/battle-speed";
+import {
+  startBattleAction,
+  type CompleteBattleResult,
+} from "@/features/battle/actions";
+import { parsePartyLineup } from "@poopbattler/domain/records/party-lineup";
+import { readPartyLineup } from "@/features/collection/party-lineup-storage";
+import {
+  BattleCompletionFlow,
+  type BattleCompletedPayload,
+} from "@/features/battle/components/battle-completion-flow";
+import { CompanionshipArStage } from "@/features/battle/components/companionship-ar-stage";
+import { usesCompanionshipAr } from "@poopbattler/domain/battle/companionship-ar";
+import {
+  ATTRIBUTE_LABELS,
+  DEFAULT_BATTLE_SPEED,
+  SPECIAL_GAUGE_MAX,
+  matchupTone,
+  nextBattleSpeed,
+  scaleByBattleSpeed,
+  tickIntervalMs,
+  type BattleSpeed,
+} from "@poopbattler/domain/battle/battle.constants";
+import { resolveBattleScreenView } from "@poopbattler/domain/battle/battle-screen-view";
+import { BattleControls } from "@/features/battle/components/battle-controls";
+import { BattleCompletionResult } from "@/features/battle/components/battle-completion-result";
+import { BattleStage3D } from "@/features/battle/components/battle-stage-3d";
+import {
+  advanceBattleStage,
+  initialBattleStageState,
+  observeBattleStage,
+  reduceBattleStage,
+} from "@/features/battle/components/battle-stage-motion";
+import { ChargeSwirl } from "@/features/battle/components/charge-swirl";
+import { BattleOutcomeOverlay } from "@/features/battle/components/battle-outcome-overlay";
+import { useBattleWakeLock } from "@/features/battle/hooks/use-battle-wake-lock";
+import { useSpecialMotion } from "@/features/battle/hooks/use-special-motion";
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
+import { captionTextClass, mutedTextClass, primaryButtonClass, stancePillClass } from "@/lib/ui-classes";
+import { signInAnonymouslyFromBrowser } from "@/lib/supabase/anonymous-session";
+import { appearanceForCharacter } from "@/features/poopm/poopm.appearances";
+import type { BattleSnapshot } from "@poopbattler/domain/battle/battle.types";
+import { useBattleStore } from "@/stores/battle-store";
+
+const MATCHUP_LABEL = {
+  advantage: "有利",
+  neutral: "等倍",
+  disadvantage: "不利",
+} as const;
+
+const MATCHUP_CLASS = {
+  advantage: "bg-blush-wash text-charcoal",
+  neutral: "border-2 border-faded-gray bg-paper-white text-pencil-gray",
+  disadvantage: "bg-night-ink text-paper-white",
+} as const;
+
+function subscribeHydration(onChange: () => void) {
+  return useBattleStore.persist.onFinishHydration(onChange);
+}
+
+function HpBar({
+  current,
+  max,
+  label,
+  side,
+  hitFlashKey,
+  speed,
+}: {
+  current: number;
+  max: number;
+  label: string;
+  side: "ally" | "enemy";
+  hitFlashKey: number;
+  speed: BattleSpeed;
+}) {
+  const reduceMotion = useReducedMotion();
+  const ratio = Math.max(0, Math.min(1, current / max));
+  const fillClass = side === "enemy" ? "bg-night-ink" : "bg-flush-pink";
+  const flashColor = "var(--color-danger-edge)";
+  const textColor = "var(--color-pencil-gray)";
+  const textFlash = reduceMotion
+    ? [textColor, flashColor, textColor]
+    : [textColor, flashColor, flashColor, textColor];
+  const barFlashOpacity = reduceMotion ? [0, 1, 0] : [0, 1, 1, 0];
+  const flashTransition = {
+    duration: scaleByBattleSpeed(reduceMotion ? 0.45 : 0.95, speed),
+    ease: "easeInOut" as const,
+    times: reduceMotion ? [0, 0.55, 1] : [0, 0.16, 0.72, 1],
+  };
+  return (
+    <div className="flex w-full flex-col gap-1">
+      <motion.div
+        key={`hp-text-${hitFlashKey}`}
+        className={`flex justify-between ${captionTextClass}`}
+        initial={{ color: textColor }}
+        animate={hitFlashKey > 0 ? { color: textFlash } : undefined}
+        transition={hitFlashKey > 0 ? flashTransition : undefined}
+        style={{ color: textColor }}
+      >
+        <span>{label}</span>
+        <span>
+          {current} / {max}
+        </span>
+      </motion.div>
+      <div className="relative h-2 overflow-hidden rounded-full bg-blush-wash">
+        <motion.div
+          className={`h-full ${fillClass}`}
+          initial={false}
+          animate={{ width: `${ratio * 100}%` }}
+          transition={{ duration: 0.2 }}
+        />
+        {hitFlashKey > 0 ? (
+          <motion.div
+            key={`hp-bar-flash-${hitFlashKey}`}
+            aria-hidden="true"
+            className="absolute left-0 top-0 h-full bg-danger-edge"
+            initial={{ opacity: 0, width: `${ratio * 100}%` }}
+            animate={{ opacity: barFlashOpacity }}
+            transition={flashTransition}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function StrainGauge({ progress }: { progress: number }) {
+  const ratio = Math.max(0, Math.min(1, progress));
+  const percent = Math.round(ratio * 100);
+  return (
+    <div className="flex flex-col gap-1">
+      <div className={`flex justify-between ${captionTextClass}`}>
+        <span>踏ん張り</span>
+        <span>{percent}%</span>
+      </div>
+      <div
+        className="h-3 overflow-hidden rounded-full bg-blush-wash"
+        role="progressbar"
+        aria-label="踏ん張り"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+      >
+        <div
+          className="h-full bg-night-ink"
+          style={{ width: `${ratio * 100}%` }}
+        />
+      </div>
+      <p role="status" className="text-center text-sm text-charcoal">
+        振り続けて発射！
+      </p>
+    </div>
+  );
+}
+
+export function BattleScreen() {
+  const t = useTranslations("Battle");
+  const hydrated = useSyncExternalStore(
+    subscribeHydration,
+    () => useBattleStore.persist.hasHydrated(),
+    () => false,
+  );
+  const snapshot = useBattleStore((state) => state);
+  const [acceptedRestore, setAcceptedRestore] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [completionResult, setCompletionResult] = useState<Extract<
+    CompleteBattleResult,
+    { success: true }
+  > | null>(null);
+  const [mealPhotoId, setMealPhotoId] = useState<string | null>(null);
+  const [stageState, setStageState] = useState(() =>
+    reduceBattleStage(
+      initialBattleStageState(),
+      observeBattleStage(useBattleStore.getState()),
+    ),
+  );
+  const [playerHitFlashKey, setPlayerHitFlashKey] = useState(0);
+  const [enemyHitFlashKey, setEnemyHitFlashKey] = useState(0);
+  const speed = useSyncExternalStore(
+    subscribeBattleSpeed,
+    () => readBattleSpeed(window.localStorage),
+    () => DEFAULT_BATTLE_SPEED,
+  );
+  const previousHp = useRef<{ player: number; enemy: number } | null>(null);
+  const { reason, strainProgress, activateSpecial } = useSpecialMotion();
+
+  const showRestore =
+    hydrated && snapshot.status === "active" && !acceptedRestore;
+  const showStart = hydrated && snapshot.status === "idle" && !starting;
+
+  useBattleWakeLock(snapshot.status === "active" && !showRestore);
+
+  const screenView = resolveBattleScreenView({
+    status: snapshot.status,
+    outcomeAcknowledged: snapshot.outcomeAcknowledged,
+    hasParty: Boolean(snapshot.party),
+    hasEnemy: Boolean(snapshot.enemy),
+  });
+  const awaitingOutcomeAck = screenView.kind === "fight"
+    ? screenView.showOutcomeOverlay
+    : screenView.kind === "outcome-only";
+
+  function toggleSpeed() {
+    writeBattleSpeed(window.localStorage, nextBattleSpeed(speed));
+  }
+
+  useEffect(() => {
+    if (snapshot.status !== "active" || showRestore) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      useBattleStore.getState().tick();
+    }, tickIntervalMs(speed));
+    return () => window.clearInterval(timer);
+  }, [snapshot.status, showRestore, speed]);
+
+  // HPバーの被弾フラッシュ（DOM側の演出）。
+  useEffect(() => {
+    const enemyHp = snapshot.enemy?.hp;
+    const playerHp = snapshot.party?.[snapshot.activeIndex]?.hp;
+    if (enemyHp == null || playerHp == null) {
+      return;
+    }
+    const previous = previousHp.current;
+    previousHp.current = { player: playerHp, enemy: enemyHp };
+    if (!previous) {
+      return;
+    }
+    if (enemyHp < previous.enemy) {
+      setEnemyHitFlashKey((key) => key + 1);
+    } else if (playerHp < previous.player) {
+      setPlayerHitFlashKey((key) => key + 1);
+    }
+  }, [snapshot.activeIndex, snapshot.enemy?.hp, snapshot.party]);
+
+  // 3Dステージのモーション状態機械。ストア更新（外部システムのイベント）を
+  // subscribe して、スナップショットの差分から両者のモーションを決める
+  // （ko→swap_in の順序づけもここ）。
+  useEffect(() => {
+    return useBattleStore.subscribe((state: BattleSnapshot) => {
+      setStageState((prev) =>
+        reduceBattleStage(prev, observeBattleStage(state)),
+      );
+    });
+  }, []);
+
+  const handleStageMotionFinished = useCallback(
+    (side: "player" | "enemy") => {
+      setStageState((prev) => advanceBattleStage(prev, side));
+    },
+    [],
+  );
+
+  async function startBattle() {
+    setStarting(true);
+    setError(null);
+    const session = await signInAnonymouslyFromBrowser();
+    if (session.status === "error") {
+      setStarting(false);
+      setError("プレイの準備ができていません。時間をおいて再試行してください。");
+      return;
+    }
+
+    const result = await startBattleAction({
+      userCharacterIds: parsePartyLineup(readPartyLineup(window.localStorage)),
+    });
+    setStarting(false);
+    if (result.status === "error") {
+      setError(result.message);
+      return;
+    }
+
+    const current = useBattleStore.getState();
+    if (
+      result.resumed &&
+      current.battleId === result.battleId &&
+      current.status === "active"
+    ) {
+      setAcceptedRestore(true);
+      return;
+    }
+
+    current.start({
+      battleId: result.battleId,
+      enemy: {
+        characterId: result.enemy.characterId,
+        attribute: result.enemy.attribute,
+        name: result.enemy.name,
+        hp: result.enemyHp,
+        power: result.enemyPower,
+        speed: result.enemySpeed,
+      },
+      party: result.party,
+    });
+    setAcceptedRestore(true);
+  }
+
+  function handleBattleCompleted({ result, mealPhotoId: nextMealPhotoId }: BattleCompletedPayload) {
+    // DB確定に成功したときだけ、復元用のバトル・排便下書きを破棄する。
+    setCompletionResult(result);
+    setMealPhotoId(nextMealPhotoId);
+    useBattleStore.getState().reset();
+    setAcceptedRestore(false);
+  }
+
+  if (!hydrated) {
+    return <LoadingState label="バトルの状態を読み込んでいます…" />;
+  }
+
+  if (completionResult) {
+    if (usesCompanionshipAr(completionResult)) {
+      return (
+        <CompanionshipArStage
+          result={completionResult}
+          mealPhotoId={mealPhotoId}
+        />
+      );
+    }
+    return <BattleCompletionResult result={completionResult} />;
+  }
+
+  if (showRestore && snapshot.enemy) {
+    return (
+      <section className="flex flex-col gap-4">
+        <p>進行中のバトルがあります。続きから再開します。</p>
+        <p className={mutedTextClass}>
+          敵: {snapshot.enemy.name ?? ATTRIBUTE_LABELS[snapshot.enemy.attribute]}
+        </p>
+        <button
+          type="button"
+          className={primaryButtonClass}
+          onClick={() => setAcceptedRestore(true)}
+        >
+          続ける
+        </button>
+      </section>
+    );
+  }
+
+  if (screenView.kind === "completion") {
+    if (!snapshot.battleId) {
+      return (
+        <ErrorState
+          description="バトル情報を確認できませんでした。もう一度お試しください。"
+        />
+      );
+    }
+
+    return (
+      <BattleCompletionFlow
+        battleId={snapshot.battleId}
+        onCompleted={handleBattleCompleted}
+        onAbandon={() => {
+          useBattleStore.getState().reset();
+          setAcceptedRestore(false);
+        }}
+      />
+    );
+  }
+
+  if (screenView.kind === "defeat") {
+    return (
+      <section className="flex flex-col items-center gap-4 text-center">
+        <p className="text-xl font-bold">敗北</p>
+        <p className={mutedTextClass}>
+          やられました。バトルを終えて、もう一度始められます。
+        </p>
+        <button
+          type="button"
+          className={primaryButtonClass}
+          onClick={() => {
+            useBattleStore.getState().reset();
+            setAcceptedRestore(false);
+          }}
+        >
+          バトルを終える
+        </button>
+      </section>
+    );
+  }
+
+  if (
+    screenView.kind === "fight" &&
+    snapshot.party &&
+    snapshot.enemy
+  ) {
+    const member = snapshot.party[snapshot.activeIndex];
+    // ko再生中は退場したメンバーを表示し続ける（displayedIndex が遅れる）。
+    const displayedMember =
+      snapshot.party[stageState.displayedIndex] ?? member;
+    const tone = matchupTone(member.attribute, snapshot.enemy.attribute);
+    return (
+      <>
+        <section className="flex flex-col gap-5" inert={awaitingOutcomeAck || undefined}>
+        <div className="relative flex items-center justify-center">
+          <p
+            className={`rounded-xl px-3 py-1 text-xs font-medium ${MATCHUP_CLASS[tone]}`}
+          >
+            {MATCHUP_LABEL[tone]}
+          </p>
+          <button
+            type="button"
+            className={`absolute right-0 ${stancePillClass(speed === 2, false)}`}
+            aria-pressed={speed === 2}
+            aria-label={speed === 2 ? "等倍に戻す" : "倍速にする"}
+            onClick={toggleSpeed}
+          >
+            ×{speed}
+          </button>
+        </div>
+        <div className="relative min-h-80 overflow-hidden rounded-2xl border-2 border-faded-gray bg-paper-white shadow-raised-gray">
+          <BattleStage3D
+            player={{
+              appearance: appearanceForCharacter(displayedMember.characterId),
+              motion: stageState.player,
+            }}
+            enemy={{
+              appearance: appearanceForCharacter(snapshot.enemy.characterId),
+              motion: stageState.enemy,
+            }}
+            speed={speed}
+            onMotionFinished={handleStageMotionFinished}
+          />
+          {snapshot.playerStance === "special" ? (
+            <div className="absolute bottom-10 left-5 z-10 h-32 w-32">
+              <ChargeSwirl speed={speed} />
+            </div>
+          ) : null}
+          <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between px-4 py-5">
+            <div className="flex flex-col items-end gap-2 pl-16">
+              <HpBar
+                current={snapshot.enemy.hp}
+                max={snapshot.enemy.maxHp}
+                label={snapshot.enemy.name ?? "てき"}
+                side="enemy"
+                hitFlashKey={enemyHitFlashKey}
+                speed={speed}
+              />
+            </div>
+            <div className="flex flex-col items-start gap-2 pr-16">
+              <HpBar
+                current={member.hp}
+                max={member.maxHp}
+                label={member.name ?? "味方"}
+                side="ally"
+                hitFlashKey={playerHitFlashKey}
+                speed={speed}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <div className={`flex justify-between ${captionTextClass}`}>
+            <span>必殺ゲージ</span>
+            <span>
+              {snapshot.playerGauge} / {SPECIAL_GAUGE_MAX}
+            </span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-blush-wash">
+            <div
+              className="h-full bg-night-ink"
+              style={{
+                width: `${(snapshot.playerGauge / SPECIAL_GAUGE_MAX) * 100}%`,
+              }}
+            />
+          </div>
+        </div>
+        {snapshot.playerStance === "special" ? (
+          <StrainGauge progress={strainProgress} />
+        ) : null}
+        <BattleControls
+          party={snapshot.party}
+          activeIndex={snapshot.activeIndex}
+          playerStance={snapshot.playerStance}
+          playerGauge={snapshot.playerGauge}
+          playerGuardCooldownTicks={snapshot.playerGuardCooldownTicks}
+          switchStunTicks={snapshot.switchStunTicks}
+          switchCooldownTicks={snapshot.switchCooldownTicks}
+          onGuard={() => useBattleStore.getState().setStance("guard")}
+          onSpecial={activateSpecial}
+          onSwitch={(index) => useBattleStore.getState().switchMember(index)}
+          specialReason={reason}
+          onDebugStrain={() => useBattleStore.getState().fireSpecial()}
+          onDebugComplete={() => useBattleStore.getState().markCompleting()}
+          onDebugDefeat={() => useBattleStore.getState().markDefeated()}
+        />
+      </section>
+      {awaitingOutcomeAck ? (
+        <BattleOutcomeOverlay
+          outcome={snapshot.status === "defeated" ? "lose" : "win"}
+          onDismiss={() => {
+            useBattleStore.getState().acknowledgeOutcome();
+          }}
+        />
+      ) : null}
+    </>
+    );
+  }
+
+  if (screenView.kind === "outcome-only") {
+    return (
+      <BattleOutcomeOverlay
+        outcome={snapshot.status === "defeated" ? "lose" : "win"}
+        onDismiss={() => {
+          useBattleStore.getState().acknowledgeOutcome();
+        }}
+      />
+    );
+  }
+
+  return (
+    <section className="flex flex-col gap-4">
+      {error ? (
+        <ErrorState
+          description={error}
+          onRetry={() => void startBattle()}
+        />
+      ) : null}
+      {starting ? <LoadingState label={t("loading")} /> : null}
+      {showStart ? (
+        <button
+          type="button"
+          className={primaryButtonClass}
+          onClick={() => void startBattle()}
+        >
+          {t("start")}
+        </button>
+      ) : null}
+    </section>
+  );
+}
