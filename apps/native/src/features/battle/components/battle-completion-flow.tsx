@@ -16,7 +16,7 @@ import { getSupabase } from "@/lib/supabase";
 import { colors, elevation, fontSize, fonts, radius, spacing } from "@/theme";
 
 import { mealGateway } from "@/gateways";
-import { MealLogForm } from "../../meal/components/MealLogForm";
+import { MealLogForm } from "../../meal/components/meal-log-form";
 import type { MealLog } from "../../meal/meal-gateway";
 import { dateFormatter } from "@/components/ui";
 import { completeBattleForSession, type CompleteBattleResult } from "../supabase-gateway";

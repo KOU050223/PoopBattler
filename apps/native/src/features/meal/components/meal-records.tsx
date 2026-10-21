@@ -13,7 +13,7 @@ import { useLoader } from "@/hooks/use-loader";
 import { pickErrorKey, removePhotoQuietly, savePickedPhoto } from "../meal-actions";
 import { pickMealPhoto } from "../meal-photo-picker";
 import type { MealLog } from "../meal-gateway";
-import { MealLogForm } from "./MealLogForm";
+import { MealLogForm } from "./meal-log-form";
 
 function MealPhoto({ photoId }: { photoId: string }) {
   const { t } = useTranslation();

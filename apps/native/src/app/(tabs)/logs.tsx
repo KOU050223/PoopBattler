@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import "@/i18n/records";
-import { BattleHistory } from "@/features/bowel-log/components/BattleHistory";
+import { BattleHistory } from "@/features/bowel-log/components/battle-history";
 import { cardStyle, ScreenFrame } from "@/components/ui";
 import { colors, fontSize, fonts, radius, spacing } from "@/theme";
 

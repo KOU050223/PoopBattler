@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import "@/i18n/records";
-import { CollectionView } from "@/features/collection/components/CollectionView";
+import { CollectionView } from "@/features/collection/components/collection-view";
 import { ScreenFrame } from "@/components/ui";
 import { spacing } from "@/theme";
 
