@@ -5,6 +5,7 @@ import type { PerspectiveCamera } from "three";
 import type { Game, Side, Species } from "../types";
 import { addYaw, baseFov, cameraTarget, decayFovKick, decayShake, stepCamera, stepCamYaw, stepYaw, type CameraRig, type Vec3 } from "./camera";
 import { Dohyo } from "./Dohyo";
+import { motionOf } from "./motion";
 import type { FxPlan } from "./fx";
 import { fallLoser, INITIAL_POSE_SMOOTHING, poseFighter, type PoseSmoothing } from "./pose";
 import { Rikishi, type RikishiHandle } from "./Rikishi";
@@ -80,6 +81,7 @@ function StageRig({ gameRef, isPreFight, stageHandleRef, timeScaleRef, rikishiRe
       const result = poseFighter({ fighter: game.f[side], game, nowMs, dtMs: poseDtMs, yaw: orientation.yaw, smoothing: smoothingRef.current[side], isPreFight });
       smoothingRef.current[side] = result.smoothing;
       rikishiRefs.current[side]?.apply(result.pose);
+      rikishiRefs.current[side]?.setMotion(isPreFight ? "idle" : motionOf(game.f[side], game));
       return result.pose;
     });
 
