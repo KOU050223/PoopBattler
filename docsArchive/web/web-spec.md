@@ -1,5 +1,7 @@
 # Webアプリ現行仕様
 
+> 現行実装の仕様。ゲームループは [`game-design.md`](./game-design.md) の新方針（記録はトイレ、遊ぶのは寝る前）へ移行予定で、バトル・仲間化まわりは今後変わる。
+
 現行のWeb版（`apps/web`、Next.js PWA）がユーザーに見せている振る舞い・ルールの仕様書。
 Native移行の写し元として「何が正解か」をここに固定する。バトル内部ルールの詳細は [battle.md](./battle.md)、構成は [current-architecture.md](./current-architecture.md) を参照。
 

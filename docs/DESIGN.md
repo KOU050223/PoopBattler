@@ -5,7 +5,7 @@
 
 画面は薄い blush wash。その上に白い角丸カードを置く。見出しとCTAだけが飽和したピンク `#ff7aac` で「進め」と見える。本文は中間グレーに下げ、インタラクション用の青 `#1cb0f6` と役割を分ける。部品は 12–16px の角丸、枠は 2px。立体は下方向 6px の硬いオフセット（ぼかしなし）。Duolingo の緑をこのピンクに差し替えた関係で読む。
 
-体験の中身は [`IDEA.md`](./IDEA.md)。画面構成は [`architecture.md`](./architecture.md)。
+体験の中身は [`IDEA.md`](./IDEA.md)。画面構成は [`architecture.md`](../docsArchive/web/architecture.md)。
 
 ## Tokens — Colors
 
