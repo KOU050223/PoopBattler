@@ -2,64 +2,58 @@
 // 変化があったときだけ更新するために、値は丸めて比較しやすい形にしておく。
 import { CFG } from "../config";
 import type { Fighter, Game, Side } from "../types";
-import { DIR_LEFT, DIR_RIGHT, type SideDir } from "./input";
-import { stateMark, type StateMark } from "./labels";
+import {
+  clinchHudOf,
+  fanStateOf,
+  heatRatio,
+  telegraphOf,
+  warnDirOf,
+  type ClinchHud,
+  type FanState,
+  type Telegraph,
+} from "./hud";
+import { DIR_LEFT, DIR_RIGHT } from "./input";
 
 export interface FighterHud {
+  /** 息 0〜100 */
   stamina: number;
+  /** 必殺ゲージ 0〜100 */
   special: number;
-  mark: StateMark;
-  isHot: boolean;
-  /** 守りの向き（扇の点灯用）。守っていなければ null */
-  guardDir: SideDir | null;
+  /** 熱の残り 0〜1。熱でなければ 0 */
+  heat: number;
 }
 
 export interface HudSnapshot {
   position: number;
   fighters: [FighterHud, FighterHud];
-  isClinch: boolean;
+  /** 相手の頭上に出す予告マーク。なければ null */
+  telegraph: Telegraph | null;
+  fans: { right: FanState; left: FanState };
+  clinch: ClinchHud | null;
   isEnded: boolean;
   winner: Side | null;
-  /** 相手の突きが来る側（序ノ口・幕下の予告）。なければ null */
-  threatDir: SideDir | null;
 }
 
-const toSideDir = (dir: number): SideDir => (dir === DIR_RIGHT ? DIR_RIGHT : DIR_LEFT);
+const round2 = (value: number): number => Math.round(value * 100) / 100;
 
-export function snapshotOf(game: Game): HudSnapshot {
-  const [east, west] = game.f;
-  const hud = (f: Fighter): FighterHud => ({
-    stamina: Math.round(f.stam),
-    special: Math.round(f.gauge),
-    mark: stateMark(f),
-    isHot: f.hot > 0,
-    guardDir: f.state === "inashi" ? toSideDir(f.idir) : null,
-  });
-  const isThreatening = game.diff.guide && west.state === "windup" && west.move === "tsuki";
+export function snapshotOf(game: Game, playerSide: Side): HudSnapshot {
+  const player = game.f[playerSide];
+  const opponent = game.f[1 - playerSide];
+  const hud = (f: Fighter): FighterHud => ({ stamina: Math.round(f.stam), special: Math.round(f.gauge), heat: round2(heatRatio(f)) });
+  const telegraph = telegraphOf(opponent);
+  const warnDir = warnDirOf(game, opponent);
   return {
     position: Math.round(Math.max(-CFG.OUT, Math.min(CFG.OUT, game.pos))),
-    fighters: [hud(east), hud(west)],
-    isClinch: game.clinch !== null,
+    // 東・西の順。プレイヤーがどちらでも並びは変えない（東=左 / 西=右の表示に対応）
+    fighters: [hud(game.f[0]), hud(game.f[1])],
+    telegraph: telegraph && { ...telegraph, ring: round2(telegraph.ring) },
+    fans: { right: fanStateOf(player, DIR_RIGHT, warnDir), left: fanStateOf(player, DIR_LEFT, warnDir) },
+    clinch: clinchHudOf(game),
     isEnded: game.phase === "end",
     winner: game.winner,
-    threatDir: isThreatening ? toSideDir(west.dir7) : null,
   };
 }
 
 export function isSameSnapshot(a: HudSnapshot, b: HudSnapshot): boolean {
-  const sameFighter = (x: FighterHud, y: FighterHud) =>
-    x.stamina === y.stamina &&
-    x.special === y.special &&
-    x.mark.label === y.mark.label &&
-    x.isHot === y.isHot &&
-    x.guardDir === y.guardDir;
-  return (
-    a.position === b.position &&
-    a.isClinch === b.isClinch &&
-    a.isEnded === b.isEnded &&
-    a.winner === b.winner &&
-    a.threatDir === b.threatDir &&
-    sameFighter(a.fighters[0], b.fighters[0]) &&
-    sameFighter(a.fighters[1], b.fighters[1])
-  );
+  return JSON.stringify(a) === JSON.stringify(b);
 }
