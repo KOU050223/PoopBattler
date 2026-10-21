@@ -4,12 +4,12 @@
 
 | ファイル | 内容 |
 | --- | --- |
-| [game-design.md](./game-design.md) | ゲームループの正本。記録（トイレ）と遊ぶ（寝る前）の分離、不正対策、未決事項 |
+| [game-design.md](./game-design.md) | ゲームループの正本。記録 → 10秒レース → 継続で育つ。不正対策、未決事項 |
 | [IDEA.md](./IDEA.md) | 企画。ゲームループ、排便/食事ログ、プレミアム |
 | [business-plan.md](./business-plan.md) | 事業改善案。データ活用（BtoB）の方針、匿名化の整理、法務・規約の注意、進め方 |
 | [battle.md](./battle.md) | バトルの正本。うんちくん相撲（リアルタイム）のルール、パーツ補正、試作のノウハウ |
 | [parts.md](./parts.md) | 強さの決まり方（個体値・レベル・パーツ）、補正の幅、パーツの部位と食事との関係 |
-| [level.md](./level.md) | レベル。ストーリーの初勝利で上がり、伸ばす値を選ぶ。章ごとの上限 |
+| [level.md](./level.md) | レベル。記録を続けた日数で育つ。共通ステータス（体力・パワー・技術）、対戦ではレベルを揃える |
 | [merge.md](./merge.md) | 合成。重複したパーツやうんちくんでパーツを強化する。廃止する凸・進化の実装 |
 | [DESIGN.md](./DESIGN.md) | UIスタイルリファレンス（色・書体・部品・Do/Don't） |
 | [native/](./native/README.md) | React Native / Expo 移行の As-Is / To-Be / 移行提案 |
