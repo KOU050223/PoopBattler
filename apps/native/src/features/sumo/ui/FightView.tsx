@@ -296,7 +296,7 @@ export function FightView({ setup, onRematch, onQuit }: { setup: MatchSetup; onR
           <StaminaTube stamina={west.stamina} side="west" isMotionReduced={isMotionReduced} />
         </View>
         <View style={styles.popArea} pointerEvents="none">
-          {hud.clinch ? <ClinchCall clinch={hud.clinch} /> : <PopText pop={pop} fontSize={popFontSize} isMotionReduced={isMotionReduced} />}
+          {hud.clinch ? <ClinchCall clinch={hud.clinch} /> : <PopText pop={pop} fontSize={popFontSize} isMotionReduced={isMotionReduced} isOnStage={is3d} />}
         </View>
       </View>
 
