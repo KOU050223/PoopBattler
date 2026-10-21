@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import "@/i18n/records";
-import { MealRecords } from "@/features/meal/components/MealRecords";
+import { MealRecords } from "@/features/meal/components/meal-records";
 import { ScreenFrame } from "@/components/ui";
 import { spacing } from "@/theme";
 
