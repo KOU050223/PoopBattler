@@ -55,12 +55,68 @@ describe("cameraTarget", () => {
     expect(rig.lookAt.x).toBeCloseTo(0.6);
   });
 
-  it("東が勝つと西(+x)の便器側を見る", () => {
-    expect(cameraTarget({ ...base, aspect: 1, winner: 0 }).lookAt.x).toBeCloseTo(TOILET_X * 0.6);
-  });
+  describe("決着カメラ", () => {
+    const aspects = [0.46, 0.56, 1.0, 1.8];
+    const duringFight = (aspect: number) => cameraTarget({ ...base, aspect });
+    const ended = (aspect: number, winner: 0 | 1) => cameraTarget({ ...base, aspect, winner });
 
-  it("西が勝つと東(-x)の便器側を見る", () => {
-    expect(cameraTarget({ ...base, aspect: 1, winner: 1 }).lookAt.x).toBeCloseTo(-TOILET_X * 0.6);
+    // 決着カメラの画角・姿勢から、ワールド点が画面(-1〜1)に入るかを調べる
+    const isInFrame = (rig: ReturnType<typeof cameraTarget>, aspect: number, point: { x: number; y: number; z: number }): boolean => {
+      const sub = (a: typeof point, b: typeof point) => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
+      const dot = (a: typeof point, b: typeof point) => a.x * b.x + a.y * b.y + a.z * b.z;
+      const cross = (a: typeof point, b: typeof point) => ({ x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x });
+      const unit = (a: typeof point) => {
+        const length = Math.hypot(a.x, a.y, a.z);
+        return { x: a.x / length, y: a.y / length, z: a.z / length };
+      };
+      const forward = unit(sub(rig.lookAt, rig.position));
+      const right = unit(cross(forward, { x: 0, y: 1, z: 0 }));
+      const up = cross(right, forward);
+      const offset = sub(point, rig.position);
+      const depth = dot(offset, forward);
+      const halfFovTan = Math.tan((baseFov(aspect) * Math.PI) / 360);
+      return depth > 0 && Math.abs(dot(offset, right) / depth) <= halfFovTan * aspect && Math.abs(dot(offset, up) / depth) <= halfFovTan;
+    };
+
+    it.each(aspects)("aspect %s: 取組中より高い位置から見下ろす", (aspect) => {
+      expect(ended(aspect, 0).position.y).toBeGreaterThan(duringFight(aspect).position.y);
+    });
+
+    it.each(aspects)("aspect %s: 俯角は 60〜80 度", (aspect) => {
+      const { position, lookAt } = ended(aspect, 0);
+      const elevationDeg = (Math.atan2(position.y - lookAt.y, Math.hypot(position.x - lookAt.x, position.z - lookAt.z)) * 180) / Math.PI;
+      expect(elevationDeg).toBeGreaterThanOrEqual(60);
+      expect(elevationDeg).toBeLessThanOrEqual(80);
+    });
+
+    it("東が勝つと西(+x)の便器側へ寄る", () => {
+      expect(ended(1, 0).lookAt.x).toBeGreaterThan(0);
+    });
+
+    it("西が勝つと東(-x)の便器側へ寄り、位置と注視点が左右反転する", () => {
+      const eastWins = ended(1, 0);
+      const westWins = ended(1, 1);
+      expect(westWins.lookAt.x).toBeCloseTo(-eastWins.lookAt.x);
+      expect(westWins.position.x).toBeCloseTo(-eastWins.position.x);
+    });
+
+    it.each(aspects)("aspect %s: 落下開始位置・落下の頂点・便器・勝者が画面に入る(東勝ち)", (aspect) => {
+      const rig = ended(aspect, 0);
+      const points = [
+        { x: 3.8, y: 1.05, z: 0.8 }, // 敗者の落下開始(土俵の端)
+        { x: 6.2, y: 2.25, z: 0 }, // 放物線の頂点付近
+        { x: TOILET_X, y: 0.1, z: 0 }, // 便器
+        { x: TOILET_X + 1, y: 0.1, z: 0 }, // 便器の外縁
+        { x: 1.5, y: 1.05, z: 0 }, // 勝者
+      ];
+      expect(points.map((point) => isInFrame(rig, aspect, point))).toEqual(points.map(() => true));
+    });
+
+    it.each(aspects)("aspect %s: 西勝ちでも東側の便器が画面に入る", (aspect) => {
+      const rig = ended(aspect, 1);
+      expect(isInFrame(rig, aspect, { x: -TOILET_X, y: 0.1, z: 0 })).toBe(true);
+      expect(isInFrame(rig, aspect, { x: -3.8, y: 1.05, z: 0.8 })).toBe(true);
+    });
   });
 });
 
