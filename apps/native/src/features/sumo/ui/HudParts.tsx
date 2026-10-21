@@ -3,7 +3,7 @@
 // 画面下中央に守りの扇、両端に息チューブ。土俵の中央には何も置かない。
 import { useEffect, useRef } from "react";
 import { Animated, Easing, Pressable, StyleSheet, Text, View, type GestureResponderEvent } from "react-native";
-import Svg, { Circle, Defs, Path, RadialGradient, Rect, Stop, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, Defs, G, Path, RadialGradient, Rect, Stop, Text as SvgText } from "react-native-svg";
 
 import { colors, fonts, spacing } from "@/theme";
 
@@ -26,8 +26,10 @@ import {
 } from "./hud";
 import { DIR_LEFT, DIR_RIGHT, type SideDir } from "./input";
 import { CONTROL_HINTS, SPECIES_SHORT_NAMES } from "./labels";
-import { HEAT_COLOR, POP_COLORS, SIDE_COLORS, SPECIAL_COLOR, STAMINA_COLORS, TELEGRAPH_COLORS } from "./palette";
+import { fanColors } from "./fan-colors";
+import { HEAT_COLOR, SIDE_COLORS, SPECIAL_COLOR, STAMINA_COLORS, TELEGRAPH_COLORS } from "./palette";
 import { sideName, type Pop } from "./pop";
+import { popStyleFor } from "./pop-colors";
 
 /** ボタン類は画面全体のジェスチャー（守り・突き）を始めさせない */
 export const stopGesture = (event: GestureResponderEvent): void => event.stopPropagation();
@@ -190,31 +192,36 @@ export function TelegraphMark({ telegraph }: { telegraph: Telegraph | null }) {
 
 // ---- 守りの扇 ----
 
-const FAN_FILLS: Record<FanState, { fill: string; stroke: string }> = {
-  idle: { fill: "rgba(75,75,75,0.05)", stroke: "rgba(75,75,75,0.22)" },
-  warn: { fill: "rgba(224,168,0,0.32)", stroke: TELEGRAPH_COLORS.tsuki.main },
-  hold: { fill: "rgba(8,117,165,0.28)", stroke: TELEGRAPH_COLORS.dodge.main },
-  parry: { fill: "rgba(63,174,106,0.42)", stroke: TELEGRAPH_COLORS.parry.main },
-};
 const FAN_DIRS: readonly { dir: SideDir; label: string }[] = [
   { dir: DIR_RIGHT, label: "右" },
   { dir: DIR_LEFT, label: "左" },
 ];
 
-export function FanLayer({ width, height, fans }: { width: number; height: number; fans: { right: FanState; left: FanState } }) {
+export function FanLayer({ width, height, fans, isOnStage = false }: { width: number; height: number; fans: { right: FanState; left: FanState }; isOnStage?: boolean }) {
   const geometry = fanGeometry(width, height);
   return (
     <Svg style={StyleSheet.absoluteFill} width={width} height={height} pointerEvents="none">
       {FAN_DIRS.map(({ dir }) => {
         const state = dir === DIR_RIGHT ? fans.right : fans.left;
-        return <Path key={dir} d={fanPath(geometry, dir)} fill={FAN_FILLS[state].fill} stroke={FAN_FILLS[state].stroke} strokeWidth={1.5} />;
+        const colors = fanColors(state, isOnStage);
+        return <Path key={dir} d={fanPath(geometry, dir)} fill={colors.fill} stroke={colors.stroke} strokeWidth={1.5} />;
       })}
       {FAN_DIRS.map(({ dir, label }) => {
         const point = fanLabelPoint(geometry, dir);
+        const { labelFill, labelStroke } = fanColors(dir === DIR_RIGHT ? fans.right : fans.left, isOnStage);
+        const textProps = { x: point.x, y: point.y, fontSize: 14, fontWeight: "700", textAnchor: "middle", alignmentBaseline: "middle" } as const;
+        // react-native-svg は paintOrder 非対応なので、縁取り用を下に重ねて塗りが縁に潰されないようにする
         return (
-          <SvgText key={dir} x={point.x} y={point.y} fill="rgba(75,75,75,0.6)" fontSize={14} fontWeight="700" textAnchor="middle" alignmentBaseline="middle">
-            {label}
-          </SvgText>
+          <G key={dir}>
+            {labelStroke ? (
+              <SvgText {...textProps} fill={labelStroke} stroke={labelStroke} strokeWidth={3} strokeLinejoin="round">
+                {label}
+              </SvgText>
+            ) : null}
+            <SvgText {...textProps} fill={labelFill}>
+              {label}
+            </SvgText>
+          </G>
         );
       })}
     </Svg>
@@ -274,7 +281,17 @@ export function HeatLabel({ ratio }: { ratio: number }) {
 
 const POP_MS = 900;
 
-export function PopText({ pop, fontSize, isMotionReduced }: { pop: (Pop & { id: number }) | null; fontSize: number; isMotionReduced: boolean }) {
+export function PopText({
+  pop,
+  fontSize,
+  isMotionReduced,
+  isOnStage = false,
+}: {
+  pop: (Pop & { id: number }) | null;
+  fontSize: number;
+  isMotionReduced: boolean;
+  isOnStage?: boolean;
+}) {
   const progress = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (!pop) return;
@@ -289,10 +306,20 @@ export function PopText({ pop, fontSize, isMotionReduced }: { pop: (Pop & { id: 
         { translateY: progress.interpolate({ inputRange: [0, 0.12, 1], outputRange: [16, 0, -24] }) },
         { scale: progress.interpolate({ inputRange: [0, 0.12, 1], outputRange: [1.5, 1, 1] }) },
       ];
+  const popStyle = popStyleFor(pop.tone, isOnStage);
   return (
     <Animated.View pointerEvents="none" style={[styles.pop, { opacity, transform: motion }]}>
-      <Text style={[styles.popText, { fontSize, color: POP_COLORS[pop.tone] }]}>{pop.text}</Text>
-      {pop.sub ? <Text style={styles.popSub}>{pop.sub}</Text> : null}
+      <Text
+        style={[
+          styles.popText,
+          { fontSize, color: popStyle.textColor, textShadowColor: popStyle.textShadowColor, textShadowRadius: popStyle.textShadowRadius },
+        ]}
+      >
+        {pop.text}
+      </Text>
+      {pop.sub ? (
+        <Text style={[styles.popSub, isOnStage && styles.popSubOnStage, { color: popStyle.subColor, textShadowColor: popStyle.subShadowColor }]}>{pop.sub}</Text>
+      ) : null}
     </Animated.View>
   );
 }
@@ -416,6 +443,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
   },
   popSub: { marginTop: 2, fontFamily: fonts.bold, fontSize: 13, color: colors.charcoal, textAlign: "center" },
+  popSubOnStage: { textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
   clinch: { alignItems: "center", gap: 2 },
   clinchText: { fontFamily: fonts.black, fontSize: 30, color: TELEGRAPH_COLORS.grab.main },
   clinchSub: { fontFamily: fonts.bold, fontSize: 12, color: colors.charcoal },

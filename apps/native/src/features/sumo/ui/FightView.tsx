@@ -7,6 +7,12 @@ import { colors, spacing } from "@/theme";
 
 import { createStepper } from "../clock";
 import { act, clinchTap } from "../engine";
+import { createRng } from "../rng";
+import type { Vec3 } from "../three/camera";
+import { planFx } from "../three/fx";
+import { ParticleLayer, type ParticleLayerHandle } from "../three/ParticleLayer";
+import { NO_SLOWMO, startSlowmo, type SlowmoState } from "../three/slowmo";
+import { SumoStage3D, type SumoStageHandle } from "../three/SumoStage3D";
 import type { Game, SumoEvent } from "../types";
 import {
   ClinchCall,
@@ -24,12 +30,15 @@ import {
   captionOf,
 } from "./HudParts";
 import { IDLE, touchDown, touchMove, touchUp, type InputCommand, type TouchPhase } from "./input";
+import { collectHotPositions, dispatchFxPlan, logicExtraScale, mergedFreezeMs, resultDelayMs } from "./fight-fx";
 import { hapticFor } from "./labels";
 import { popFor, repeatHintFor, type Pop } from "./pop";
 import { saveResult, type SumoRecord } from "./record";
 import { asyncRecordStorage } from "./record-storage";
 import { ResultView } from "./ResultView";
 import { createMatch, PLAYER_SIDE, type MatchSetup } from "./session";
+import { ScreenFx } from "./ScreenFx";
+import type { ScreenFxTrigger } from "./screen-fx";
 import { isSameSnapshot, snapshotOf, type HudSnapshot } from "./snapshot";
 import { useReducedMotion } from "./use-reduced-motion";
 
@@ -37,8 +46,6 @@ import { useReducedMotion } from "./use-reduced-motion";
 const HUD_INTERVAL_MS = 50;
 /** バックグラウンド復帰などで巨大な経過時間が来ても、一気に進めない */
 const MAX_FRAME_MS = 100;
-/** 決着の文字を見せてから、結果画面に切り替えるまでの間 */
-const RESULT_DELAY_MS = 1000;
 /** 「同じ手の連続」のヒントを出しておく時間 */
 const REPEAT_HINT_MS = 1600;
 const POP_MIN_FONT = 28;
@@ -77,6 +84,18 @@ export function FightView({ setup, onRematch, onQuit }: { setup: MatchSetup; onR
       Date.now() % 2 ** 31,
     ),
   );
+  const gameRef = useRef(game);
+  const stageHandleRef = useRef<SumoStageHandle | null>(null);
+  const particleRef = useRef<ParticleLayerHandle | null>(null);
+  const slowmoRef = useRef<SlowmoState>(NO_SLOWMO);
+  // pose 平滑化にも同じ倍率を渡す（SumoStage3D が毎フレーム読む）
+  const timeScaleRef = useRef(1);
+  const hotPositionsRef = useRef<Vec3[]>([]);
+  // 演出の乱数は注入。ロジックの乱数列を消費しないよう別系統にする
+  const [fxRand] = useState(() => createRng((Date.now() + 1) % 2 ** 31));
+  const [screenFxTrigger, setScreenFxTrigger] = useState<ScreenFxTrigger | null>(null);
+  const screenFxIdRef = useRef(0);
+  const is3d = setup.view === "3d";
   const [hud, setHud] = useState<HudSnapshot>(() => snapshotOf(game, PLAYER_SIDE));
   const [pop, setPop] = useState<PopState | null>(() => ({ id: 0, text: "はっけよい！", sub: "", tone: "neutral", delayMs: 0 }));
   const [repeatHint, setRepeatHint] = useState<string | null>(null);
@@ -96,6 +115,13 @@ export function FightView({ setup, onRematch, onQuit }: { setup: MatchSetup; onR
     };
     let repeatTimer: ReturnType<typeof setTimeout> | undefined;
     eventSinkRef.current = (event) => {
+      const plan = planFx(event, game, fxRand);
+      const fx = dispatchFxPlan(plan, { view: setup.view, isMotionReduced });
+      if (fx.stagePlan) stageHandleRef.current?.applyFxPlan(fx.stagePlan);
+      if (fx.shouldSpawnParticles) particleRef.current?.spawn(plan);
+      if (fx.screenFx) setScreenFxTrigger({ id: ++screenFxIdRef.current, ...fx.screenFx });
+      if (fx.slowmoMs > 0) slowmoRef.current = startSlowmo(slowmoRef.current, performance.now(), fx.slowmoMs);
+      if (fx.hitStopMs > 0) game.freeze = mergedFreezeMs(game.freeze, fx.hitStopMs);
       const next = popFor(event, game.f, PLAYER_SIDE);
       if (next) later(() => setPop({ ...next, id: ++popIdRef.current }), next.delayMs);
       const hint = repeatHintFor(event, PLAYER_SIDE);
@@ -111,7 +137,7 @@ export function FightView({ setup, onRematch, onQuit }: { setup: MatchSetup; onR
       for (const timer of timers) clearTimeout(timer);
       timers.length = 0;
     };
-  }, [game]);
+  }, [game, fxRand, isMotionReduced, setup.view]);
 
   useEffect(() => {
     const stepper = createStepper(game);
@@ -119,7 +145,10 @@ export function FightView({ setup, onRematch, onQuit }: { setup: MatchSetup; onR
     let lastFrameAt = performance.now();
     let lastHudAt = 0;
     const tick = (now: number) => {
-      stepper.advance(Math.min(now - lastFrameAt, MAX_FRAME_MS));
+      const extraScale = logicExtraScale(slowmoRef.current, now, { view: setup.view, isMotionReduced });
+      stepper.advance(Math.min(now - lastFrameAt, MAX_FRAME_MS), extraScale);
+      timeScaleRef.current = extraScale * game.mode.timeScale;
+      collectHotPositions(game, hotPositionsRef.current);
       lastFrameAt = now;
       const isEnded = game.phase === "end";
       if (isEnded || now - lastHudAt >= HUD_INTERVAL_MS) {
@@ -134,7 +163,7 @@ export function FightView({ setup, onRematch, onQuit }: { setup: MatchSetup; onR
     };
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [game]);
+  }, [game, isMotionReduced, setup.view]);
 
   // 決着したら戦績に加え、決まり手の文字を見せてから結果画面を出す
   useEffect(() => {
@@ -143,12 +172,12 @@ export function FightView({ setup, onRematch, onQuit }: { setup: MatchSetup; onR
     saveResult(asyncRecordStorage, hud.winner === PLAYER_SIDE).then((next) => {
       if (isActive) setRecord(next);
     });
-    const timer = setTimeout(() => setIsResultShown(true), RESULT_DELAY_MS);
+    const timer = setTimeout(() => setIsResultShown(true), resultDelayMs(setup.view));
     return () => {
       isActive = false;
       clearTimeout(timer);
     };
-  }, [hud.isEnded, hud.winner]);
+  }, [hud.isEnded, hud.winner, setup.view]);
 
   const player = game.f[PLAYER_SIDE];
   const apply = (commands: InputCommand[]) => {
@@ -226,8 +255,22 @@ export function FightView({ setup, onRematch, onQuit }: { setup: MatchSetup; onR
       onTouchEnd={onTouchEnd}
       onTouchCancel={onTouchEnd}
     >
+      {is3d ? (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <SumoStage3D
+            gameRef={gameRef}
+            playerSpecies={setup.playerSpecies}
+            opponentSpecies={setup.opponentSpecies}
+            stageHandleRef={stageHandleRef}
+            timeScaleRef={timeScaleRef}
+          >
+            <ParticleLayer ref={particleRef} rand={fxRand} hotPositions={hotPositionsRef.current} />
+          </SumoStage3D>
+        </View>
+      ) : null}
+      {is3d ? <ScreenFx trigger={screenFxTrigger} isMotionReduced={isMotionReduced} /> : null}
       {/* 扇の基準点は画面下中央に固定。力士の位置には追従させない（docs/battle.md 4.1） */}
-      <FanLayer width={size.width} height={size.height} fans={hud.fans} />
+      <FanLayer width={size.width} height={size.height} fans={hud.fans} isOnStage={is3d} />
       {game.mode.hasHot ? <HeatEdge isOn={east.heat > 0} isMotionReduced={isMotionReduced} /> : null}
 
       <View style={[styles.top, sidePadding, { paddingTop: insets.top + spacing.sm }]} pointerEvents="box-none">
@@ -253,7 +296,7 @@ export function FightView({ setup, onRematch, onQuit }: { setup: MatchSetup; onR
           <StaminaTube stamina={west.stamina} side="west" isMotionReduced={isMotionReduced} />
         </View>
         <View style={styles.popArea} pointerEvents="none">
-          {hud.clinch ? <ClinchCall clinch={hud.clinch} /> : <PopText pop={pop} fontSize={popFontSize} isMotionReduced={isMotionReduced} />}
+          {hud.clinch ? <ClinchCall clinch={hud.clinch} /> : <PopText pop={pop} fontSize={popFontSize} isMotionReduced={isMotionReduced} isOnStage={is3d} />}
         </View>
       </View>
 

@@ -6,7 +6,7 @@ import { colors, fonts, spacing } from "@/theme";
 
 import { DIFFICULTIES, FAVORITE_NAMES, MODES, SPECIES } from "../config";
 import { CONTROL_GUIDE, MODE_DESCRIPTIONS, READING_GUIDE, SPECIES_SHORT_NAMES } from "./labels";
-import type { MatchSetup } from "./session";
+import type { MatchSetup, MatchView } from "./session";
 
 const MAX_PANEL_WIDTH = 440;
 /** 相手の選択肢で「おまかせ」を表す値（種族の id とは重ならない） */
@@ -17,6 +17,11 @@ const playerOptions = SPECIES.map((species) => ({ value: species.id, label: spec
 const opponentOptions = [{ value: RANDOM_OPPONENT, label: "おまかせ" }, ...playerOptions];
 const difficultyOptions = DIFFICULTIES.map((difficulty) => ({ value: difficulty.id, label: difficulty.name }));
 const modeOptions = MODES.map((mode) => ({ value: mode.id, label: mode.name }));
+
+const viewOptions: { value: MatchView; label: string }[] = [
+  { value: "3d", label: "3D" },
+  { value: "2d", label: "2D" },
+];
 
 const speciesById = (id: string) => SPECIES.find((species) => species.id === id) ?? SPECIES[0];
 
@@ -59,6 +64,9 @@ export function SetupView({ setup, onChange, onStart, onBack }: {
               value={setup.difficulty.id}
               onChange={(id) => onChange({ ...setup, difficulty: DIFFICULTIES.find((difficulty) => difficulty.id === id) ?? setup.difficulty })}
             />
+          </Field>
+          <Field label="表示">
+            <Segmented options={viewOptions} value={setup.view} onChange={(view) => onChange({ ...setup, view })} />
           </Field>
           <View style={styles.guide}>
             {CONTROL_GUIDE.map(({ term, description }) => (
