@@ -1,7 +1,7 @@
 import { Canvas } from "@react-three/fiber/native";
 
-import { ENEMY_SCALE, PLAYER_SCALE, STAGE_ANCHOR, STAGE_CAMERA_WIDE } from "../poopm-3d.camera";
-import type { Poopm3DBattleMotion } from "../poopm-3d.motion";
+import { ENEMY_SCALE, PLAYER_SCALE, STAGE_ANCHOR, STAGE_CAMERA_WIDE } from "../poopm-3d-camera";
+import type { Poopm3DBattleMotion } from "../poopm-3d-motion";
 import { useReduceMotion } from "../use-reduce-motion";
 import { Poopm3DBlobShadow } from "./poopm-3d-blob-shadow";
 import { Poopm3DCameraRig } from "./poopm-3d-camera-rig";

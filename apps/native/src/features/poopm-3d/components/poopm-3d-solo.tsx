@@ -5,8 +5,8 @@ import * as THREE from "three";
 
 import type { GravityVec3 } from "@poopbattler/domain/battle/companionship-gravity";
 
-import { STAGE_GROUND_Y } from "../poopm-3d.camera";
-import type { Poopm3DBattleMotion } from "../poopm-3d.motion";
+import { STAGE_GROUND_Y } from "../poopm-3d-camera";
+import type { Poopm3DBattleMotion } from "../poopm-3d-motion";
 import { Poopm3DBlobShadow } from "./poopm-3d-blob-shadow";
 import { Poopm3DModel, type Poopm3DAppearance, type Poopm3DMotionRequest } from "./poopm-3d-model";
 

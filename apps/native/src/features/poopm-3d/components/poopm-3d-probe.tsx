@@ -3,8 +3,8 @@ import { Canvas, useFrame } from "@react-three/fiber/native";
 import { useEffect, useRef, useState } from "react";
 import { Box3, Vector3, type Group } from "three";
 
-import { cloneGlbScene, loadGlb } from "../poopm-3d.glb-loader";
-import { poopm3DBaseGlb } from "../poopm-3d.assets";
+import { cloneGlbScene, loadGlb } from "../poopm-3d-glb-loader";
+import { poopm3DBaseGlb } from "../poopm-3d-assets";
 
 function ProbeModel() {
   const [scene, setScene] = useState<Group>();
