@@ -27,8 +27,9 @@ import {
 import { DIR_LEFT, DIR_RIGHT, type SideDir } from "./input";
 import { CONTROL_HINTS, SPECIES_SHORT_NAMES } from "./labels";
 import { fanColors } from "./fan-colors";
-import { HEAT_COLOR, POP_COLORS, SIDE_COLORS, SPECIAL_COLOR, STAMINA_COLORS, TELEGRAPH_COLORS } from "./palette";
+import { HEAT_COLOR, SIDE_COLORS, SPECIAL_COLOR, STAMINA_COLORS, TELEGRAPH_COLORS } from "./palette";
 import { sideName, type Pop } from "./pop";
+import { popStyleFor } from "./pop-colors";
 
 /** ボタン類は画面全体のジェスチャー（守り・突き）を始めさせない */
 export const stopGesture = (event: GestureResponderEvent): void => event.stopPropagation();
@@ -280,7 +281,17 @@ export function HeatLabel({ ratio }: { ratio: number }) {
 
 const POP_MS = 900;
 
-export function PopText({ pop, fontSize, isMotionReduced }: { pop: (Pop & { id: number }) | null; fontSize: number; isMotionReduced: boolean }) {
+export function PopText({
+  pop,
+  fontSize,
+  isMotionReduced,
+  isOnStage = false,
+}: {
+  pop: (Pop & { id: number }) | null;
+  fontSize: number;
+  isMotionReduced: boolean;
+  isOnStage?: boolean;
+}) {
   const progress = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (!pop) return;
@@ -295,10 +306,20 @@ export function PopText({ pop, fontSize, isMotionReduced }: { pop: (Pop & { id: 
         { translateY: progress.interpolate({ inputRange: [0, 0.12, 1], outputRange: [16, 0, -24] }) },
         { scale: progress.interpolate({ inputRange: [0, 0.12, 1], outputRange: [1.5, 1, 1] }) },
       ];
+  const popStyle = popStyleFor(pop.tone, isOnStage);
   return (
     <Animated.View pointerEvents="none" style={[styles.pop, { opacity, transform: motion }]}>
-      <Text style={[styles.popText, { fontSize, color: POP_COLORS[pop.tone] }]}>{pop.text}</Text>
-      {pop.sub ? <Text style={styles.popSub}>{pop.sub}</Text> : null}
+      <Text
+        style={[
+          styles.popText,
+          { fontSize, color: popStyle.textColor, textShadowColor: popStyle.textShadowColor, textShadowRadius: popStyle.textShadowRadius },
+        ]}
+      >
+        {pop.text}
+      </Text>
+      {pop.sub ? (
+        <Text style={[styles.popSub, isOnStage && styles.popSubOnStage, { color: popStyle.subColor, textShadowColor: popStyle.subShadowColor }]}>{pop.sub}</Text>
+      ) : null}
     </Animated.View>
   );
 }
@@ -422,6 +443,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
   },
   popSub: { marginTop: 2, fontFamily: fonts.bold, fontSize: 13, color: colors.charcoal, textAlign: "center" },
+  popSubOnStage: { textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
   clinch: { alignItems: "center", gap: 2 },
   clinchText: { fontFamily: fonts.black, fontSize: 30, color: TELEGRAPH_COLORS.grab.main },
   clinchSub: { fontFamily: fonts.bold, fontSize: 12, color: colors.charcoal },
