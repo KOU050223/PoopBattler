@@ -1,7 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Button } from "@/features/records-ui";
+import { Button } from "@/components/ui";
 import { colors, fonts, spacing } from "@/theme";
 
 import type { Game } from "../types";

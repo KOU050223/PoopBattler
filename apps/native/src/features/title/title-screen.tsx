@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Button } from "@/features/records-ui";
+import { Button } from "@/components/ui";
 import { colors, fontSize, fonts, spacing } from "@/theme";
 
 import { POOPM_APPEARANCES } from "../battle/poopm-appearance";

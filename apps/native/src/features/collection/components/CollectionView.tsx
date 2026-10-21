@@ -9,9 +9,9 @@ import { resolveLineup, swapLineupSlot, type PartyLineup } from "@poopbattler/do
 import { keyValueStorage } from "@/adapters/storage";
 import { colors, fontSize, fonts, spacing } from "@/theme";
 
-import { collectionGateway } from "../../gateways";
-import { Button, cardStyle, Chip, dateFormatter, EmptyState } from "../../records-ui";
-import { useLoader } from "../../use-loader";
+import { collectionGateway } from "@/gateways";
+import { Button, cardStyle, Chip, dateFormatter, EmptyState } from "@/components/ui";
+import { useLoader } from "@/hooks/use-loader";
 import { readPartyLineup, writePartyLineup } from "../party-lineup-storage";
 
 function Stat({ label, value }: { label: string; value: number }) {

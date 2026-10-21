@@ -12,8 +12,8 @@ import {
   type AccountStatus,
 } from "@poopbattler/domain/account/account.types";
 
-import { Button, cardStyle } from "@/features/records-ui";
-import { accountGateway, iapGateway } from "@/features/gateways";
+import { Button, cardStyle } from "@/components/ui";
+import { accountGateway, iapGateway } from "@/gateways";
 import { getSupabase } from "@/lib/supabase";
 import { runGoogleOAuthFlow, type GoogleAuthFailureReason } from "@/features/account/google-identity";
 import { waitForEntitlement } from "@/features/billing/iap-gateway";

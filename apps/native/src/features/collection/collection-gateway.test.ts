@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mockSupabase } from "../test-support";
+import { mockSupabase } from "@/test-support";
 import { createCollectionGateway } from "./collection-gateway";
 
 describe("getCollectionCharacters", () => {

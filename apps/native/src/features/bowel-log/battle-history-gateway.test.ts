@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mockSupabase } from "../test-support";
+import { mockSupabase } from "@/test-support";
 import { createBattleHistoryGateway } from "./battle-history-gateway";
 
 const enemy = { id: "c1", name: "カレーン", attribute: "curry" };

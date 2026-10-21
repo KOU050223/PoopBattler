@@ -1,7 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Button, Segmented } from "@/features/records-ui";
+import { Button, Segmented } from "@/components/ui";
 import { colors, fonts, spacing } from "@/theme";
 
 import { DIFFICULTIES, FAVORITE_NAMES, MODES, SPECIES } from "../config";
