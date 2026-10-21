@@ -3,6 +3,9 @@ import { newGame } from "../engine";
 import { createRng } from "../rng";
 import type { Difficulty, Game, Mode, Species, SumoEvent } from "../types";
 
+/** 背景の表示。2d は従来の背景 */
+export type MatchView = "3d" | "2d";
+
 /** 開始前の画面で選ぶ内容 */
 export interface MatchSetup {
   difficulty: Difficulty;
@@ -11,6 +14,7 @@ export interface MatchSetup {
   /** true なら取組を始めるとき、自分と違う種族から相手を選ぶ（「おまかせ」） */
   isOpponentRandom: boolean;
   mode: Mode;
+  view: MatchView;
 }
 
 export const DEFAULT_SETUP: MatchSetup = {
@@ -19,6 +23,7 @@ export const DEFAULT_SETUP: MatchSetup = {
   opponentSpecies: SPECIES[1],
   isOpponentRandom: true,
   mode: MODES[0],
+  view: "3d",
 };
 
 /** 取組を始める前に、おまかせの相手を決める。rand は 0以上1未満の乱数 */
