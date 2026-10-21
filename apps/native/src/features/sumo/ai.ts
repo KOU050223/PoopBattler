@@ -1,13 +1,20 @@
 // NPC の思考。入力は act() / clinchTap() と同じ口から出すので、プレイヤーと同じルールで動く。
 import { CFG } from "./config";
-import { act, clinchTap, isAtEdge, opponentOf } from "./engine";
-import type { ActArg, Fighter, Game } from "./types";
+import { isAtEdge, opponentOf } from "./board";
+import type { ActArg, ActKind, Fighter, Game } from "./types";
+
+/** engine.ts の入口。engine.ts が ai.ts を import するので、逆向きの import は作らず呼び出し側から渡してもらう */
+export interface Controls {
+  act: (g: Game, f: Fighter, kind: ActKind, arg?: ActArg) => boolean;
+  clinchTap: (g: Game, f: Fighter) => void;
+}
 
 // 突きの方向は 0=画面の右、6=画面の左 の2つだけ使う
 const SIDE_DIRS = [0, 6] as const;
 const otherDir = (dir: number): number => (dir === 0 ? 6 : 0);
 
-export function brain(g: Game, me: Fighter, dt: number): void {
+export function brain(g: Game, me: Fighter, dt: number, controls: Controls): void {
+  const { act, clinchTap } = controls;
   const ai = g.ai[me.side];
   const o = opponentOf(g, me);
   const D = g.diffs?.[me.side] ?? g.diff;
@@ -39,7 +46,7 @@ export function brain(g: Game, me: Fighter, dt: number): void {
     ai.reactAt = 0;
     if (!ai.willRead && R() < (D.freeze ?? 0)) return; // 下位の番付は、読めないと固まる
     if (o.state === "windup" && me.state === "idle") {
-      reactToWindup(g, me, o);
+      reactToWindup(g, me, o, act);
       return;
     }
   }
@@ -76,10 +83,10 @@ export function brain(g: Game, me: Fighter, dt: number): void {
     act(g, me, "special");
     return;
   }
-  chooseOpening(g, me);
+  chooseOpening(g, me, act);
 }
 
-function reactToWindup(g: Game, me: Fighter, o: Fighter): void {
+function reactToWindup(g: Game, me: Fighter, o: Fighter, act: Controls["act"]): void {
   const ai = g.ai[me.side];
   const R = g.rand;
   const rem = o.move === "grab" ? (o.autoRelease || CFG.grab.max) - o.t : o.dur - o.t;
@@ -103,7 +110,7 @@ function reactToWindup(g: Game, me: Fighter, o: Fighter): void {
   }
 }
 
-function chooseOpening(g: Game, me: Fighter): void {
+function chooseOpening(g: Game, me: Fighter, act: Controls["act"]): void {
   const ai = g.ai[me.side];
   const R = g.rand;
   const weights: Record<string, number> = { tsuki: 1, grab: 0.75, inashi: 0.3 };

@@ -2,6 +2,7 @@
 // 時刻・乱数・描画は持たない。乱数は Game.rand、通知は Game.emit に注入する。
 import { CFG, MODE_FULL } from "./config";
 import { brain } from "./ai";
+import { isAtEdge, opponentOf } from "./board";
 import type { ActArg, ActKind, Ai, Difficulty, Fighter, Game, HitType, Mode, Side, Species, SumoEvent } from "./types";
 
 export interface NewGameOptions {
@@ -98,8 +99,8 @@ export function newGame(options: NewGameOptions): Game {
   };
 }
 
-export const opponentOf = (g: Game, f: Fighter): Fighter => g.f[1 - f.side];
-export const isAtEdge = (g: Game, f: Fighter): boolean => (f.side === 0 ? g.target <= -CFG.EDGE : g.target >= CFG.EDGE);
+// ai.ts も使うので board.ts に置き、engine.ts ⇄ ai.ts の循環参照を避ける。公開 API は変えない
+export { isAtEdge, opponentOf };
 
 export function setState(f: Fighter, state: Fighter["state"], dur: number, move?: Fighter["move"]): void {
   f.state = state;
@@ -434,7 +435,7 @@ export function update(g: Game, dt: number): void {
     tickFighter(g, f, dt);
     if (g.phase !== "fight") break;
   }
-  for (const f of g.f) if (g.npc[f.side] && g.phase === "fight") brain(g, f, dt);
+  for (const f of g.f) if (g.npc[f.side] && g.phase === "fight") brain(g, f, dt, { act, clinchTap });
   g.pos += (g.target + (g.clinch ? g.clinch.lean : 0) - g.pos) * Math.min(1, dt * 0.014);
 }
 
