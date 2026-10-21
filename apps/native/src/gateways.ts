@@ -1,13 +1,13 @@
 import { getSupabase } from "@/lib/supabase";
 
-import { createAccountGateway } from "./account/account-gateway";
-import { createIapGateway } from "./billing/iap-gateway";
-import { getRevenueCatApiKey } from "./billing/iap-config";
-import { loadPurchasesSdk } from "./billing/purchases-sdk";
-import { createBattleHistoryGateway } from "./bowel-log/battle-history-gateway";
-import { createCollectionGateway } from "./collection/collection-gateway";
-import { createMealGateway } from "./meal/meal-gateway";
-import { createReportGateway } from "./report/report-gateway";
+import { createAccountGateway } from "@/features/account/account-gateway";
+import { createIapGateway } from "@/features/billing/iap-gateway";
+import { getRevenueCatApiKey } from "@/features/billing/iap-config";
+import { loadPurchasesSdk } from "@/features/billing/purchases-sdk";
+import { createBattleHistoryGateway } from "@/features/bowel-log/battle-history-gateway";
+import { createCollectionGateway } from "@/features/collection/collection-gateway";
+import { createMealGateway } from "@/features/meal/meal-gateway";
+import { createReportGateway } from "@/features/report/report-gateway";
 
 // getSupabase は env 未設定で throw するため、画面描画時まで遅延させる。
 export const mealGateway = () => createMealGateway(getSupabase());

@@ -11,7 +11,7 @@ import {
 } from "@poopbattler/domain/report/report-labels";
 import type { WeeklyReport } from "@poopbattler/domain/report/weekly-report";
 
-import { cardStyle } from "@/features/records-ui";
+import { cardStyle } from "@/components/ui";
 import { colors, fonts, spacing } from "@/theme";
 
 import { formatJstMonthDay, jstWeekdayIndex } from "../report-format";

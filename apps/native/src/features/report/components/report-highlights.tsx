@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import type { WeeklyReport } from "@poopbattler/domain/report/weekly-report";
 
-import { cardStyle } from "@/features/records-ui";
+import { cardStyle } from "@/components/ui";
 import { colors, fonts, spacing } from "@/theme";
 
 /** Display the shared metrics without recalculating rates or entitlement in the UI. */
