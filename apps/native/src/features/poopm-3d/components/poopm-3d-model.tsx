@@ -44,6 +44,8 @@ export type Poopm3DModelProps = {
   position?: [number, number, number];
   scale?: number;
   onMotionFinished?: (name: Poopm3DBattleMotion) => void;
+  // 頭の取り付けまで終えたクローン済み scene を渡す。呼び出し側がマテリアルを直接操作したいとき用（相撲の発光など）。
+  onSceneReady?: (scene: THREE.Object3D | null) => void;
 };
 
 function materialsOf(mesh: THREE.Mesh): THREE.Material[] {
@@ -98,6 +100,7 @@ function LoadedModel({
   position = [0, 0, 0],
   scale = 1,
   onMotionFinished,
+  onSceneReady,
   base,
   headGltf,
 }: Poopm3DModelProps & { base: GLTF; headGltf: GLTF }) {
@@ -157,6 +160,12 @@ function LoadedModel({
       bRoot.remove(holder);
     };
   }, [cloned, clonedHead, headMount]);
+
+  // 頭の取り付け effect より後に置くこと（effect は宣言順に走り、通知時点で頭が scene に入っている必要がある）
+  useEffect(() => {
+    onSceneReady?.(cloned);
+    return () => onSceneReady?.(null);
+  }, [cloned, clonedHead, onSceneReady]);
 
   const mixer = useMemo(() => new THREE.AnimationMixer(cloned), [cloned]);
 
