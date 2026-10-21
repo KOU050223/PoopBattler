@@ -48,8 +48,8 @@ import { photoStore } from "@/adapters/expo-photo-fs";
 import { colors, fontSize, fonts, radius, spacing } from "@/theme";
 
 import { Poopm3DGacha } from "../../poopm-3d/components/poopm-3d-gacha";
-import { poopm3DBaseGlb, poopm3DHeadVarGlb } from "../../poopm-3d/poopm-3d.assets";
-import { loadGlb } from "../../poopm-3d/poopm-3d.glb-loader";
+import { poopm3DBaseGlb, poopm3DHeadVarGlb } from "../../poopm-3d/poopm-3d-assets";
+import { loadGlb } from "../../poopm-3d/poopm-3d-glb-loader";
 import { useReduceMotion } from "../../poopm-3d/use-reduce-motion";
 import { gachaCameraStatus, resolveStageTouch } from "../companionship-ar";
 import { appearanceForCharacter } from "../poopm-appearance";

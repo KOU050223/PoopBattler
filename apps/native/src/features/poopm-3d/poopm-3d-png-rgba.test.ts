@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { pngToRgba8 } from "./poopm-3d.png-rgba";
+import { pngToRgba8 } from "./poopm-3d-png-rgba";
 
 describe("pngToRgba8", () => {
   it("RGBA8 はそのまま通す", () => {

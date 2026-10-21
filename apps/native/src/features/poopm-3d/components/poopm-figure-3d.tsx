@@ -1,6 +1,6 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import type { Poopm3DBattleMotion } from "../poopm-3d.motion";
+import type { Poopm3DBattleMotion } from "../poopm-3d-motion";
 import type { Poopm3DAppearance } from "./poopm-3d-model";
 import { Poopm3DSolo } from "./poopm-3d-solo";
 

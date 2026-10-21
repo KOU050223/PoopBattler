@@ -5,10 +5,10 @@ import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import type { BodyColorId, EyeId, HeadId, MouthId } from "../../battle/poopm-appearance";
-import { POOPM_3D_BODY_COLORS, poopm3DBaseGlb, poopm3DEyeTexture, poopm3DHeadVarGlb, poopm3DMouthTexture } from "../poopm-3d.assets";
-import { loadFaceTexture } from "../poopm-3d.face-texture";
-import { cloneGlbScene, loadGlb } from "../poopm-3d.glb-loader";
-import { poopm3DMotionSpec, type Poopm3DBattleMotion, type Poopm3DMotionRequest } from "../poopm-3d.motion";
+import { POOPM_3D_BODY_COLORS, poopm3DBaseGlb, poopm3DEyeTexture, poopm3DHeadVarGlb, poopm3DMouthTexture } from "../poopm-3d-assets";
+import { loadFaceTexture } from "../poopm-3d-face-texture";
+import { cloneGlbScene, loadGlb } from "../poopm-3d-glb-loader";
+import { poopm3DMotionSpec, type Poopm3DBattleMotion, type Poopm3DMotionRequest } from "../poopm-3d-motion";
 
 export type { Poopm3DMotionRequest };
 

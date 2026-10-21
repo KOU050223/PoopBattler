@@ -9,7 +9,7 @@ import {
   softenStageCameraCue,
   STAGE_CAMERA_WIDE,
   type StageCameraCue,
-} from "../poopm-3d.camera";
+} from "../poopm-3d-camera";
 
 export type Poopm3DCameraRigProps = {
   player: Poopm3DMotionRequest;
