@@ -1,4 +1,4 @@
-import { FOV_LANDSCAPE, FOV_PORTRAIT, PORTRAIT_ASPECT, TOILET_X, YAW_LIMIT } from "./constants";
+import { FOV_LANDSCAPE, FOV_PORTRAIT, PORTRAIT_ASPECT, TOP, TOILET_X, YAW_LIMIT } from "./constants";
 import type { Side } from "../types";
 
 export interface Vec3 {
@@ -51,19 +51,43 @@ export interface CameraTargetInput {
   winner: Side | null;
 }
 
-/** 取組中は東の背後から土俵を見渡す。決着後は敗者の便器側へ寄る */
+/** 決着カメラの俯角。真下(90°)は lookAt の上方向が定まらないので避ける */
+const END_CAM_ELEVATION_RAD = (70 * Math.PI) / 180;
+/** 勝者側(落下開始位置の手前)と便器の外側まで、フレームに入れたい x の余白 */
+const END_CAM_NEAR_MARGIN = 2.5;
+const END_CAM_TOILET_MARGIN = 1.4;
+/** 画角ぎりぎりで見切れないための余裕 */
+const END_CAM_FIT_SLACK = 1.15;
+
+/**
+ * 敗者の側(s=±1)へ寄せた上空のカメラ。画角から距離を逆算するので、縦持ちでも
+ * 「勝者側〜便器」の横幅が必ず収まる
+ */
+function endCameraRig(aspect: number, winner: Side): CameraRig {
+  const loserDirection = winner === 0 ? 1 : -1;
+  const nearX = -END_CAM_NEAR_MARGIN;
+  const farX = TOILET_X + END_CAM_TOILET_MARGIN;
+  const centerX = loserDirection * ((nearX + farX) / 2);
+  const halfWidth = (farX - nearX) / 2;
+  const halfFovTan = Math.tan((baseFov(aspect) * Math.PI) / 360);
+  const distance = (halfWidth / (halfFovTan * aspect)) * END_CAM_FIT_SLACK;
+  return {
+    position: {
+      x: centerX,
+      y: TOP + distance * Math.sin(END_CAM_ELEVATION_RAD),
+      z: distance * Math.cos(END_CAM_ELEVATION_RAD),
+    },
+    lookAt: { x: centerX, y: TOP, z: 0 },
+  };
+}
+
+/** 取組中は東の背後から土俵を見渡す。決着後は敗者の落下と便器を上から見下ろす */
 export function cameraTarget(input: CameraTargetInput): CameraRig {
   const { aspect, camYaw, eastPosition, westPosition, winner } = input;
   const cos = Math.cos(camYaw);
   const sin = Math.sin(camYaw);
 
-  if (winner !== null) {
-    const loserToiletX = winner === 0 ? TOILET_X : -TOILET_X;
-    return {
-      position: { x: loserToiletX * 0.35 - 1, y: 3.4, z: 5.5 },
-      lookAt: { x: loserToiletX * 0.6, y: 1.15, z: 0 },
-    };
-  }
+  if (winner !== null) return endCameraRig(aspect, winner);
 
   const portrait = isPortrait(aspect);
   const back = portrait ? 5.2 : 4.4;

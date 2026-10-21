@@ -2,13 +2,13 @@ import type { Game } from "../types";
 import type { Vec3 } from "../three/camera";
 import { TOP } from "../three/constants";
 import type { FxPlan, SpeedLines } from "../three/fx";
-import { restingPosition } from "../three/pose";
+import { FALL_DURATION_MS, restingPosition } from "../three/pose";
 import { slowmoScale, type SlowmoState } from "../three/slowmo";
 import type { ScreenFxTrigger } from "./screen-fx";
 import type { MatchView } from "./session";
 
-/** 3D の落下演出とスプラッシュを見せるために、2D より長く待つ。試作は 1300ms */
-const RESULT_DELAY_3D_MS = 1300;
+/** 決着カメラで落下演出が撮れるよう、落下が終わってからさらに見せる間を置いて結果画面を出す */
+const RESULT_DELAY_3D_MS = FALL_DURATION_MS + 1000;
 const RESULT_DELAY_2D_MS = 1000;
 
 export const resultDelayMs = (view: MatchView): number => (view === "3d" ? RESULT_DELAY_3D_MS : RESULT_DELAY_2D_MS);
