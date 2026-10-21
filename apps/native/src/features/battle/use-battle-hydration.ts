@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 
-import { battleRenderModeCache } from "./battle-render-mode-cache";
-import { battleSpeedCache } from "./battle-speed-cache";
+import { battleRenderModeCache } from "./settings/battle-render-mode-cache";
+import { battleSpeedCache } from "./settings/battle-speed-cache";
 import { useBattleStore } from "./battle-store";
 
 /** バトル状態（AsyncStorage）と倍速・描画モードのキャッシュの両方が読み込み済みになったら true。 */
