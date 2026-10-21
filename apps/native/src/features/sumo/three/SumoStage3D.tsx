@@ -29,6 +29,8 @@ export interface SumoStage3DProps {
   /** 立ち合い前・メニューの静かな構えにする */
   isPreFight?: boolean;
   stageHandleRef?: RefObject<SumoStageHandle | null>;
+  /** pose 平滑化の dt に掛ける倍率（スローモー・モードの時間倍率込み）。省略は 1 */
+  timeScaleRef?: RefObject<number>;
   /** Canvas 内に描く。粒子層などの差し込み口 */
   children?: ReactNode;
 }
@@ -40,7 +42,7 @@ interface FallRecord {
 }
 
 /** 状態はすべて ref。毎フレームの更新で React を再描画させない */
-function StageRig({ gameRef, isPreFight, stageHandleRef, rikishiRefs }: Pick<SumoStage3DProps, "gameRef" | "isPreFight" | "stageHandleRef"> & { rikishiRefs: RefObject<(RikishiHandle | null)[]> }) {
+function StageRig({ gameRef, isPreFight, stageHandleRef, timeScaleRef, rikishiRefs }: Pick<SumoStage3DProps, "gameRef" | "isPreFight" | "stageHandleRef" | "timeScaleRef"> & { rikishiRefs: RefObject<(RikishiHandle | null)[]> }) {
   const yawRef = useRef({ yaw: 0, yawTarget: 0, camYaw: 0 });
   const effectsRef = useRef({ shake: 0, fovKick: 0 });
   const smoothingRef = useRef<[PoseSmoothing, PoseSmoothing]>([INITIAL_POSE_SMOOTHING, INITIAL_POSE_SMOOTHING]);
@@ -72,8 +74,10 @@ function StageRig({ gameRef, isPreFight, stageHandleRef, rikishiRefs }: Pick<Sum
     orientation.yaw = stepYaw(orientation.yaw, orientation.yawTarget, dtMs);
     orientation.camYaw = stepCamYaw(orientation.camYaw, orientation.yaw, dtMs);
 
+    // 試作は pose 平滑化にだけスローモー込みの dt を使う。カメラ・揺れは実時間のまま
+    const poseDtMs = dtMs * (timeScaleRef?.current ?? 1);
     const poses = ([0, 1] as const).map((side) => {
-      const result = poseFighter({ fighter: game.f[side], game, nowMs, dtMs, yaw: orientation.yaw, smoothing: smoothingRef.current[side], isPreFight });
+      const result = poseFighter({ fighter: game.f[side], game, nowMs, dtMs: poseDtMs, yaw: orientation.yaw, smoothing: smoothingRef.current[side], isPreFight });
       smoothingRef.current[side] = result.smoothing;
       rikishiRefs.current[side]?.apply(result.pose);
       return result.pose;
@@ -112,7 +116,7 @@ function StageRig({ gameRef, isPreFight, stageHandleRef, rikishiRefs }: Pick<Sum
   return null;
 }
 
-export function SumoStage3D({ gameRef, playerSpecies, opponentSpecies, isPreFight = false, stageHandleRef, children }: SumoStage3DProps) {
+export function SumoStage3D({ gameRef, playerSpecies, opponentSpecies, isPreFight = false, stageHandleRef, timeScaleRef, children }: SumoStage3DProps) {
   const rikishiRefs = useRef<(RikishiHandle | null)[]>([null, null]);
   // 東 = プレイヤー、西 = 相手（session.PLAYER_SIDE = 0）
   const species = [playerSpecies, opponentSpecies] as const;
@@ -135,7 +139,7 @@ export function SumoStage3D({ gameRef, playerSpecies, opponentSpecies, isPreFigh
           }}
         />
       ))}
-      <StageRig gameRef={gameRef} isPreFight={isPreFight} stageHandleRef={stageHandleRef} rikishiRefs={rikishiRefs} />
+      <StageRig gameRef={gameRef} isPreFight={isPreFight} stageHandleRef={stageHandleRef} timeScaleRef={timeScaleRef} rikishiRefs={rikishiRefs} />
       {children}
     </Canvas>
   );
