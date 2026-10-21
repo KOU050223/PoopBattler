@@ -270,7 +270,7 @@ export function FightView({ setup, onRematch, onQuit }: { setup: MatchSetup; onR
       ) : null}
       {is3d ? <ScreenFx trigger={screenFxTrigger} isMotionReduced={isMotionReduced} /> : null}
       {/* 扇の基準点は画面下中央に固定。力士の位置には追従させない（docs/battle.md 4.1） */}
-      <FanLayer width={size.width} height={size.height} fans={hud.fans} />
+      <FanLayer width={size.width} height={size.height} fans={hud.fans} isOnStage={is3d} />
       {game.mode.hasHot ? <HeatEdge isOn={east.heat > 0} isMotionReduced={isMotionReduced} /> : null}
 
       <View style={[styles.top, sidePadding, { paddingTop: insets.top + spacing.sm }]} pointerEvents="box-none">
