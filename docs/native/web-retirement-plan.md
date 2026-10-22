@@ -69,9 +69,22 @@ API に普通の読み書きを集める構成（案B の BFF）は採らない�
 | RevenueCat の REST API を使う処理（解約・返金など） | `apps/api`（RevenueCat の秘密鍵が要る） |
 | バトル開始・完了、仲間化の抽選、合成・進化 | RPC（現状維持） |
 | 食事・図鑑・履歴の読み書き | クライアントから直接 |
-| 週次レポート | クライアント（現状維持。4.4 を参照） |
+| 週次レポート | `apps/api`（権利を確認してから集計する。4.5 を参照） |
 
-### 3.2 クライアントに任せないもの
+### 3.2 RPC と API の使い分け
+
+上の判定で RPC を API より先に置いている理由は、処理の速さではない。主な理由は次の2つである。
+
+- トランザクション：supabase-js（PostgREST）は1リクエストが1文で、複数の書き込みを1つのトランザクションにまとめられない。バトル完了のように「排便記録の追加・バトルの状態更新・抽選・キャラクターの付与」を同時に確定させるには、API から呼ぶ場合でも RPC が要る。
+- RLS は外せない：native と Expo web は Supabase に直結するため、API を通らない経路が必ず残る。行の権限は API があっても RLS で守ることになる。
+
+一方で、RPC は SQL で書くため、テスト・レビュー・変更の手間が TypeScript より大きい。そこで次の方針で保守の負担を抑える。
+
+- RPC は「本人確認・入力の検証・書き込みの確定」だけを持つ薄い層にする。判定や計算のロジックは `packages/domain` に置き、vitest で検証する。
+- トランザクションが要らない処理（読み取りと集計、外部サービスの呼び出し）は API に置き、TypeScript で書く。週次レポートはこれに当たる。
+- 複数の書き込みを伴うロジックが増えて RPC の保守が重くなったら、API から Postgres に直接接続する構成（Cloudflare Hyperdrive と Drizzle など）を検討する。TypeScript の中でトランザクションを書けるが、RLS を経由しない接続になるため、本人確認と権限の検査を API 側で漏れなく持つ必要がある。
+
+### 3.3 クライアントに任せないもの
 
 判定の基準は、利用者が手元で値を書き換えたときに困るのが本人だけかどうかである。Expo web はブラウザの開発者ツールで改変できるため、native 以上にこの線引きが要る。
 
@@ -89,16 +102,13 @@ API に普通の読み書きを集める構成（案B の BFF）は採らない�
 - web: IndexedDB（DB 名 `poop-battler`、ストア `meal-photos`、キーは `id`、値は `{ id, blob, createdAt }`）
 - native: `expo-file-system` の document 配下 `meal-photos/<uuid>.jpg`
 
-`expo-file-system` は web で動かないため、Expo web では `PhotoStore` の web 実装（`adapters/expo-photo-fs.web.ts`）が要る。現行 web 版と同じ DB 名・ストア名・値の形で実装すれば、切り替え後もブラウザに残っている写真を読める。形を変えると、切り替えた時点でブラウザ版の写真が表示されなくなる。
+`expo-file-system` は web で動かないため、Expo web では `PhotoStore` の web 実装（`adapters/expo-photo-fs.web.ts`）が要る。既存の利用者はいないので、現行 web 版の保存形式に合わせる必要はない。現行の IndexedDB 実装は流用できる。
 
 ### 4.2 ログインセッションの保存先が web と native で異なる
 
 web は `@supabase/ssr` の `createBrowserClient` を使っており、セッションを Cookie に保存する。native は supabase-js に AsyncStorage を渡しており、Expo web では AsyncStorage が localStorage になる。
 
-そのまま同じドメインで切り替えると、既存の利用者は全員ログアウトした状態になる。匿名サインインの利用者は同じアカウントに戻る手段が無く、記録をすべて失う。対策は次のどちらかで、Phase 2 で検証して決める。
-
-- Expo web 用の Supabase クライアント（`lib/supabase.web.ts`）でも `createBrowserClient` を使い、Cookie の保存形式を引き継ぐ
-- 初回起動時に Cookie のセッションを読み、localStorage へ移す
+同じドメインで切り替えると、web 版でログインしていた利用者はログアウトした状態になり、匿名サインインの利用者は同じアカウントに戻れない。ただし既存の利用者はいないため、セッションの引き継ぎは行わない。Expo web では native と同じ AsyncStorage（localStorage）の構成をそのまま使う。
 
 ### 4.3 RevenueCat の利用者 ID は Supabase の user id
 
@@ -119,13 +129,15 @@ web は `@supabase/ssr` の `createBrowserClient` を使っており、セッシ
 - 仲間化の確率は本人の `meal_logs` の件数で決まり、`meal_logs` は本人が RLS の範囲で自由に追加できる。
 - バトル開始から完了までの経過時間を検査していないため、開始直後に完了させて抽選を繰り返せる。
 
-ランキングや他の利用者との比較が無い現状では、影響は本人のゲーム体験に限られる。対戦やランキングを入れる時点で RPC 側の検査を足す。
+ランキングや他の利用者との比較が無い現状では、影響は本人のゲーム体験に限られる。対戦やランキングを入れる時点で検査を足す。
 
 ### 4.5 週次レポートの課金ゲートは表示上のもの
 
 `features/report/report-gateway.ts` は `subscriptions` を読んで権利を判定し、権利があるときだけ本人の `bowel_logs` と `meal_logs` を取得して、`packages/domain` の `createWeeklyReport` で集計する。権利が無い経路では分析に使う列を SELECT しない。
 
-しかし RLS は本人の記録をすべて読める設定であり、集計のロジックもアプリに同梱されている。改変したクライアントなら、権利が無くてもレポートを作れる。読めるのは本人の記録だけなので、他の利用者への影響は無い。有料の価値を「集計結果そのもの」に置くなら、権利を確認してから集計する RPC に移す。現時点では現状維持とし、未決事項に残す。
+しかし RLS は本人の記録をすべて読める設定であり、集計のロジックもアプリに同梱されている。改変したクライアントなら、権利が無くてもレポートを作れる。読めるのは本人の記録だけなので、他の利用者への影響は無い。
+
+課金ゲートを実効的にするため、集計はサーバー側に移す。移し先は `apps/api` を第一候補とする（3.2 を参照）。集計は読み取りだけでトランザクションが要らず、`packages/domain` の `createWeeklyReport` をそのまま使える。
 
 ### 4.6 現行の PWA は manifest とインストール案内だけ
 
@@ -137,15 +149,15 @@ web は `@supabase/ssr` の `createBrowserClient` を使っており、セッシ
 | --- | --- | --- |
 | 0. 凍結 | `apps/web` の UI に新機能を足さない。web 固有の不具合修正だけ受け付ける | チームで合意している |
 | 1. `apps/api` の新設 | Hono（Cloudflare Workers）で `apps/api` を作り、RevenueCat Webhook とアカウント削除を移す。RevenueCat ダッシュボードの Webhook URL を切り替える | native から購入して権利が付く。native からアカウントを削除できる |
-| 2. Expo web の動作 | `react-native-web` を入れ、`expo start --web` で全画面を動かす。ブラウザで動かないモジュールを `*.web.ts(x)` で差し替える（4.1 の写真、カメラ、便器検出）。セッションの引き継ぎ方式（4.2）を決める | 現行 web 版の全画面が Expo web で動く |
-| 3. 課金の一本化 | RevenueCat Web Billing をブラウザ版に入れる。既存の Stripe 購読者の扱いを決めて移す | ブラウザで購入して権利が付く。Stripe の Webhook を止めても既存購読者の権利が保たれる |
-| 4. PWA とホスティング | manifest・アイコン・インストール案内を Expo web に移す。Cloudflare に Expo web と `apps/api` をデプロイする | 本番と同じ構成のステージングで、PWA としてインストールできる |
-| 5. 切り替え | 本番ドメインを Expo web に向ける。外部サービスに登録した URL を切り替える（下のチェックリスト） | 既存の利用者がログイン状態と写真を保ったまま使える |
+| 2. Expo web の動作 | `react-native-web` を入れ、`expo start --web` で全画面を動かす。ブラウザで動かないモジュールを `*.web.ts(x)` で差し替える（4.1 の写真、カメラ、便器検出）。文言を i18next に統一する（5.3） | 現行 web 版の全画面が Expo web で動く |
+| 3. 課金の一本化 | RevenueCat Web Billing をブラウザ版に入れ、Stripe の Webhook・Checkout・ポータルを廃止する | ブラウザで購入して権利が付く |
+| 4. PWA とデプロイ | manifest・アイコン・インストール案内を Expo web に移す。Cloudflare 向けの GitHub Actions を preview と production の2系統で作る（5.2） | preview 環境で、Expo web が preview の `apps/api` に接続して動き、PWA としてインストールできる |
+| 5. 切り替え | 本番ドメインを Expo web に向ける。外部サービスに登録した URL を切り替える（5.1） | 本番の Expo web で、ログイン・記録・バトル・購入が通る |
 | 6. 片付け | `apps/web` を削除する。画像を `apps/native/assets/` に移す。domain から web 専用のコード（`battle/install-promotion-eligibility.ts` の扱いを含む）を整理する。CI・lint・ドキュメントを更新する | リポジトリに web 版のコードが残っていない |
 
 Phase 1 は web を退役させるかどうかに関係なく必要である。アカウント削除はストア審査で求められ、native の権利付与が web のデプロイに依存している状態も解消できる。
 
-便器検出は、現行 web 版が tfjs（coco-ssd）で実装している。Phase 2 では機能を外すのではなく、この実装を `*.web.ts` として移せるかをまず試す。
+便器検出は、現行 web 版が tfjs（coco-ssd）で実装している。Phase 2 ではこの実装を `*.web.ts` として移せるかを試す。ブラウザ版での便器検出は長期のサポート対象にしない。動かなくなったら、ブラウザでは機能を外す。
 
 ### 5.1 切り替え時に変更する外部設定
 
@@ -155,16 +167,38 @@ Phase 1 は web を退役させるかどうかに関係なく必要である。�
 - 環境変数とシークレット（Vercel から Cloudflare へ）
 - DNS
 
+既存の利用者はいないため、ログイン状態・写真・Stripe 購読の引き継ぎは行わない。
+
+### 5.2 Cloudflare へのデプロイ
+
+GitHub Actions のワークフローを preview と production の2つ作り、それぞれ Expo web（フロント）と `apps/api` をデプロイする。
+
+| | preview | production |
+| --- | --- | --- |
+| 起動条件 | Pull Request | `main` への push |
+| フロント | Expo web の preview 環境 | Expo web の本番環境 |
+| API | `apps/api` の preview 環境 | `apps/api` の本番環境 |
+
+preview のフロントは、必ず preview の API に接続させる。フロントが API の URL を持つ方法として、次の2案がある。
+
+- フロントと API を同じオリジンに置き、フロントは相対パス `/api` だけを呼ぶ。Worker 側で `/api` を API に振り分ける（同じ Worker に同居させるか、Service Binding で環境ごとの API Worker に渡す）。フロントのビルドに API の URL を埋め込まないため、preview のフロントが本番の API を呼ぶ取り違えが起きない。
+- API の URL を `EXPO_PUBLIC_API_URL` としてビルド時に埋め込む。preview のビルドで本番の URL を渡すと、気付かないまま本番の API を呼ぶ。
+
+前者を第一候補とする。後者を採るなら、ワークフローで環境と URL の組を1か所から導出し、preview のビルドに本番の URL が入らないことを CI で検査する。
+
+DB マイグレーションの本番適用（`deploy-production.yml`）と API のデプロイの順序もここで決める。preview の API がどの Supabase プロジェクトに接続するか（本番とは別のプロジェクトか、Supabase Branching か）も同時に決める。
+
+### 5.3 文言の統一
+
+web は next-intl（`apps/web/messages/`）、native は i18next で文言を別々に持っている。i18next（`apps/native/src/i18n/`）に統一し、web にしかない文言は Phase 2 で移す。
+
 ## 6. 未決事項とリスク
 
 | 項目 | 内容 | 決める時期 |
 | --- | --- | --- |
-| 既存の Stripe 購読者 | RevenueCat の Stripe 連携で既存購読を引き継げるか、切り替え時に解約・再購入を案内するか。購読者がいなければ不要 | Phase 3 の前 |
 | アカウント削除時の解約 | RevenueCat Web Billing の購読を REST API で解約できるか。Apple の購読はサーバーから解約できないため、現行どおり案内にとどめる | Phase 1 |
-| セッションの引き継ぎ方式 | 4.2 の2案のどちらにするか | Phase 2 |
-| ブラウザでの便器検出 | tfjs の実装を移せるか、ブラウザでは機能を外すか | Phase 2 |
-| 週次レポートの集計場所 | 4.5 のとおり、クライアントのままか RPC に移すか | 課金の価値を見直すとき |
-| 仲間化の抽選の検査 | 4.4 の2点を RPC で塞ぐか | 対戦・ランキングを入れるとき |
-| デプロイの自動化 | Vercel の自動デプロイに相当する仕組み（Cloudflare の Git 連携か GitHub Actions）と、DB マイグレーションとの適用順 | Phase 4 |
-| native の lint | データアクセス境界の検査が native に無い（#238） | Phase 2 までに |
-| 文言の移行 | web は next-intl（`apps/web/messages/`）、native は i18next で別々に持っている。web にだけある文言を移し漏らさない | Phase 2 |
+| ブラウザでの便器検出 | tfjs の実装を移せるか。長期のサポート対象にはしない | Phase 2 |
+| 週次レポートの集計 | `apps/api` に移す方針（4.5、3.2）。権利の判定を API と RPC のどちらで持つかを実装時に決める | Phase 1 以降 |
+| 仲間化の抽選の検査 | 4.4 の2点を塞ぐか | 対戦・ランキングを入れるとき |
+| preview 環境の接続先 | フロントから API への振り分け方式と、preview の API が使う Supabase プロジェクト（5.2） | Phase 4 |
+| native の lint | データアクセス境界の検査が native に無い（#238）。いずれ追加する | 時期未定 |
