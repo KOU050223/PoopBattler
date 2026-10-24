@@ -3,6 +3,8 @@
 > [migration-proposal.md](./migration-proposal.md) で承認した案C（Supabase 直結 + Stripe 系のみ Next.js の薄い API）の続き。
 > 案Cは Next.js を API として残す前提だったが、本書では UI も含めて `apps/web` を退役させ、
 > ブラウザ版は Expo web で提供する。サーバー処理は新設する `apps/api` に移す。
+>
+> 前提：PoC の段階で、本番の利用者はいない。そのためデータ・ログイン状態・購読の移行は扱わない。
 
 ## 1. 決定事項
 
