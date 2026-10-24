@@ -114,7 +114,7 @@ web は `@supabase/ssr` の `createBrowserClient` を使っており、セッシ
 
 ### 4.3 RevenueCat の利用者 ID は Supabase の user id
 
-`features/billing/iap-gateway.ts` は `configure` の時点で `appUserID` に Supabase の user id を渡し、続けて `logIn` している。Web Billing でも同じ ID を使えば、iOS・Android・ブラウザの購入が1人の利用者にまとまる。
+`features/billing/iap-gateway.ts` は、初回の `configure` で `appUserID` に Supabase の user id を渡す。`logIn` を呼ぶのは、Google ログインなどで user id が変わったときだけである。Web Billing でも同じ ID を使えば、iOS・Android・ブラウザの購入が1人の利用者にまとまる。ブラウザ用の実装が、この「初回は `configure`、切り替え時だけ `logIn`」という呼び方で同じように動くかは Phase 3 で確認する。
 
 導入済みの `react-native-purchases` 10.11.0 にはブラウザ用の実装（`dist/browser`、`@revenuecat/purchases-js-hybrid-mappings`）が含まれており、Expo web でも同じ API で購入を呼べる見込みがある。実際に購入まで通るかは Phase 3 で確認する。
 
@@ -141,6 +141,8 @@ web は `@supabase/ssr` の `createBrowserClient` を使っており、セッシ
 
 課金ゲートを実効的にするため、集計はサーバー側に移す。移し先は `apps/api` を第一候補とする（3.2 を参照）。集計は読み取りだけでトランザクションが要らず、`packages/domain` の `createWeeklyReport` をそのまま使える。
 
+ただし集計を API に移すだけでは足りない。履歴画面のために、本人の記録を読む RLS はそのまま残る。そのため、アプリに `createWeeklyReport` が同梱されている限り、改変したクライアントは記録を読んで手元で集計できる。サーバーへ移すのと同時に、native と Expo web のバンドルから集計のロジックを外す。具体的には、アプリから `report/` の集計関数を import しないようにし、それを lint で検査する（#238）。記録そのものは本人が読めるので、利用者が自分で集計を書くことまでは防げない。課金で守る対象は、集計のロジックと、その結果を表示する機能である。
+
 ### 4.6 現行の PWA は manifest とインストール案内だけ
 
 `apps/web` は `app/manifest.ts` で manifest を出し、`features/pwa/` で `beforeinstallprompt` を使ったインストール案内を出している。service worker は登録していない。Expo web でも、manifest・アイコン・インストール案内を移せば現状と同等になる。オフライン対応が要るなら、そのときに service worker を追加する。
@@ -152,7 +154,7 @@ web は `@supabase/ssr` の `createBrowserClient` を使っており、セッシ
 | 0. 凍結 | `apps/web` の UI に新機能を足さない。web 固有の不具合修正だけ受け付ける | チームで合意している |
 | 1. `apps/api` の新設 | Hono（Cloudflare Workers）で `apps/api` を作り、RevenueCat Webhook とアカウント削除を移す。RevenueCat ダッシュボードの Webhook URL を切り替える | native から購入して権利が付く。native からアカウントを削除できる |
 | 2. Expo web の動作 | `react-native-web` を入れ、`expo start --web` で全画面を動かす。ブラウザで動かないモジュールを `*.web.ts(x)` で差し替える（4.1 の写真、カメラ、便器検出）。文言を i18next に統一する（5.3） | 現行 web 版の全画面が Expo web で動く |
-| 3. 課金の一本化 | RevenueCat Web Billing をブラウザ版に入れ、Stripe の Webhook・Checkout・ポータルを廃止する | ブラウザで購入して権利が付く |
+| 3. 課金の一本化 | RevenueCat Web Billing をブラウザ版に入れ、Stripe の Webhook・Checkout・ポータルを廃止する。Webhook の解釈と `subscriptions` の保存形式を Web Billing に合わせる（6 を参照） | ブラウザで購入して権利が付く |
 | 4. PWA とデプロイ | manifest・アイコン・インストール案内を Expo web に移す。Cloudflare 向けの GitHub Actions を preview と production の2系統で作る（5.2） | preview 環境で、Expo web が preview の `apps/api` に接続して動き、PWA としてインストールできる |
 | 5. 切り替え | 本番ドメインを Expo web に向ける。外部サービスに登録した URL を切り替える（5.1） | 本番の Expo web で、ログイン・記録・バトル・購入が通る |
 | 6. 片付け | `apps/web` を削除する。画像を `apps/native/assets/` に移す。domain から web 専用のコード（`battle/install-promotion-eligibility.ts` の扱いを含む）を整理する。CI・lint・ドキュメントを更新する | リポジトリに web 版のコードが残っていない |
@@ -199,6 +201,7 @@ web は next-intl（`apps/web/messages/`）、native は i18next で文言を別
 | 項目 | 内容 | 決める時期 |
 | --- | --- | --- |
 | アカウント削除時の解約 | RevenueCat Web Billing の購読を REST API で解約できるか。Apple の購読はサーバーから解約できないため、現行どおり案内にとどめる | Phase 1 |
+| Web Billing の購読の保存形式 | 現在の Webhook の解釈（`billing/iap-event.ts`）と書き込み（`subscription-write.ts`）は、RevenueCat 経由の購入をすべて Apple の購読として扱う（`provider = 'apple'`、`apple_original_transaction_id`）。Web Billing の購入をどの識別子・provider で保存するか、`store` で分岐するか、解約の案内をどう分けるかを決める | Phase 3 |
 | ブラウザでの便器検出 | tfjs の実装を移せるか。長期のサポート対象にはしない | Phase 2 |
 | 週次レポートの集計 | `apps/api` に移す方針（4.5、3.2）。権利の判定を API と RPC のどちらで持つかを実装時に決める | Phase 1 以降 |
 | 仲間化の抽選の検査 | 4.4 の2点を塞ぐか | 対戦・ランキングを入れるとき |
