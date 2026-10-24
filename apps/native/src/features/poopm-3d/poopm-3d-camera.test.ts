@@ -9,8 +9,8 @@ import {
   STAGE_CAMERA_WIDE,
   type StageCameraCue,
   type StageMotions,
-} from "@/features/poopm-3d/poopm-3d.camera";
-import type { Poopm3DBattleMotion } from "@/features/poopm-3d/poopm-3d.motion";
+} from "@/features/poopm-3d/poopm-3d-camera";
+import type { Poopm3DBattleMotion } from "@/features/poopm-3d/poopm-3d-motion";
 
 const IDLE_MOTIONS: StageMotions = {
   player: { name: "idle", nonce: 0 },

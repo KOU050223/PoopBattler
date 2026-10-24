@@ -7,7 +7,7 @@ import type { AccountStatus } from "@poopbattler/domain/account/account.types";
 import { BOWEL_COLOR_LABELS, weekdayShortLabel, type BowelColor, type Weekday } from "@poopbattler/domain/report/report-labels";
 import { createTeaserPlaceholder } from "@poopbattler/domain/report/teaser-placeholder";
 
-import { Button, cardStyle } from "@/features/records-ui";
+import { Button, cardStyle } from "@/components/ui";
 import { colors, fonts, spacing } from "@/theme";
 
 import type { ReportTeaser } from "../report-gateway";

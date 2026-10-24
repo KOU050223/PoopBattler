@@ -11,9 +11,9 @@ import { getMealFoodGroupLabel } from "@poopbattler/domain/records/meal.types";
 
 import { colors, fontSize, fonts, radius, spacing } from "@/theme";
 
-import { battleHistoryGateway } from "../../gateways";
-import { cardStyle, Chip, dateFormatter, EmptyState } from "../../records-ui";
-import { useLoader } from "../../use-loader";
+import { battleHistoryGateway } from "@/gateways";
+import { cardStyle, Chip, dateFormatter, EmptyState } from "@/components/ui";
+import { useLoader } from "@/hooks/use-loader";
 import type { BattleHistoryLog } from "../battle-history-gateway";
 
 const optionLabel = <T,>(options: readonly { value: T; label: string }[], value: T) =>

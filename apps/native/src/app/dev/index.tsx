@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
-import { Button } from "@/features/records-ui";
+import { Button } from "@/components/ui";
 import { colors, fonts, spacing } from "@/theme";
 
 /** dev 専用メニュー。本番ビルドからもルート自体は辿れるが、導線は __DEV__ でのみ出す。 */

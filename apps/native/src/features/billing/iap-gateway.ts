@@ -1,6 +1,6 @@
 // RevenueCat SDK との境界。SDK 型をアプリ全体へ広げず、ここで必要な最小形に写す。
 // このモジュールは純ロジックのみ（react-native / supabase client を import しない）。
-// 本番の依存配線は features/gateways.ts 側で行う（vitest が react-native を
+// 本番の依存配線は src/gateways.ts 側で行う（vitest が react-native を
 // 解決できないため）。
 // 権利の正は引き続き subscriptions テーブル（webhook 経由の同期）で、
 // CustomerInfo は「購入/復元が成立したか」の即時判定だけに使う。

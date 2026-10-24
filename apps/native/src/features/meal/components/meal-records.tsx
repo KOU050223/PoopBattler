@@ -7,13 +7,13 @@ import { getMealFoodGroupLabel } from "@poopbattler/domain/records/meal.types";
 import { photoStore } from "@/adapters/expo-photo-fs";
 import { colors, fontSize, fonts, spacing } from "@/theme";
 
-import { mealGateway } from "../../gateways";
-import { Button, cardStyle, dateFormatter, EmptyState, Chip } from "../../records-ui";
-import { useLoader } from "../../use-loader";
+import { mealGateway } from "@/gateways";
+import { Button, cardStyle, dateFormatter, EmptyState, Chip } from "@/components/ui";
+import { useLoader } from "@/hooks/use-loader";
 import { pickErrorKey, removePhotoQuietly, savePickedPhoto } from "../meal-actions";
 import { pickMealPhoto } from "../meal-photo-picker";
 import type { MealLog } from "../meal-gateway";
-import { MealLogForm } from "./MealLogForm";
+import { MealLogForm } from "./meal-log-form";
 
 function MealPhoto({ photoId }: { photoId: string }) {
   const { t } = useTranslation();

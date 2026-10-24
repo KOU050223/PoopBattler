@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 
 import type { GravityVec3 } from "@poopbattler/domain/battle/companionship-gravity";
 
-import type { Poopm3DBattleMotion } from "../poopm-3d.motion";
+import type { Poopm3DBattleMotion } from "../poopm-3d-motion";
 import type { Poopm3DAppearance, Poopm3DMotionRequest } from "./poopm-3d-model";
 import { Poopm3DSolo } from "./poopm-3d-solo";
 

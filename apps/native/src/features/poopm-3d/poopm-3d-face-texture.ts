@@ -1,8 +1,8 @@
 import { Asset } from "expo-asset";
 import { File } from "expo-file-system";
 import { decode } from "fast-png";
-import { pngToRgba8 } from "./poopm-3d.png-rgba";
-import { rgbaToTexture } from "./poopm-3d.rgba-texture";
+import { pngToRgba8 } from "./poopm-3d-png-rgba";
+import { rgbaToTexture } from "./poopm-3d-rgba-texture";
 import type { DataTexture } from "three";
 
 const cache = new Map<number, Promise<DataTexture>>();
