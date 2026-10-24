@@ -50,6 +50,10 @@ jobs:
   # pre-commit では Docker を要する検査を行わないため、ここが唯一の砦になる。
   database:
     runs-on: ubuntu-latest
+    # CLI の既定の取得元 public.ecr.aws は無認証の取得量に上限があり、
+    # "toomanyrequests: Data limit exceeded" で型生成が落ちる。Docker Hub から取る。
+    env:
+      SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
     steps:
       - uses: actions/checkout@v5
 
