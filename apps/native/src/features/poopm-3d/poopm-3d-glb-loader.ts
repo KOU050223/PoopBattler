@@ -4,7 +4,7 @@ import type { Group } from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 
-import { PngDataUriTextureLoader } from "./poopm-3d.glb-texture-loader";
+import { PngDataUriTextureLoader } from "./poopm-3d-glb-texture-loader";
 
 // RN の fetch は file:// を扱えないため FileLoader/load() を使わず、
 // ローカルへ展開したファイルをバイト列で読んで parse() に渡す。

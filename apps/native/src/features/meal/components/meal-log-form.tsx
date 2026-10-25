@@ -7,8 +7,8 @@ import { MEAL_FOOD_GROUPS, type MealFoodGroup } from "@poopbattler/domain/record
 
 import { colors, fontSize, fonts, radius, spacing } from "@/theme";
 
-import { Button, Chip } from "../../records-ui";
-import { mealGateway } from "../../gateways";
+import { Button, Chip } from "@/components/ui";
+import { mealGateway } from "@/gateways";
 import { savePickedPhoto, pickErrorKey, removePhotoQuietly } from "../meal-actions";
 import type { MealLog } from "../meal-gateway";
 import { pickMealPhoto } from "../meal-photo-picker";

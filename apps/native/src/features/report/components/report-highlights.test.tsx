@@ -25,7 +25,7 @@ vi.mock("react-native", () => ({
   Text: ({ children }: { children: ReactNode }) => createElement("span", null, children),
   StyleSheet: { create: (value: unknown) => value, hairlineWidth: 1 },
 }));
-vi.mock("@/features/records-ui", () => ({ cardStyle: {} }));
+vi.mock("@/components/ui", () => ({ cardStyle: {} }));
 
 import { ReportHighlights } from "./report-highlights";
 

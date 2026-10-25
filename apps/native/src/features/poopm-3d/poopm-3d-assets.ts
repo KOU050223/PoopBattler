@@ -10,7 +10,7 @@ import { EYE_IMAGES, MOUTH_IMAGES } from "../battle/poopm-images";
 import {
   HEAD_VAR_GLB_MODULES,
   POOPM_BASE_GLB_MODULE,
-} from "./poopm-3d.glb-modules";
+} from "./poopm-3d-glb-modules";
 
 // web 版は URL 文字列だが、native は Metro のアセットモジュールID（require の戻り値）を返す。
 export function poopm3DBaseGlb(): number {

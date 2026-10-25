@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 
-import { STAGE_GROUND_Y } from "../poopm-3d.camera";
+import { STAGE_GROUND_Y } from "../poopm-3d-camera";
 
 const SIZE = 128;
 

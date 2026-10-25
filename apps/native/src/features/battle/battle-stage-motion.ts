@@ -1,4 +1,4 @@
-import type { Poopm3DBattleMotion } from "@/features/poopm-3d/poopm-3d.motion";
+import type { Poopm3DBattleMotion } from "@/features/poopm-3d/poopm-3d-motion";
 import type { BattleStance } from "@poopbattler/domain/battle/battle.constants";
 import type {
   BattleSnapshot,

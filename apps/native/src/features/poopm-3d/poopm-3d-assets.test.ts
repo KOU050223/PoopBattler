@@ -10,10 +10,10 @@ import {
   poopm3DEyeTexture,
   poopm3DHeadVarGlb,
   poopm3DMouthTexture,
-} from "@/features/poopm-3d/poopm-3d.assets";
+} from "@/features/poopm-3d/poopm-3d-assets";
 
 // vitest では .glb/.png の require を解決できないため、モジュールIDの代わりに識別用の値を返す。
-vi.mock("@/features/poopm-3d/poopm-3d.glb-modules", () => ({
+vi.mock("@/features/poopm-3d/poopm-3d-glb-modules", () => ({
   POOPM_BASE_GLB_MODULE: 100,
   HEAD_VAR_GLB_MODULES: {
     none: 1, "hat-a": 2, "hat-b": 3, "hat-c": 4, "hat-d": 5, "hat-e": 6, "hat-f": 7,
@@ -25,7 +25,7 @@ vi.mock("@/features/battle/poopm-images", () => ({
 }));
 
 const HEAD_IDS: HeadId[] = ["none", "hat-a", "hat-b", "hat-c", "hat-d", "hat-e", "hat-f"];
-const MODULE_FILE = resolve(__dirname, "../poopm-3d/poopm-3d.glb-modules.ts");
+const MODULE_FILE = resolve(__dirname, "../poopm-3d/poopm-3d-glb-modules.ts");
 const source = readFileSync(MODULE_FILE, "utf8");
 
 describe("poopm-3d assets", () => {
@@ -42,7 +42,7 @@ describe("poopm-3d assets", () => {
   });
 });
 
-describe("poopm-3d.glb-modules（require 先の実在確認）", () => {
+describe("poopm-3d-glb-modules（require 先の実在確認）", () => {
   const paths = [...source.matchAll(/require\("([^"]+\.glb)"\)/g)].map((m) => m[1]);
 
   it("ベース1 + 頭バリアント全 HeadId 分の require がある", () => {

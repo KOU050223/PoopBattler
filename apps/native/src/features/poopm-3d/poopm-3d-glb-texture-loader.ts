@@ -1,8 +1,8 @@
 import { decode } from "fast-png";
 import { DataTexture, Loader } from "three";
 
-import { pngToRgba8 } from "./poopm-3d.png-rgba";
-import { rgbaToTexture } from "./poopm-3d.rgba-texture";
+import { pngToRgba8 } from "./poopm-3d-png-rgba";
+import { rgbaToTexture } from "./poopm-3d-rgba-texture";
 
 const DATA_URI_PNG = /^data:image\/png;base64,/;
 

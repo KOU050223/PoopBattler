@@ -7,8 +7,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SIGNED_OUT_ACCOUNT_STATUS, type AccountStatus } from "@poopbattler/domain/account/account.types";
 
 import { watchAccountStatus } from "@/features/account/account-watch";
-import { EmptyState } from "@/features/records-ui";
-import { reportGateway } from "@/features/gateways";
+import { EmptyState } from "@/components/ui";
+import { reportGateway } from "@/gateways";
 import { getSupabase } from "@/lib/supabase";
 import { colors, fonts, spacing } from "@/theme";
 

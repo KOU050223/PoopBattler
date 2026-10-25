@@ -14,13 +14,13 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Button } from "@/features/records-ui";
+import { Button } from "@/components/ui";
 import { colors, fontSize, fonts, spacing } from "@/theme";
 
-import { POOPM_APPEARANCES } from "../battle/poopm-appearance";
-import { PoopmSprite } from "../battle/components/poopm-sprite";
+import { POOPM_APPEARANCES } from "@/features/battle/poopm-appearance";
+import { PoopmSprite } from "@/features/battle/components/poopm-sprite";
 
-const LOGO = require("../../../../web/public/assets/buryulaid-logo.png");
+const LOGO = require("../../../../../web/public/assets/buryulaid-logo.png");
 
 const SHAKE_GRAVITY_DELTA = 1.8;
 const GRAVITY_MAGNITUDE = 9.80665;

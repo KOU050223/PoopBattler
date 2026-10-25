@@ -11,10 +11,10 @@ import {
 } from "@poopbattler/domain/account/account.types";
 
 import { watchAccountStatus } from "@/features/account/account-watch";
-import { accountGateway, iapGateway } from "@/features/gateways";
+import { accountGateway, iapGateway } from "@/gateways";
 import { getSupabase } from "@/lib/supabase";
 import { waitForEntitlement, type PurchaseOffer } from "@/features/billing/iap-gateway";
-import { Button, cardStyle } from "@/features/records-ui";
+import { Button, cardStyle } from "@/components/ui";
 import { colors, fonts, spacing } from "@/theme";
 
 type LoadState = "loading" | "unavailable" | "error" | "ready" | "empty";

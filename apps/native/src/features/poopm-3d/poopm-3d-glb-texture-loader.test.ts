@@ -1,7 +1,7 @@
 import { encode } from "fast-png";
 import { describe, expect, it } from "vitest";
 
-import { dataUriToBytes, decodePngDataUri } from "./poopm-3d.glb-texture-loader";
+import { dataUriToBytes, decodePngDataUri } from "./poopm-3d-glb-texture-loader";
 
 function pngDataUri(): string {
   const rgba = new Uint8Array([255, 0, 0, 255, 0, 255, 0, 128]);

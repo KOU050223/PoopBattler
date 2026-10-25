@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { POOPM_3D_CLIPS } from "@/features/poopm-3d/poopm-3d.assets";
+import { POOPM_3D_CLIPS } from "@/features/poopm-3d/poopm-3d-assets";
 import {
   POOPM_3D_BATTLE_MOTIONS,
   POOPM_3D_MOTION,
-} from "@/features/poopm-3d/poopm-3d.motion";
+} from "@/features/poopm-3d/poopm-3d-motion";
 
 vi.mock("@/features/battle/poopm-images", () => ({ EYE_IMAGES: {}, MOUTH_IMAGES: {} }));
-vi.mock("@/features/poopm-3d/poopm-3d.glb-modules", () => ({
+vi.mock("@/features/poopm-3d/poopm-3d-glb-modules", () => ({
   POOPM_BASE_GLB_MODULE: 0,
   HEAD_VAR_GLB_MODULES: {},
 }));

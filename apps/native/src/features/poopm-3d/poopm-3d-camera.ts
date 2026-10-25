@@ -1,7 +1,7 @@
 import type {
   Poopm3DBattleMotion,
   Poopm3DMotionRequest,
-} from "@/features/poopm-3d/poopm-3d.motion";
+} from "@/features/poopm-3d/poopm-3d-motion";
 
 export type StageSide = "player" | "enemy";
 

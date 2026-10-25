@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 
-import { STAGE_GROUND_Y } from "../poopm-3d.camera";
+import { STAGE_GROUND_Y } from "../poopm-3d-camera";
 
 // 空の色。下半分は地面に隠れるので地平線寄りだけ見える。
 const SKY_TOP = "#6dbcef";

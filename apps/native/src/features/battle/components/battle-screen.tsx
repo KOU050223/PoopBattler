@@ -31,8 +31,8 @@ import {
 } from "../../collection/party-lineup-storage";
 import { useBattleHaptics, useBattleKeepAwake } from "../use-battle-feedback";
 import { useBattleHydrated } from "../use-battle-hydration";
-import { useBattleRenderMode } from "../use-battle-render-mode";
-import { useBattleSpeed } from "../use-battle-speed";
+import { useBattleRenderMode } from "../settings/use-battle-render-mode";
+import { useBattleSpeed } from "../settings/use-battle-speed";
 import { useBattleTicker } from "../use-battle-ticker";
 import { BattleCompletionFlow, type BattleCompletedPayload } from "./battle-completion-flow";
 import { CompanionshipArStage } from "./companionship-ar-stage";

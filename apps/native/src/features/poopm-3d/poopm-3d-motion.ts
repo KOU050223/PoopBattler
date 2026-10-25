@@ -1,4 +1,4 @@
-import type { Poopm3DClip } from "@/features/poopm-3d/poopm-3d.assets";
+import type { Poopm3DClip } from "@/features/poopm-3d/poopm-3d-assets";
 
 // バトル画面で使うモーション名。GLB のクリップ名と対応させる。
 // heal は戦闘では使わない（Issue #199）ためここには置かない。
