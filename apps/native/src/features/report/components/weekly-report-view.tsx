@@ -57,14 +57,14 @@ export function WeeklyReportView({ report, notice = null }: {
       <View style={styles.card}>
         <Text style={styles.cardHeading}>{t("Report.hardnessTitle")}</Text>
         <Text style={styles.cardSub}>{t("Report.hardnessDescription")}</Text>
-        {/* 詳細グラフの3区分への更新は #205 で行う。 */}
+        {/* ハイライトと同じType 3〜4を強調する。3区分表示への更新は #205。 */}
         <BarChart
           label={t("Report.recordsByHardness")}
           emptyLabel={t("Report.noRecords")}
           bars={breakdown.hardness.map((count, index) => ({
             label: String(index + 1),
             value: count,
-            highlighted: index + 1 >= 3 && index + 1 <= 5,
+            highlighted: index + 1 >= 3 && index + 1 <= 4,
           }))}
         />
         <Text style={styles.note}>{t("Report.stableBandNote")}</Text>

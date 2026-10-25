@@ -1,6 +1,7 @@
 // Native report copy stays separate from the Web report UI.
 export const reportJa = {
   highlights: "今週のハイライト",
+  stableBandNote: "濃い色はType 3〜4です。上のハイライトと同じ区分です。",
   comparisonTitle: "過去の自分と比較",
   comparisonDescription: "今週と、今週を除く過去4週間の記録です。",
   currentPeriod: "今週",
@@ -21,6 +22,7 @@ export const reportJa = {
 
 export const reportEn: Record<keyof typeof reportJa, string> = {
   highlights: "This week's highlights",
+  stableBandNote: "Darker bars show Types 3–4, the same group used in the highlights.",
   comparisonTitle: "Compare with your past records",
   comparisonDescription: "This week and the previous four weeks, excluding this week.",
   currentPeriod: "This week",
