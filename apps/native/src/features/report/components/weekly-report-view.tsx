@@ -16,13 +16,10 @@ import { colors, fonts, spacing } from "@/theme";
 
 import { formatJstMonthDay, jstWeekdayIndex } from "../report-format";
 import { BarChart, ShareBar, TrendLine } from "./charts";
+import { ReportHighlights } from "./report-highlights";
 
 const WEEKDAYS: Weekday[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const TIME_OF_DAY_COLORS = ["#ffd28f", colors.flushPink, colors.flushEdge, colors.nightInk];
-
-function signedCount(value: number) {
-  return value > 0 ? `+${value}` : String(value);
-}
 
 /** 権利のある利用者へ見せる本レポート。権利の判定は report-gateway が行う。 */
 export function WeeklyReportView({ report, notice = null }: {
@@ -31,7 +28,7 @@ export function WeeklyReportView({ report, notice = null }: {
   notice?: string | null;
 }) {
   const { t } = useTranslation();
-  const { summary, breakdown, analysis } = report;
+  const { breakdown, analysis } = report;
 
   return (
     <View style={styles.stack}>
@@ -55,24 +52,12 @@ export function WeeklyReportView({ report, notice = null }: {
         </View>
       ) : null}
 
-      <View style={styles.card}>
-        <View style={styles.cardHeadingRow}>
-          <Ionicons name="sparkles" size={18} color={colors.flushEdge} />
-          <Text style={styles.cardHeading}>{t("Report.highlights")}</Text>
-        </View>
-        <View style={styles.metricGrid}>
-          <Metric label={t("Report.bowelCount")} value={t("Report.times", { count: summary.bowelCount })} detail={t("Report.comparedLastWeek", { count: signedCount(summary.countChangeFromPreviousWeek) })} />
-          <Metric label={t("Report.recordDays")} value={t("Report.days", { count: summary.recordedDays })} detail={t("Report.thisWeek")} />
-          <Metric label={t("Report.averageHardness")} value={summary.averageHardness?.toFixed(1) ?? "-"} detail={t("Report.hardnessScale")} />
-          <Metric label={t("Report.stableRate")} value={summary.stableRate === null ? "-" : `${summary.stableRate}%`} detail={t("Report.thisWeek")} />
-        </View>
-      </View>
+      <ReportHighlights report={report} />
 
       <View style={styles.card}>
         <Text style={styles.cardHeading}>{t("Report.hardnessTitle")}</Text>
         <Text style={styles.cardSub}>{t("Report.hardnessDescription")}</Text>
-        {/* 3から5を濃い色にするのは、ハイライトの「3から5の割合」と同じ帯を
-            指しているため。 */}
+        {/* 詳細グラフの3区分への更新は #205 で行う。 */}
         <BarChart
           label={t("Report.recordsByHardness")}
           emptyLabel={t("Report.noRecords")}
@@ -189,16 +174,6 @@ export function WeeklyReportView({ report, notice = null }: {
   );
 }
 
-function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return (
-    <View style={styles.metric}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricDetail}>{detail}</Text>
-    </View>
-  );
-}
-
 function mostFrequentWeekdays(counts: Record<Weekday, number>, emptyLabel: string) {
   const highest = Math.max(...Object.values(counts));
   if (highest === 0) return emptyLabel;
@@ -227,16 +202,5 @@ const styles = StyleSheet.create({
   cardSub: { fontFamily: fonts.regular, fontSize: 14, color: colors.pencilGray, marginTop: 4 },
   groupHeading: { fontFamily: fonts.black, fontSize: 14, color: colors.charcoal },
   shareGroup: { marginTop: spacing.lg },
-  metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, marginTop: spacing.lg },
-  metric: {
-    flexBasis: "46%",
-    flexGrow: 1,
-    borderRadius: 10,
-    backgroundColor: colors.blushWash,
-    padding: spacing.md,
-  },
-  metricLabel: { fontFamily: fonts.regular, fontSize: 12, color: colors.pencilGray },
-  metricValue: { fontFamily: fonts.black, fontSize: 20, color: colors.charcoal, marginTop: 4 },
-  metricDetail: { fontFamily: fonts.regular, fontSize: 11, color: colors.pencilGray, marginTop: 4 },
   note: { fontFamily: fonts.regular, fontSize: 12, color: colors.pencilGray, marginTop: spacing.md },
 });
