@@ -69,7 +69,7 @@ API に普通の読み書きを集める構成（案B の BFF）は採らない�
 | RevenueCat Webhook | `apps/api` |
 | アカウント削除 | `apps/api`（`auth.admin.deleteUser` に service role が要る。購読の解約も同じ処理で行う） |
 | RevenueCat の REST API を使う処理（解約・返金など） | `apps/api`（RevenueCat の秘密鍵が要る） |
-| バトル開始・完了、仲間化の抽選、合成・進化 | RPC（現状維持） |
+| バトル開始・完了、仲間化の抽選、合成 | RPC（現状維持。進化は廃止し、合成はパーツ用に作り直す。[`merge.md`](../merge.md)） |
 | 食事・図鑑・履歴の読み書き | クライアントから直接 |
 | 週次レポート | `apps/api`（権利を確認してから集計する。4.5 を参照） |
 

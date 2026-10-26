@@ -5,7 +5,7 @@ AI駆動でうんこ支援開発するぞ
 [Topa'z](https://topaz.dev/projects/78fefb2559fd33307122)
 
 モバイルWebで「戦う → 排便ログを残す → 仲間になる」体験を提供するアプリ。
-設計方針は [`docs/architecture.md`](docs/architecture.md)、企画は [`docs/IDEA.md`](docs/IDEA.md)、戦闘は [`docs/battle.md`](docs/battle.md)、うんちくんの見た目は [`docs/poopm-3d.md`](docs/poopm-3d.md) を参照。
+この説明と下の技術スタックは現行の実装（旧ループ・web版）のもの。新しい企画は [`docs/IDEA.md`](docs/IDEA.md)、資料の一覧は [`docs/README.md`](docs/README.md)。現行web版の構成は [`docsArchive/web/architecture.md`](docsArchive/web/architecture.md)、うんちくんの見た目は [`docsArchive/poopm-3d.md`](docsArchive/poopm-3d.md)。
 
 ## 技術スタック
 
@@ -29,7 +29,7 @@ npm run start -w apps/native     # 2回目以降は dev client へ接続
 ```
 
 実機・クラウドビルドは `apps/native/eas.json`（development / preview / production）を使う。課金は RevenueCat 経由で、`EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY` が未設定だと購入は利用不可として扱われる（`iap-gateway.ts` の `no-api-key`）。
-画面構成は [`docs/native/screen-sequence.md`](docs/native/screen-sequence.md)、仕様の正本は [`docs/web-spec.md`](docs/web-spec.md)。
+画面構成は [`docs/native/screen-sequence.md`](docs/native/screen-sequence.md)、現行実装の仕様は [`docsArchive/web/web-spec.md`](docsArchive/web/web-spec.md)。
 
 ## 必要環境
 
@@ -225,7 +225,7 @@ Supabase クライアントを生成してよいのは `features/<機能名>/act
 
 UI は Server Component から渡されたデータか、機能ごとの Server Action を呼ぶ。
 認証も `lib/supabase/` の関数を経由するため、この規則に例外はない。
-責務の詳細は [`docs/architecture.md`](docs/architecture.md) を参照。
+責務の詳細は [`docsArchive/web/architecture.md`](docsArchive/web/architecture.md) を参照。
 
 ### 実機での検証について
 
@@ -238,10 +238,10 @@ Vercel の Preview Deployment か HTTPS トンネルを使って検証する。
 このプロジェクトは Next.js 16 を使う。訓練データや過去バージョンと異なる点があるため、
 実装前に `node_modules/next/dist/docs/` の該当ガイドを確認する。
 
-- **ディレクトリ**: ソースは `apps/web/src/` 配下に置く（`docs/architecture.md` の構成に準拠）。
+- **ディレクトリ**: ソースは `apps/web/src/` 配下に置く（`docsArchive/web/architecture.md` の構成に準拠）。
   パスエイリアス `@/*` は `apps/web/src/*` を指す。
 - **App Router**: ルーティングと画面の組み立てのみを `apps/web/src/app/` に置く。
-  ゲームロジックや DB アクセスは書かない（`docs/architecture.md` の責務ルール参照）。
+  ゲームロジックや DB アクセスは書かない（`docsArchive/web/architecture.md` の責務ルール参照）。
 - **Proxy**: Next.js 16 で `middleware` は **`proxy` に改称**された（機能は同じ）。
   リクエスト完了前に実行する処理は、`app/` と同じ階層である **`apps/web/src/proxy.ts`** に書く。
   1プロジェクトにつき1ファイルのみ。
@@ -261,8 +261,6 @@ Vercel の Preview Deployment か HTTPS トンネルを使って検証する。
 
   ※ Proxy はセッション管理・認可の完全な代替ではない。認可判定は Server Action や
   Server Component 側でも行う。
-# Poop Battler
-
 ## 開発環境
 
 依存関係を取得した後、ブラウザ自動操作・画面検証に使う `agent-browser` の実行用ブラウザを一度だけ取得します。
