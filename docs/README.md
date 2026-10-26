@@ -4,7 +4,7 @@
 
 | ファイル | 内容 |
 | --- | --- |
-| [game-design.md](./game-design.md) | ゲームループの正本。記録 → 10秒レース → 継続で育つ。不正対策、未決事項 |
+| [game-design.md](./game-design.md) | ゲームループの正本。トイレで1分レース → 記録 → 継続で育つ。不正対策、未決事項 |
 | [IDEA.md](./IDEA.md) | 企画。ゲームループ、排便/食事ログ、プレミアム |
 | [business-plan.md](./business-plan.md) | 事業改善案。データ活用（BtoB）の方針、匿名化の整理、法務・規約の注意、進め方 |
 | [gut-data-research.md](./gut-data-research.md) | 腸内データ活用の他社事例（メタジェン、バイオーム、サイキンソーほか）と PoopBattler への示唆 |
