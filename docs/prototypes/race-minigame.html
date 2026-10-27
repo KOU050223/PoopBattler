@@ -1,0 +1,1289 @@
+<title>うんちくんカート ミニゲーム版</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Nunito:wght@500;700;900&display=swap">
+<style>
+/* Layout: 縦持ち1カラム。上に3Dのレース画面（順位表・実況つき）、下に相手メモと分かれ道の選択 */
+:root {
+  --pink: #ff7aac; --pink-edge: #c94d7f; --wash: #ffe0ef; --blue: #1cb0f6;
+  --paper: #ffffff; --ink: #4b4b4b; --pencil: #777777; --faded: #afafaf; --faded-edge: #6f6f6f;
+  --night: #000437; --good: #2fb36d; --bad: #e0574f;
+  --font: "Nunito", "M PLUS Rounded 1c", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--wash); color: var(--ink); font-family: var(--font); font-weight: 500;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 24px;
+  -webkit-tap-highlight-color: transparent;
+}
+.app { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.topbar { display: flex; justify-content: space-between; align-items: center; min-height: 32px; }
+.topbar h1 { font-size: 19px; font-weight: 800; margin: 0; }
+.fork-count { font-size: 13px; font-weight: 700; color: var(--pencil); font-variant-numeric: tabular-nums; }
+.card { background: var(--paper); border: 2px solid var(--faded); border-radius: 16px; box-shadow: 0 6px 0 var(--faded-edge); padding: 16px; }
+.stage { position: relative; padding: 0; overflow: hidden; }
+/* スマホの縦持ち前提で縦長。画面に収まらないとき（PCなど）は高さを画面に合わせる */
+.viewport {
+  position: relative; width: 100%; aspect-ratio: 9 / 16; max-width: 100%; background: var(--wash);
+  max-height: calc(100vh - 170px); max-height: calc(100dvh - 170px);
+}
+canvas { display: block; width: 100%; height: 100%; }
+
+.board {
+  position: absolute; z-index: 2; top: 8px; left: 8px; margin: 0; padding: 4px; list-style: none;
+  background: rgba(255,255,255,.92); border: 1.5px solid var(--faded); border-radius: 10px;
+  font-size: 11px; font-weight: 800; min-width: 96px;
+}
+.board li { display: flex; align-items: center; gap: 6px; padding: 1px 6px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.board li.me { background: var(--wash); }
+.board li i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.board li b { width: 1em; color: var(--pencil); }
+.board li:first-child b { color: var(--pink); }
+/* 選択肢は3D画面の上に重ねる。俯瞰の中央（分岐）は隠さないよう左右の下に置く */
+.pick { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 3; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pick .choice { background: rgba(255,255,255,.95); min-height: 84px; padding: 10px; }
+.pick .choice.right { text-align: right; align-items: flex-end; }
+.pick .choice.right .need { justify-content: flex-end; }
+.pick .timer { grid-column: 1 / -1; background: rgba(255,255,255,.7); }
+.pick .auto-chip { grid-column: 1 / -1; justify-self: center; background: rgba(255,255,255,.94); border: 2px solid var(--faded); border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 800; }
+/* 集中線とシネスコの帯。終盤とアップのときだけ出す */
+.speedlines {
+  position: absolute; inset: -10%; pointer-events: none; opacity: 0; transition: opacity .25s;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, transparent 0deg 5deg, rgba(255,255,255,.75) 5deg 6deg);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 36%, #000 78%);
+  mask-image: radial-gradient(circle at 50% 50%, transparent 36%, #000 78%);
+}
+.speedlines.on { opacity: 1; animation: flicker .12s steps(2) infinite; }
+@keyframes flicker { 50% { transform: rotate(2deg) scale(1.02); } }
+.viewport::before, .viewport::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 0; background: var(--night); z-index: 1; transition: height .3s ease-out;
+}
+.viewport::before { top: 0; } .viewport::after { bottom: 0; }
+.viewport.cinema::before, .viewport.cinema::after { height: 9%; }
+.shot-label { position: absolute; right: 8px; top: 8px; z-index: 2; font-size: 10px; font-weight: 800; color: #fff; background: rgba(0,4,55,.6); border-radius: 6px; padding: 2px 6px; letter-spacing: .06em; }
+.fx { position: absolute; inset: 0; pointer-events: none; display: grid; place-items: center; }
+.fx span {
+  grid-area: 1 / 1; font-size: clamp(28px, 10vw, 48px); font-weight: 900; color: var(--pink);
+  -webkit-text-stroke: 7px #fff; paint-order: stroke fill; transform: translateY(-30%);
+  animation: burst .9s ease-out forwards;
+}
+.fx span.dark { color: var(--ink); }
+@keyframes burst { 0% { transform: translateY(-30%) scale(.5); opacity: 0; } 15% { transform: translateY(-30%) scale(1.2); opacity: 1; } 75% { opacity: 1; } 100% { transform: translateY(-30%) scale(1); opacity: 0; } }
+.cutin {
+  position: absolute; left: 0; right: 0; top: 14%; padding: 14px 20px 14px 30%;
+  background: var(--pink); color: #fff; clip-path: polygon(0 12%, 100% 0, 100% 88%, 0 100%);
+  animation: cutin 1.1s ease-out forwards; pointer-events: none;
+}
+.cutin.rival { background: var(--night); }
+.cutin small { display: block; font-size: 12px; font-weight: 800; }
+.cutin strong { display: block; font-size: clamp(22px, 7vw, 32px); font-weight: 900; }
+@keyframes cutin { 0% { transform: translateX(100%); } 16% { transform: none; } 82% { transform: none; } 100% { transform: translateX(-100%); } }
+.cover {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+  font-size: clamp(40px, 16vw, 72px); font-weight: 900; color: var(--pink); -webkit-text-stroke: 8px #fff; paint-order: stroke fill;
+}
+.cover.photo { background: rgba(0,4,55,.55); color: #fff; -webkit-text-stroke: 0; font-size: clamp(24px, 7vw, 34px); }
+.caster { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--night); color: var(--paper); min-height: 48px; }
+.caster b { flex: none; font-size: 11px; font-weight: 800; letter-spacing: .08em; background: var(--pink); color: var(--paper); border-radius: 6px; padding: 2px 6px; }
+.caster span { font-size: 15px; font-weight: 800; min-width: 0; }
+.caster span.pop { animation: pop .25s ease-out; }
+@keyframes pop { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+.gapline { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 14px; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.gap-ahead { color: var(--good); }
+.gap-behind { color: var(--bad); }
+.say { color: var(--pencil); font-size: 13px; text-align: right; min-width: 0; }
+
+.memo { padding: 12px 16px; }
+.memo-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.memo-head h2 { font-size: 15px; margin: 0; font-weight: 800; }
+.memo-head small { color: var(--pencil); font-size: 12px; }
+.scroll { overflow-x: auto; }
+.memo-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.memo-table th { font-size: 12px; font-weight: 800; padding: 0 2px 6px; text-align: center; white-space: nowrap; }
+.memo-table th .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; vertical-align: 1px; }
+.memo-table td { padding: 5px 2px; border-top: 1px solid var(--wash); text-align: center; font-variant-numeric: tabular-nums; }
+.memo-table td:first-child, .memo-table th:first-child { text-align: left; color: var(--pencil); font-weight: 700; }
+.chip { display: inline-block; text-align: center; padding: 1px 6px; border-radius: 999px; font-size: 12px; font-weight: 800; border: 2px solid var(--faded); color: var(--pencil); }
+.chip.hi { border-color: var(--bad); color: var(--bad); }
+.chip.mid { border-color: var(--ink); color: var(--ink); }
+.chip.lo { border-color: var(--good); color: var(--good); }
+.chip.atleast { border-style: dashed; }
+.debug { color: var(--blue); }
+.field { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid var(--wash); font-size: 12px; color: var(--pencil); }
+
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.choice {
+  font: inherit; text-align: left; background: var(--paper); color: var(--ink);
+  border: 2px solid var(--faded); border-radius: 12px; box-shadow: 0 6px 0 var(--faded-edge);
+  padding: 12px; min-height: 100px; cursor: pointer; display: flex; flex-direction: column; gap: 6px;
+}
+.choice:active, .choice.picked { transform: translateY(4px); box-shadow: 0 2px 0 var(--faded-edge); }
+.choice.picked { border-color: var(--pink); box-shadow: 0 2px 0 var(--pink-edge); }
+.choice:focus-visible, .btn:focus-visible, .pill:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.choice .side { font-size: 11px; font-weight: 800; color: var(--pencil); }
+.choice .name { font-size: 19px; font-weight: 800; }
+.choice .need { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; font-weight: 700; margin-top: auto; }
+.choice .need span { background: var(--wash); border-radius: 8px; padding: 2px 6px; }
+.timer { height: 6px; border-radius: 3px; background: var(--paper); overflow: hidden; grid-column: 1 / -1; }
+.timer i { display: block; height: 100%; background: var(--pink); width: 100%; }
+.waiting { text-align: center; color: var(--pencil); font-size: 13px; padding: 8px 0; grid-column: 1 / -1; min-height: 116px; display: grid; place-items: center; }
+
+.btn { font: inherit; font-weight: 800; font-size: 15px; border: none; border-radius: 12px; padding: 12px 20px; min-height: 48px; cursor: pointer; background: var(--pink); color: var(--paper); box-shadow: 0 6px 0 var(--pink-edge); width: 100%; }
+.btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--pink-edge); }
+.btn.sub { background: var(--paper); color: var(--blue); border: 2px solid var(--faded); box-shadow: 0 6px 0 var(--faded-edge); }
+.row { display: flex; gap: 12px; }
+.setup { display: flex; flex-direction: column; gap: 16px; }
+.setup h2 { font-size: 15px; margin: 0 0 8px; font-weight: 800; }
+.lead { margin: 0; font-size: 15px; color: var(--pencil); line-height: 1.6; }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { font: inherit; font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 12px; cursor: pointer; background: var(--paper); color: var(--ink); border: 2px solid var(--faded); box-shadow: 0 3px 0 var(--faded-edge); }
+.pill.on { background: var(--pink); color: var(--paper); border-color: var(--pink); box-shadow: 0 3px 0 var(--pink-edge); }
+.pill small { font-weight: 500; opacity: .8; }
+.opts { display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+.opts label { display: flex; align-items: center; gap: 8px; }
+.opts select { font: inherit; padding: 4px 8px; border-radius: 8px; border: 2px solid var(--faded); background: var(--paper); color: var(--ink); }
+.rules { margin: 0; padding-left: 1.2em; font-size: 13px; color: var(--pencil); line-height: 1.7; }
+.result h2 { margin: 0 0 4px; font-size: 32px; font-weight: 900; }
+.result .sub { margin: 0 0 12px; color: var(--pencil); font-size: 15px; }
+.ranking { margin: 0 0 12px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.ranking li { display: grid; grid-template-columns: 3em 1fr auto; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 10px; font-size: 15px; font-variant-numeric: tabular-nums; }
+.ranking li.me { background: var(--wash); font-weight: 800; }
+.ranking li span:last-child { color: var(--pencil); font-size: 13px; }
+.highlights { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; }
+.highlights li { background: var(--wash); border-radius: 10px; padding: 4px 10px; font-size: 13px; font-weight: 700; }
+.result table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.result th { text-align: left; color: var(--pencil); font-weight: 700; padding: 4px 4px 4px 0; }
+.result td { padding: 6px 4px 6px 0; border-top: 1px solid var(--wash); }
+.auto { font-size: 11px; color: var(--pencil); }
+.hint { margin: 8px 0 0; font-size: 12px; color: var(--pencil); }
+.error { color: var(--bad); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .caster span.pop, .fx span, .cutin { animation-duration: .01s; } .speedlines.on { animation: none; } }
+/* ミニゲームの重ね表示。3D画面の下側に置き、上半分のレースは見えたままにする */
+.viewport.playing { touch-action: none; user-select: none; -webkit-user-select: none; }
+.mg {
+  position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 3; pointer-events: none;
+  background: rgba(255,255,255,.93); border: 2px solid var(--faded); border-radius: 14px; box-shadow: 0 4px 0 var(--faded-edge);
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+}
+.mg-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.mg-title { font-size: 20px; font-weight: 900; color: var(--pink); }
+.mg-hint { font-size: 12px; font-weight: 700; color: var(--pencil); text-align: right; }
+.gauge { position: relative; height: 18px; border-radius: 9px; background: var(--wash); overflow: hidden; }
+.gauge > i { position: absolute; inset: 0 auto 0 0; background: var(--pink); border-radius: 9px; transition: width .06s linear; }
+.gauge.max > i { background: linear-gradient(90deg, #ff7aac, #ffd23f); }
+.gauge .zone-good { position: absolute; top: 0; bottom: 0; background: rgba(255, 210, 63, .55); }
+.gauge .zone-perfect { position: absolute; top: 0; bottom: 0; background: rgba(255, 122, 172, .75); }
+.gauge .marker { position: absolute; top: -3px; bottom: -3px; width: 6px; margin-left: -3px; border-radius: 3px; background: var(--night); }
+.gauge .center { position: absolute; top: 0; bottom: 0; left: 37.5%; width: 25%; background: rgba(47, 179, 109, .28); }
+.mg-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.marks { display: flex; gap: 6px; }
+.marks span { min-width: 22px; height: 22px; border-radius: 11px; display: grid; place-items: center; font-size: 11px; font-weight: 900; background: var(--wash); color: var(--pencil); }
+.marks .p { background: var(--pink); color: #fff; }
+.marks .g { background: #ffd23f; color: var(--ink); }
+.marks .m { background: var(--faded); color: #fff; }
+.arrow { position: relative; width: 56px; height: 56px; display: grid; place-items: center; font-size: 34px; font-weight: 900; color: var(--night); }
+.arrow svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.arrow circle { fill: none; stroke: var(--pink); stroke-width: 5; }
+.hold { display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; color: var(--blue); }
+.hold span.on { color: var(--pink); }
+.grades { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; }
+.grades li { display: flex; align-items: center; gap: 6px; background: #fff8fb; border: 2px solid var(--wash); border-radius: 10px; padding: 4px 10px; font-size: 13px; font-weight: 700; }
+.grades b { font-size: 17px; font-weight: 900; color: var(--pink); }
+.grades b.A { color: var(--blue); } .grades b.B { color: var(--ink); } .grades b.C { color: var(--faded); }
+.keys { font-size: 12px; color: var(--pencil); margin: 0; }
+.ranking .stats { font-size: 11px; font-weight: 700; color: var(--pencil); margin-left: 4px; }
+.board { font-size: 10px; min-width: 88px; }
+.board li { padding: 0 6px; }
+.fx span.tap { font-size: 28px; animation: tapPop .5s ease-out forwards; }
+@keyframes tapPop { from { transform: translate(var(--dx), var(--dy)) scale(.6); opacity: 1; } to { transform: translate(var(--dx), calc(var(--dy) - 36px)) scale(1.1); opacity: 0; } }
+</style>
+
+<div class="app">
+  <div class="topbar">
+    <h1>うんちくんカート ミニゲーム版</h1>
+    <span class="fork-count" id="stepLabel">準備</span>
+  </div>
+
+  <section class="card setup" id="setupView">
+    <p class="lead">8体で走る約1分のレース。<b>ミニゲーム区間が3つ</b>あって（4種類から毎回ランダム）、うまくできるほどその場で速くなる。区間の合間は見ているだけでいい。</p>
+    <ul class="rules">
+      <li><b>ダッシュ</b>：画面を連打。速く叩くほど加速する</li>
+      <li><b>ハードル</b>：ゲージが色の部分に入ったらタップしてジャンプ。ピンクならパーフェクト</li>
+      <li><b>つり橋</b>：画面の左右を長押しして、揺れる針を真ん中に保つ</li>
+      <li><b>S字</b>：出てきた矢印の方向にスワイプ</li>
+      <li>ステータスも効く：体力＝直線とハードル、パワー＝上り坂とダッシュ、技術＝S字とスワイプ</li>
+    </ul>
+    <p class="keys">PCならキーボードでも遊べる：スペースで連打・ジャンプ、← → で長押し、矢印キーでスワイプ。</p>
+    <div>
+      <h2>自分のうんちくん</h2>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div class="opts">
+      <label><input type="checkbox" id="bumpCheck" checked> ぶつかり合いあり</label>
+    </div>
+    <button class="btn" id="startBtn">スタート</button>
+    <p class="error" id="loadError" hidden>3D表示の読み込みに失敗した。通信状況を確認して、ページを再読み込みしてね。</p>
+  </section>
+
+  <section class="card stage" id="stageView" hidden>
+    <div class="viewport" id="viewport">
+      <canvas id="scene"></canvas>
+      <div class="speedlines" id="speedlines"></div>
+      <ol class="board" id="board"></ol>
+      <span class="shot-label" id="shotLabel" hidden></span>
+      <div class="fx" id="fx"></div>
+      <div id="cutinSlot"></div>
+      <div class="mg" id="mg" hidden>
+        <div class="mg-head"><span class="mg-title" id="mgTitle"></span><span class="mg-hint" id="mgHint"></span></div>
+        <div id="mgBody"></div>
+      </div>
+      <div class="cover" id="cover" hidden></div>
+    </div>
+    <div class="caster"><b>実況</b><span id="casterText">まもなくスタート</span></div>
+    <div class="gapline"><span id="gapText">スタート前</span><span class="say" id="sayText"></span></div>
+  </section>
+
+  <section class="card result" id="resultView" hidden>
+    <h2 id="resultTitle"></h2>
+    <p class="sub" id="resultSub"></p>
+    <ol class="ranking" id="ranking"></ol>
+    <ul class="grades" id="grades"></ul>
+    <ul class="highlights" id="highlights"></ul>
+    <div class="row" style="margin-top:16px">
+      <button class="btn sub" id="backBtn">設定にもどる</button>
+      <button class="btn" id="againBtn">もう一回</button>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+if (!window.THREE) { document.getElementById('loadError').hidden = false; document.getElementById('startBtn').disabled = true; }
+
+// ---- ゲームの数値 ----
+const INTRO_MS = 3000;
+const FINISH_GRACE_MS = 4000;
+const PHOTO_SEC = 0.1;
+const ZONE_LEN = 48;
+const ZONES_PER_RACE = 3;
+const RUNNER_COUNT = 8;
+// 見るだけの区間の長さ。坂とS字の周期（TERRAIN_WAVE_M）の倍数にして、区間の終わりで段差や向きのずれが出ないようにする
+const TERRAIN_WAVE_M = 30;
+const WATCH_LENS = [90, 150, 150];
+const FINAL_LEN = 150;
+const FORM_SWING = 0.03;      // 走者ごとの調子の波。見るだけの区間でも順位が動くように
+const ANNOUNCE_AHEAD_M = 16;  // 区間のこの手前で「次は連打！」と予告する
+// ミニゲームの出来（0〜1）→ 区間での速さの倍率。0.5 でふつう、1 で 1.22 倍
+const perfToSpeed = perf => 0.78 + 0.44 * perf;
+// 相手のミニゲームの出来の平均。そこそこ上手い人で2着前後、全部Sならほぼ1着になる値
+const OPP_PERF_MEAN = 0.72;
+const GRADES = [{ min: 0.88, g: 'S' }, { min: 0.68, g: 'A' }, { min: 0.45, g: 'B' }, { min: -1, g: 'C' }];
+
+// ---- 物理の数値 ----
+const RADIUS = 0.75;
+const ROAD_W = 11, BRIDGE_W = 6.5; // 8体が並べる幅。つり橋は狭いままにして、混雑の見せ場にする
+// ステータス → 物理（偵察版と同じ）
+const PHYS = {
+  top: 15,                               // 直線以外の最高速（m/s）
+  topSta: sta => 12 + sta * 0.8,         // 直線とハードルでは体力で最高速が決まる
+  topPow: pow => 12 + pow * 0.8,         // ダッシュではパワーで最高速が決まる
+  accel: pow => 4.5 + pow * 0.7,
+  uphill: (grade, pow) => clamp(1 - grade * (1.6 - pow * 0.13), 0.35, 1), // 上りで出せる速さの割合
+  grip: tec => 10 + tec * 1.15,          // カーブで出せる速さ = sqrt(grip / 曲率)
+  // 曲がる速さと立て直しは技術の効きを弱くしてある。強くすると、技術が低い子はどこでもふらついて壁に当たり、技術だけが強くなる
+  turn: tec => 2.3 + tec * 0.06,
+  slide: tec => 4.2 + tec * 0.2,
+  mass: pow => 1 + pow * 0.12,
+  restitution: 0.55, stumble: 0.45, boost: 1.2,
+};
+const STATS = [{ key: 'sta', label: '体力' }, { key: 'pow', label: 'パワー' }, { key: 'tec', label: '技術' }];
+const LABEL = Object.fromEntries(STATS.map(s => [s.key, s.label]));
+const TERRAINS = { sta: { name: '直線', color: '#ff7aac' }, pow: { name: '上り坂', color: '#ffa53c' }, tec: { name: 'S字', color: '#1cb0f6' } };
+const PRESETS = [
+  { name: 'バランス', stats: { sta: 5, pow: 5, tec: 5 } },
+  { name: 'パワー型', stats: { sta: 4, pow: 8, tec: 3 } },
+  { name: '体力型',   stats: { sta: 8, pow: 3, tec: 4 } },
+  { name: '技術型',   stats: { sta: 3, pow: 4, tec: 8 } },
+  { name: '二刀流',   stats: { sta: 7, pow: 7, tec: 1 } },
+];
+const OPP_SHAPES = [[8, 4, 3], [9, 3, 3], [5, 5, 5], [7, 7, 1], [6, 6, 3], [7, 5, 3], [6, 5, 4]];
+const BUMP_IMPULSE = 2.2;
+const DRAFT = { minGap: 0.8, maxGap: 7, maxLat: 1.3, boost: 0.09 };
+const REAR_END_DOT = 0.75;
+
+const ZONES = {
+  mash:    { name: 'ダッシュ', verb: '連打！',       hint: '画面をタップしまくれ' },
+  timing:  { name: 'ハードル', verb: 'タイミング！', hint: '色の部分でタップ' },
+  balance: { name: 'つり橋',   verb: 'バランス！',   hint: '左右を長押しして真ん中に' },
+  swipe:   { name: 'S字',      verb: 'スワイプ！',   hint: '矢印の方向にはらう' },
+};
+const OPP_NAMES = ['コロ丸', 'ベン太', 'ぽっとん', 'カタ吉', 'ゆる助', 'モリ子', 'ブリオ', 'ちょろ美'];
+const OPP_COLORS = [
+  { body: '#8a9a5b', edge: '#4e5a2c' }, { body: '#c9a640', edge: '#7a6214' }, { body: '#7d6b9c', edge: '#463a5e' },
+  { body: '#c46a5a', edge: '#6e3329' }, { body: '#5f8fa8', edge: '#2f4f61' }, { body: '#d08a3c', edge: '#7a4d17' },
+  { body: '#9a9a9a', edge: '#555555' },
+];
+const ME = { id: 'me', name: 'うんちくん', short: 'じぶん', body: '#a0673a', edge: '#5b3519' };
+
+const $ = id => document.getElementById(id);
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const wrapAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
+const smooth = u => { u = clamp(u, 0, 1); return u * u * (3 - 2 * u); };
+const gradeOf = perf => GRADES.find(x => perf >= x.min).g;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const game = {
+  myStats: { ...PRESETS[0].stats }, presetIndex: 0,
+  opponents: [], runners: [], phase: 'setup', phaseStart: 0, simTime: 0, timeScale: 1, bumpsOn: true,
+  bumps: 0, overtakes: 0, myRank: 4, leaderId: null, finishedAt: 0, sayLockUntil: 0, sayPrio: 0, lastBumpSay: 0, lastFx: 0,
+  finalSaid: false, lastDraftSay: -9, zoneResults: [],
+};
+
+// ---- コース ----
+let course = null;
+function addPiece(c, len, opts) {
+  const t = c.turtle;
+  for (let i = 0; i < len; i++) {
+    let dh = 0, y = 0, w = ROAD_W;
+    if (opts.zone === 'swipe') dh = 0.7 * (2 * Math.PI / 24) * Math.cos(2 * Math.PI * i / 24);
+    if (opts.terrain === 'pow') y = 3.2 * Math.pow(Math.sin(Math.PI * i / TERRAIN_WAVE_M), 2);
+    if (opts.terrain === 'tec') dh = 0.8 * (2 * Math.PI / TERRAIN_WAVE_M) * Math.cos(2 * Math.PI * i / TERRAIN_WAVE_M) * opts.turnSign;
+    if (opts.zone === 'balance') {
+      // つり橋：少し持ち上げて細くする。入口と出口はなだらかにつなぐ
+      const ramp = smooth(Math.min(i, len - i) / 6);
+      y = 1.3 * ramp; w = ROAD_W - (ROAD_W - BRIDGE_W) * ramp;
+    }
+    t.h += dh;
+    c.pts.push({ x: t.x, z: t.z, y, h: t.h, k: dh, w, s: t.s, kind: opts.kind, zone: opts.zone, zoneIndex: opts.zoneIndex, terrain: opts.terrain });
+    t.x += Math.cos(t.h); t.z += Math.sin(t.h); t.s += 1;
+  }
+}
+function makeCourse() {
+  const c = { pts: [], turtle: { x: 0, z: 0, h: 0, s: 0 }, zones: [], hurdles: [], watches: [], finishS: 0 };
+  addPiece(c, 32, { kind: 'start' });
+  // 見るだけの区間は、直線・上り坂・S字を1回ずつ。最後の区間だけランダム
+  const terrains = shuffle(Object.keys(TERRAINS)).concat(pick(Object.keys(TERRAINS)));
+  const addWatch = (len, i) => { c.watches.push({ s: c.turtle.s, terrain: terrains[i] }); addPiece(c, len, { kind: 'watch', terrain: terrains[i], turnSign: i % 2 ? -1 : 1 }); };
+  shuffle(Object.keys(ZONES)).slice(0, ZONES_PER_RACE).forEach((zone, i) => {
+    addWatch(WATCH_LENS[i], i);
+    const startS = c.turtle.s;
+    addPiece(c, ZONE_LEN, { kind: 'zone', zone, zoneIndex: i });
+    c.zones.push({ index: i, zone, startS, endS: c.turtle.s });
+    if (zone === 'timing') [0.3, 0.58, 0.86].forEach(u => c.hurdles.push({ s: startS + ZONE_LEN * u, zoneIndex: i }));
+  });
+  addWatch(FINAL_LEN, ZONES_PER_RACE);
+  c.finishS = c.turtle.s - 20;
+  return c;
+}
+
+// ---- 3D ----
+let renderer, scene, camera, courseGroup, runnerGroup, fxGroup;
+const camState = { pos: null, look: null, shake: 0 };
+function initThree() {
+  renderer = new THREE.WebGLRenderer({ canvas: $('scene'), antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color('#ffe0ef');
+  scene.fog = new THREE.Fog('#ffe0ef', 50, 190);
+  camera = new THREE.PerspectiveCamera(62, 1, 0.1, 400);
+  scene.add(new THREE.HemisphereLight('#ffffff', '#f3b8cf', 0.95));
+  const sun = new THREE.DirectionalLight('#ffffff', 0.55); sun.position.set(30, 60, 20); scene.add(sun);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshLambertMaterial({ color: '#fff3f8' }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; scene.add(ground);
+  courseGroup = new THREE.Group(); runnerGroup = new THREE.Group(); fxGroup = new THREE.Group();
+  scene.add(courseGroup, runnerGroup, fxGroup);
+  const vp = $('viewport');
+  new ResizeObserver(() => {
+    const r = vp.getBoundingClientRect();
+    renderer.setSize(r.width, r.height, false);
+    camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix();
+  }).observe(vp);
+}
+function clearGroup(group) {
+  while (group.children.length) {
+    const c = group.children.pop();
+    c.traverse(o => { o.geometry?.dispose(); if (o.material) [].concat(o.material).forEach(m => { m.map?.dispose(); m.dispose(); }); });
+  }
+}
+function textTexture(lines, opts = {}) {
+  const c = document.createElement('canvas'); c.width = opts.w || 256; c.height = opts.h || 128;
+  const g = c.getContext('2d');
+  g.fillStyle = opts.bg || '#ffffff'; g.fillRect(0, 0, c.width, c.height);
+  if (opts.border) { g.strokeStyle = opts.border; g.lineWidth = 10; g.strokeRect(5, 5, c.width - 10, c.height - 10); }
+  g.fillStyle = opts.color || '#4b4b4b'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  lines.forEach((line, i) => {
+    g.font = `${i === 0 ? 900 : 800} ${i === 0 ? (opts.size || 52) : 26}px Nunito, "M PLUS Rounded 1c", sans-serif`;
+    g.fillText(line, c.width / 2, c.height / 2 + (i - (lines.length - 1) / 2) * 46);
+  });
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy = 4; return tex;
+}
+function ribbon(points, makeEdge) {
+  const pos = [], col = [], idx = [];
+  points.forEach((p, i) => {
+    const nx = -Math.sin(p.h), nz = Math.cos(p.h);
+    const [a, b] = makeEdge(p, nx, nz);
+    pos.push(...a.pos, ...b.pos); col.push(...a.col, ...b.col);
+    if (i > 0) { const k = i * 2; idx.push(k - 2, k - 1, k, k - 1, k + 1, k); }
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  return new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+}
+const ROAD = { base: new THREE.Color('#ffd0e3'), alt: new THREE.Color('#ffc4dc'), bridge: new THREE.Color('#e9d2b0'), bridgeAlt: new THREE.Color('#dcc29c'), dash: new THREE.Color('#ffb3d0') };
+function roadColor(p) {
+  if (p.zone === 'balance') return Math.floor(p.s / 2) % 2 ? ROAD.bridge : ROAD.bridgeAlt; // 板張り
+  if (p.zone === 'mash') return Math.floor(p.s / 4) % 2 ? ROAD.dash : ROAD.base;             // ダッシュ帯
+  return Math.floor(p.s / 8) % 2 ? ROAD.alt : ROAD.base;
+}
+function railColor(p) {
+  if (p.zone === 'swipe') return Math.floor(p.s / 3) % 2 ? '#1cb0f6' : '#ffffff';
+  if (p.zone === 'balance') return '#a77b4f';
+  // 見るだけの区間は縁石の色で地形が分かる（S字は青白、坂は橙白）
+  if (p.terrain === 'tec') return Math.floor(p.s / 3) % 2 ? '#1cb0f6' : '#ffffff';
+  if (p.terrain === 'pow') return Math.floor(p.s / 3) % 2 ? '#ffa53c' : '#ffffff';
+  return '#ffffff';
+}
+function checkerTexture() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 16;
+  const g = c.getContext('2d');
+  for (let x = 0; x < 16; x++) for (let y = 0; y < 4; y++) { g.fillStyle = (x + y) % 2 ? '#4b4b4b' : '#ffffff'; g.fillRect(x * 4, y * 4, 4, 4); }
+  const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; return t;
+}
+const facing = (mesh, h) => { mesh.rotation.y = -h - Math.PI / 2; };
+function buildCourseMeshes() {
+  clearGroup(courseGroup);
+  const pts = course.pts;
+  courseGroup.add(ribbon(pts, (p, nx, nz) => {
+    const c = roadColor(p).toArray(), hw = p.w / 2;
+    return [{ pos: [p.x + nx * hw, p.y + 0.02, p.z + nz * hw], col: c }, { pos: [p.x - nx * hw, p.y + 0.02, p.z - nz * hw], col: c }];
+  }));
+  for (const side of [-1, 1]) {
+    courseGroup.add(ribbon(pts, (p, nx, nz) => {
+      const c = new THREE.Color(railColor(p)).toArray(), hw = p.w / 2 + 0.15;
+      const x = p.x + nx * hw * side, z = p.z + nz * hw * side;
+      return [{ pos: [x, p.y, z], col: c }, { pos: [x, p.y + 0.55, z], col: c }];
+    }));
+  }
+  course.zones.forEach(z => {
+    // 区間の入口のゲート
+    const p = pts[z.startS], nx = -Math.sin(p.h), nz = Math.cos(p.h), def = ZONES[z.zone];
+    const gate = new THREE.Mesh(new THREE.PlaneGeometry(p.w + 1.2, 1.3), new THREE.MeshBasicMaterial({ map: textTexture([`${def.name}　${def.verb}`], { bg: '#000437', color: '#ffffff', w: 512, h: 96, size: 52 }), side: THREE.DoubleSide }));
+    gate.position.set(p.x, p.y + 3.6, p.z); facing(gate, p.h); courseGroup.add(gate);
+    for (const side of [-1, 1]) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.2, 8), new THREE.MeshLambertMaterial({ color: '#4b4b4b' }));
+      pole.position.set(p.x + nx * side * (p.w / 2 + 0.6), p.y + 2.1, p.z + nz * side * (p.w / 2 + 0.6)); courseGroup.add(pole);
+    }
+    // つり橋の下は水
+    if (z.zone === 'balance') {
+      const m = pts[Math.floor((z.startS + z.endS) / 2)];
+      const water = new THREE.Mesh(new THREE.PlaneGeometry(ZONE_LEN - 8, 22), new THREE.MeshLambertMaterial({ color: '#9fd8f2' }));
+      water.rotation.x = -Math.PI / 2; water.rotation.z = -m.h; water.position.set(m.x, -0.02, m.z); courseGroup.add(water);
+    }
+  });
+  // 見るだけの区間の入口の看板
+  course.watches.forEach(({ s, terrain }) => {
+    const p = pts[s], nx = -Math.sin(p.h), nz = Math.cos(p.h), def = TERRAINS[terrain];
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.3), new THREE.MeshBasicMaterial({ map: textTexture([def.name, LABEL[terrain]], { border: def.color }), side: THREE.DoubleSide }));
+    sign.position.set(p.x + nx * (p.w / 2 + 1.6), p.y + 2.2, p.z + nz * (p.w / 2 + 1.6)); facing(sign, p.h);
+    courseGroup.add(sign);
+  });
+  // ハードル（トイレットペーパーの横棒）
+  const barMat = new THREE.MeshLambertMaterial({ color: '#ffffff' }), postMat = new THREE.MeshLambertMaterial({ color: '#ff7aac' });
+  course.hurdles.forEach(hd => {
+    const p = pts[Math.round(hd.s)], nx = -Math.sin(p.h), nz = Math.cos(p.h);
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, p.w, 12), barMat);
+    bar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(nx, 0, nz)); // 円柱の軸を道の横方向へ
+    bar.position.set(p.x, p.y + 0.62, p.z);
+    courseGroup.add(bar);
+    for (const side of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.7, 0.16), postMat);
+      post.position.set(p.x + nx * side * p.w / 2, p.y + 0.35, p.z + nz * side * p.w / 2); courseGroup.add(post);
+    }
+  });
+  // 観客
+  const rollMat = new THREE.MeshLambertMaterial({ color: '#ffffff' }), coreMat = new THREE.MeshLambertMaterial({ color: '#e4b5c9' });
+  pts.forEach((p, i) => {
+    if (i % 12 !== 0 || p.zone === 'balance') return;
+    for (const side of [-1, 1]) {
+      if ((i / 12 + (side > 0 ? 1 : 0)) % 2) continue;
+      const nx = -Math.sin(p.h), nz = Math.cos(p.h), d = p.w / 2 + 3 + ((i * 7919 + side * 31) % 400 + 400) % 400 / 100;
+      const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.4, 16), rollMat);
+      roll.position.set(p.x + nx * side * d, 0.7, p.z + nz * side * d);
+      roll.add(new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 1.42, 10), coreMat));
+      roll.userData = { spectator: true, baseY: 0.7, phase: i % 7 };
+      courseGroup.add(roll);
+    }
+  });
+  const lineTex = checkerTexture();
+  const addLine = s => {
+    const p = pts[Math.floor(s)];
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(p.w, 1.6), new THREE.MeshBasicMaterial({ map: lineTex }));
+    m.rotation.x = -Math.PI / 2; m.rotation.z = Math.PI / 2 - p.h; m.position.set(p.x, p.y + 0.04, p.z);
+    courseGroup.add(m);
+  };
+  addLine(18); addLine(course.finishS);
+  const p = pts[Math.floor(course.finishS)], nx = -Math.sin(p.h), nz = Math.cos(p.h);
+  const banner = new THREE.Mesh(new THREE.PlaneGeometry(p.w + 1, 1.4), new THREE.MeshBasicMaterial({ map: textTexture(['ゴール'], { bg: '#ff7aac', color: '#ffffff', w: 512, h: 96, size: 64 }), side: THREE.DoubleSide }));
+  banner.position.set(p.x, p.y + 4, p.z); facing(banner, p.h); courseGroup.add(banner);
+  for (const side of [-1, 1]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4.6, 8), new THREE.MeshLambertMaterial({ color: '#4b4b4b' }));
+    pole.position.set(p.x + nx * side * (p.w / 2 + 0.5), p.y + 2.3, p.z + nz * side * (p.w / 2 + 0.5)); courseGroup.add(pole);
+  }
+}
+function makeBlob(r) {
+  const group = new THREE.Group(), body = new THREE.Group();
+  const mat = new THREE.MeshToonMaterial({ color: r.body });
+  const edgeMat = new THREE.MeshBasicMaterial({ color: r.edge, side: THREE.BackSide });
+  [[0, 0.42, 0.78, 0.5], [0, 0.98, 0.58, 0.4], [0.06, 1.42, 0.34, 0.28]].forEach(([x, y, rx, ry]) => {
+    const geo = new THREE.SphereGeometry(1, 20, 14);
+    const m = new THREE.Mesh(geo, mat); m.scale.set(rx, ry, rx); m.position.set(x, y, 0);
+    const e = new THREE.Mesh(geo, edgeMat); e.scale.set(rx * 1.07, ry * 1.07, rx * 1.07); e.position.copy(m.position);
+    body.add(e, m);
+  });
+  const white = new THREE.MeshBasicMaterial({ color: '#ffffff' }), black = new THREE.MeshBasicMaterial({ color: '#222222' });
+  for (const x of [-0.22, 0.22]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), white); eye.position.set(x, 1.02, 0.5);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), black); pupil.position.set(x, 1.02, 0.63);
+    body.add(eye, pupil);
+  }
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.8, 20), new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.16 }));
+  shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.03;
+  const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: textTexture([r.short], { bg: r.id === 'me' ? '#ff7aac' : '#ffffff', color: r.id === 'me' ? '#ffffff' : '#4b4b4b', w: 192, h: 64, size: 40 }), depthTest: false }));
+  tag.scale.set(1.5, 0.5, 1); tag.position.y = 2.3;
+  group.add(shadow, body, tag);
+  group.userData = { body, shadow };
+  return group;
+}
+
+// ---- 走者と物理 ----
+function setupRunners() {
+  clearGroup(runnerGroup);
+  game.opponents = shuffle(OPP_NAMES).slice(0, RUNNER_COUNT - 1).map((name, i) => {
+    const shape = shuffle(pick(OPP_SHAPES));
+    return { id: `opp${i}`, name, short: name, stats: { sta: shape[0], pow: shape[1], tec: shape[2] }, ...OPP_COLORS[i] };
+  });
+  game.runners = [{ ...ME, stats: game.myStats }, ...game.opponents];
+  const lanes = shuffle([-4.2, -3, -1.8, -0.6, 0.6, 1.8, 3, 4.2]);
+  // 4体ずつ2列。自分は後列のどこか
+  const grid = [8, 12].flatMap(s => [-3.6, -1.2, 1.2, 3.6].map(lat => ({ s, lat })));
+  const back = shuffle([0, 1, 2, 3]);
+  const order = [back[0], ...shuffle([...back.slice(1), 4, 5, 6, 7])];
+  game.runners.forEach((r, i) => {
+    const slot = grid[order[i]], p = course.pts[slot.s], nx = -Math.sin(p.h), nz = Math.cos(p.h);
+    Object.assign(r, {
+      x: p.x + nx * slot.lat, z: p.z + nz * slot.lat, vx: 0, vz: 0, h: p.h, idx: slot.s, s: slot.s, lat: slot.lat, y: 0,
+      laneBase: lanes[i], passing: null, passLat: 0, drafting: false, finishedAt: null, squash: 0,
+      mass: PHYS.mass(r.stats.pow), formPhase: rand(0, Math.PI * 2), zoneIndex: -1, zonePerf: 0.5, stumbleUntil: 0, boostUntil: 0, jumpAt: -9, hurdlesDone: new Set(), tripS: null,
+    });
+    r.mesh = makeBlob(r); runnerGroup.add(r.mesh);
+  });
+}
+function trackPos(r) {
+  const pts = course.pts, last = pts.length - 1;
+  let best = r.idx, bestD = Infinity;
+  for (let i = Math.max(0, r.idx - 4); i <= Math.min(last, r.idx + 30); i++) {
+    const dx = r.x - pts[i].x, dz = r.z - pts[i].z, d = dx * dx + dz * dz;
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  r.idx = best;
+  const p = pts[best], fx = Math.cos(p.h), fz = Math.sin(p.h), dx = r.x - p.x, dz = r.z - p.z;
+  r.s = p.s + dx * fx + dz * fz;
+  r.lat = -dx * Math.sin(p.h) + dz * Math.cos(p.h);
+  const q = pts[Math.min(last, best + 1)], u = clamp(dx * fx + dz * fz, 0, 1);
+  r.y = p.y + (q.y - p.y) * u;
+}
+function zonePerf(r) { return r.id === 'me' ? mg.perf : r.zonePerf; }
+function control(r, dt) {
+  const pts = course.pts, last = pts.length - 1, i = r.idx, st = r.stats;
+  if (i >= last - 1) { r.vx *= 0.9; r.vz *= 0.9; return; }
+  const speed = Math.hypot(r.vx, r.vz);
+  const j = Math.min(last, i + clamp(Math.round(5 + speed * 0.35), 5, 14));
+  const pj = pts[j], nx = -Math.sin(pj.h), nz = Math.cos(pj.h);
+  const maxLat = Math.max(0, pj.w / 2 - 0.9);
+  // つり橋では、自分の位置がバランスの針と連動する
+  let lane = r.passing ? r.passLat : r.laneBase * (pj.w / ROAD_W);
+  if (r.id === 'me' && mg.type === 'balance' && mg.active) lane = mg.needle * (pj.w / 2 - 0.4);
+  const lat = clamp(lane, -maxLat - 0.5, maxLat + 0.5);
+  const desired = Math.atan2(pj.z + nz * lat - r.z, pj.x + nx * lat - r.x);
+  r.h += clamp(wrapAngle(desired - r.h), -PHYS.turn(st.tec) * dt, PHYS.turn(st.tec) * dt);
+
+  const p = pts[i];
+  // 各ステータスが2か所ずつ効く：体力＝直線とハードル、パワー＝上り坂とダッシュ、技術＝S字とスワイプ
+  let target = (p.terrain === 'sta' || p.zone === 'timing') ? PHYS.topSta(st.sta) : p.zone === 'mash' ? PHYS.topPow(st.pow) : PHYS.top, kappa = 0;
+  for (let k = i; k <= Math.min(last, i + 14); k++) kappa = Math.max(kappa, Math.abs(pts[k].k));
+  if (kappa > 0.02) target = Math.min(target, Math.sqrt(PHYS.grip(st.tec) / kappa));
+  const grade = (pts[Math.min(last, i + 2)].y - pts[Math.max(0, i - 2)].y) / 4;
+  if (grade > 0) target *= PHYS.uphill(grade, st.pow); else target *= 1 - grade * 0.4;
+  if (p.zone) target *= perfToSpeed(zonePerf(r));
+  else target *= 1 + FORM_SWING * Math.sin(game.simTime * 0.35 + r.formPhase);
+  target *= 1 + DRAFT.boost * draftAmount(r);
+  if (game.simTime < r.stumbleUntil) target *= PHYS.stumble;
+  if (game.simTime < r.boostUntil) target *= PHYS.boost;
+  if (r.finishedAt != null) target = 4;
+  r.drafting = draftAmount(r) > 0;
+
+  const fx = Math.cos(r.h), fz = Math.sin(r.h);
+  let vF = r.vx * fx + r.vz * fz, lx = r.vx - fx * vF, lz = r.vz - fz * vF;
+  vF = vF < target ? Math.min(target, vF + PHYS.accel(st.pow) * dt) : Math.max(target, vF - 9 * dt);
+  const damp = Math.exp(-PHYS.slide(st.tec) * dt);
+  r.vx = fx * vF + lx * damp; r.vz = fz * vF + lz * damp;
+}
+function draftAmount(r) {
+  let best = 0;
+  for (const o of game.runners) {
+    if (o === r || o.finishedAt != null) continue;
+    const ds = o.s - r.s;
+    if (ds < DRAFT.minGap || ds > DRAFT.maxGap || Math.abs(o.lat - r.lat) > DRAFT.maxLat) continue;
+    best = Math.max(best, 1 - (ds - DRAFT.minGap) / (DRAFT.maxGap - DRAFT.minGap));
+  }
+  return best;
+}
+function planOvertakes() {
+  for (const a of game.runners) {
+    if (a.finishedAt != null) { a.passing = null; continue; }
+    if (a.passing) { const ds = a.passing.s - a.s; if (ds < -1.5 || ds > 9) a.passing = null; else continue; }
+    let blocker = null;
+    for (const b of game.runners) {
+      if (b === a) continue;
+      const ds = b.s - a.s;
+      if (ds <= 0 || ds > 6 || Math.abs(b.lat - a.lat) > 1.5) continue;
+      if (!blocker || ds < blocker.s - a.s) blocker = b;
+    }
+    if (!blocker || Math.hypot(a.vx, a.vz) < Math.hypot(blocker.vx, blocker.vz) - 0.5) continue;
+    a.passing = blocker; a.passLat = chooseLine(a, blocker);
+  }
+}
+function chooseLine(a, blocker) {
+  const maxLat = course.pts[a.idx].w / 2 - 0.9;
+  let best = a.laneBase, bestScore = -Infinity;
+  for (const side of [-1, 1]) {
+    const lat = clamp(blocker.lat + side * 1.8, -maxLat, maxLat);
+    if (Math.abs(lat - blocker.lat) < 1.4) continue;
+    let score = -Math.abs(lat - a.lat) * 0.3;
+    for (const o of game.runners) if (o !== a && o !== blocker && Math.abs(o.s - a.s) < 6 && Math.abs(o.lat - lat) < 1.5) score -= 3;
+    if (score > bestScore) { bestScore = score; best = lat; }
+  }
+  return best;
+}
+function collide() {
+  const rs = game.runners;
+  for (let a = 0; a < rs.length; a++) for (let b = a + 1; b < rs.length; b++) {
+    const A = rs[a], B = rs[b];
+    if (isAirborne(A) || isAirborne(B)) continue; // ジャンプ中はすり抜ける
+    const dx = B.x - A.x, dz = B.z - A.z, dist = Math.hypot(dx, dz), min = RADIUS * 2;
+    if (dist >= min || dist === 0) continue;
+    const nx = dx / dist, nz = dz / dist, overlap = min - dist, total = A.mass + B.mass;
+    A.x -= nx * overlap * B.mass / total; A.z -= nz * overlap * B.mass / total;
+    B.x += nx * overlap * A.mass / total; B.z += nz * overlap * A.mass / total;
+    const vrel = (B.vx - A.vx) * nx + (B.vz - A.vz) * nz;
+    if (vrel >= 0) continue;
+    // 追突は跳ね返さず、後ろの子を横へいなす（下がったら二度と上がれない、を防ぐ）
+    const rear = nx * Math.cos(A.h) + nz * Math.sin(A.h) > REAR_END_DOT ? A : -(nx * Math.cos(B.h) + nz * Math.sin(B.h)) > REAR_END_DOT ? B : null;
+    const e = rear ? 0.05 : PHYS.restitution;
+    const j = -(1 + e) * vrel / (1 / A.mass + 1 / B.mass);
+    A.vx -= nx * j / A.mass; A.vz -= nz * j / A.mass;
+    B.vx += nx * j / B.mass; B.vz += nz * j / B.mass;
+    if (rear) { sidestep(rear, rear === A ? B : A); continue; }
+    A.h += rand(-1, 1) * j * 0.04 / A.mass; B.h += rand(-1, 1) * j * 0.04 / B.mass;
+    if (j > BUMP_IMPULSE) onBump(A, B);
+  }
+}
+function sidestep(rear, front) {
+  const side = Math.sign(rear.lat - front.lat) || (Math.random() < 0.5 ? -1 : 1);
+  rear.vx += -Math.sin(rear.h) * side * 1.5; rear.vz += Math.cos(rear.h) * side * 1.5;
+  rear.passing = front; rear.passLat = chooseLine(rear, front);
+}
+function walls() {
+  for (const r of game.runners) {
+    const p = course.pts[r.idx], limit = p.w / 2 - RADIUS * 0.9;
+    if (Math.abs(r.lat) <= limit) continue;
+    const side = Math.sign(r.lat), nx = -Math.sin(p.h) * side, nz = Math.cos(p.h) * side, over = Math.abs(r.lat) - limit;
+    r.x -= nx * over; r.z -= nz * over;
+    const vn = r.vx * nx + r.vz * nz;
+    if (vn > 0) {
+      r.vx -= nx * vn * 1.45; r.vz -= nz * vn * 1.45; r.vx *= 0.96; r.vz *= 0.96;
+      if (r.id === 'me' && vn > 2.5) say(p.zone === 'balance' ? '落ちそう！' : '壁にこすった！', 1);
+    }
+  }
+}
+const JUMP_SEC = 0.5;
+const isAirborne = r => game.simTime - r.jumpAt < JUMP_SEC;
+function step(dt) {
+  for (const r of game.runners) trackPos(r);
+  planOvertakes();
+  for (const r of game.runners) control(r, dt);
+  for (const r of game.runners) { r.x += r.vx * dt; r.z += r.vz * dt; }
+  if (game.bumpsOn) collide();
+  walls();
+  game.simTime += dt;
+  for (const r of game.runners) { trackPos(r); checkProgress(r); checkHurdles(r); checkTrip(r); }
+  mg.update(dt);
+}
+
+// ---- ハードル ----
+const nextHurdle = r => course.hurdles.find(hd => !r.hurdlesDone.has(hd) && hd.s > r.s - 0.5);
+function checkHurdles(r) {
+  const hd = nextHurdle(r);
+  if (!hd) return;
+  const d = hd.s - r.s;
+  // 相手は自動で跳ぶ。たまに失敗する
+  if (r.id !== 'me' && d < 2 && !r.hurdlesDone.has(hd)) {
+    r.hurdlesDone.add(hd);
+    if (Math.random() < 0.82) r.jumpAt = game.simTime; else stumble(r);
+    return;
+  }
+  if (r.id === 'me' && d < -0.2) { r.hurdlesDone.add(hd); stumble(r); mg.hurdleResult('m'); }
+}
+// 早く跳びすぎたときは、着地した先（ハードルの位置）で引っかかる
+function checkTrip(r) {
+  if (r.tripS != null && r.s >= r.tripS - 0.2) { r.tripS = null; stumble(r); }
+}
+function stumble(r) {
+  r.stumbleUntil = game.simTime + 0.7; r.squash = 1;
+  if (r.id === 'me') { burst('ドテッ', true); camState.shake = reduceMotion ? 0 : 0.25; }
+}
+
+// ---- ミニゲーム ----
+// どれも perf（0〜1）を持ち、区間の中ではそれがそのまま自分の速さになる
+const mg = {
+  type: null, active: false, perf: 0.5, zone: null, sumPerf: 0, sumT: 0, results: [], holdDir: 0,
+  taps: [], needle: 0, needleV: 0, phase: [0, 0], t: 0, arrows: [], arrowIndex: 0, arrowAt: 0, swipeStart: null,
+
+  begin(zone) {
+    Object.assign(this, { type: zone.zone, zone, active: true, perf: 0.5, sumPerf: 0, sumT: 0, results: [], taps: [], needle: rand(-0.2, 0.2), needleV: 0, t: 0, holdDir: 0 });
+    this.phase = [rand(0, 6), rand(0, 6)];
+    if (this.type === 'mash') this.perf = 0.3;
+    if (this.type === 'swipe') { this.arrows = Array.from({ length: 4 }, () => pick(['←', '→', '↑', '↓'])); this.arrowIndex = 0; this.arrowAt = game.simTime; }
+    $('mgTitle').textContent = ZONES[this.type].verb;
+    $('mgHint').textContent = ZONES[this.type].hint;
+    $('mg').hidden = false; $('viewport').classList.add('playing');
+    this.render();
+  },
+  end() {
+    if (!this.active) return;
+    this.active = false;
+    $('mg').hidden = true; $('viewport').classList.remove('playing');
+    const avg = (this.type === 'timing' || this.type === 'swipe')
+      ? (this.results.length ? this.results.reduce((a, r) => a + r, 0) / this.results.length : 0.1)
+      : this.sumPerf / Math.max(0.01, this.sumT);
+    const grade = gradeOf(avg);
+    game.zoneResults.push({ zone: this.type, grade, perf: avg });
+    burst(`${ZONES[this.type].name} ${grade}`, grade === 'C');
+    if (grade === 'S') { cutin(ME.name, `${ZONES[this.type].name}パーフェクト！`); forceShot('close', 1300); say(`${ME.name}、${ZONES[this.type].name}を完璧に決めた！`, 2); }
+    else say({ A: 'いい感じ！', B: 'まずまず', C: 'うーん、もう一息…' }[grade], 1);
+    this.perf = 0.5; this.type = null;
+  },
+  update(dt) {
+    if (!this.active) return;
+    this.t += dt;
+    if (this.type === 'mash') {
+      // 直近0.8秒の連打の速さで決まる。毎秒9回で満タン
+      const nowMs = performance.now();
+      this.taps = this.taps.filter(t => nowMs - t < 800);
+      const target = clamp((this.taps.length / 0.8 - 2) / 7, 0, 1);
+      this.perf += (target - this.perf) * Math.min(1, dt * 8);
+    }
+    if (this.type === 'balance') {
+      // 針は勝手に揺れる。後半ほど揺れが大きくなる
+      const drift = (Math.sin(this.t * 1.7 + this.phase[0]) * 0.9 + Math.sin(this.t * 3.3 + this.phase[1]) * 0.6) * (1.3 + this.t * 0.5);
+      this.needleV += (drift + this.holdDir * 4.2 - this.needleV * 1.6) * dt;
+      this.needle += this.needleV * dt;
+      if (Math.abs(this.needle) >= 1) { this.needle = Math.sign(this.needle); this.needleV = 0; }
+      const off = Math.abs(this.needle);
+      this.perf = off < 0.25 ? 1 : clamp(1 - (off - 0.25) / 0.75, 0, 1);
+    }
+    if (this.type === 'swipe' && this.arrowIndex < this.arrows.length && game.simTime - this.arrowAt > 0.8) this.swipeResult(false);
+    if (this.type === 'mash' || this.type === 'balance') { this.sumPerf += this.perf * dt; this.sumT += dt; }
+  },
+  // 入力
+  tap() {
+    if (!this.active) return;
+    if (this.type === 'mash') { this.taps.push(performance.now()); popTap(); }
+    if (this.type === 'timing') this.jump();
+  },
+  hold(dir) { if (this.active && this.type === 'balance') this.holdDir = dir; },
+  swipe(dir) { if (this.active && this.type === 'swipe' && this.arrowIndex < this.arrows.length) this.swipeResult(dir === this.arrows[this.arrowIndex]); },
+
+  jump() {
+    const me = game.runners[0], hd = nextHurdle(me);
+    if (!hd || isAirborne(me)) return;
+    const d = hd.s - me.s;
+    if (d > 8) return; // まだ遠い。誤タップは数えない
+    me.jumpAt = game.simTime;
+    if (d >= 1.3 && d <= 2.2) { me.hurdlesDone.add(hd); this.hurdleResult('p', 'パーフェクト！'); me.boostUntil = game.simTime + 0.6; }
+    else if (d >= 0.6 && d <= 3.4) { me.hurdlesDone.add(hd); this.hurdleResult('g', 'グッド'); }
+    else { me.hurdlesDone.add(hd); me.tripS = hd.s; this.hurdleResult('m'); burst('早すぎ！', true); }
+  },
+  hurdleResult(kind, text) {
+    this.results.push({ p: 1, g: 0.65, m: 0.1 }[kind]);
+    this.perf = this.results.reduce((a, r) => a + r, 0) / this.results.length;
+    if (kind !== 'm') burst(text, false);
+  },
+  swipeResult(ok) {
+    const me = game.runners[0], fast = game.simTime - this.arrowAt < 0.45;
+    this.results.push(ok ? (fast ? 1 : 0.7) : 0.1);
+    this.perf = this.results.reduce((a, r) => a + r, 0) / this.results.length;
+    if (ok) { me.boostUntil = game.simTime + 0.4; burst(fast ? 'キュッ！' : 'OK', false); }
+    else { me.stumbleUntil = game.simTime + 0.3; burst('ミス', true); }
+    this.arrowIndex++; this.arrowAt = game.simTime;
+  },
+  render() {
+    if (!this.active) return;
+    const body = $('mgBody'), pct = v => `${(clamp(v, 0, 1) * 100).toFixed(1)}%`;
+    if (this.type === 'mash') {
+      const max = this.perf > 0.92;
+      body.innerHTML = `<div class="gauge ${max ? 'max' : ''}"><i style="width:${pct(this.perf)}"></i></div>
+        <div class="mg-row"><span>${max ? '全開！' : 'もっと速く！'}</span><span>${(this.taps.length / 0.8).toFixed(1)} 回/秒</span></div>`;
+    }
+    if (this.type === 'timing') {
+      const me = game.runners[0], hd = nextHurdle(me), d = hd ? hd.s - me.s : 99;
+      const pos = d > 8 ? 0 : 1 - d / 8;
+      const marks = [0, 1, 2].map(i => { const r = this.results[i]; return `<span class="${r === 1 ? 'p' : r === 0.65 ? 'g' : r != null ? 'm' : ''}">${r === 1 ? 'P' : r === 0.65 ? 'G' : r != null ? '×' : i + 1}</span>`; }).join('');
+      body.innerHTML = `<div class="gauge"><span class="zone-good" style="left:${pct(1 - 3.4 / 8)};width:${pct(2.8 / 8)}"></span><span class="zone-perfect" style="left:${pct(1 - 2.2 / 8)};width:${pct(0.9 / 8)}"></span><span class="marker" style="left:${pct(pos)}"></span></div>
+        <div class="mg-row"><span>${d < 8 ? 'いまだ…！' : '次のハードルまで待って'}</span><span class="marks">${marks}</span></div>`;
+    }
+    if (this.type === 'balance') {
+      body.innerHTML = `<div class="gauge"><span class="center"></span><span class="marker" style="left:${pct((this.needle + 1) / 2)}"></span></div>
+        <div class="hold"><span class="${this.holdDir < 0 ? 'on' : ''}">◀ 左を長押し</span><span>${Math.abs(this.needle) < 0.25 ? 'キープ！' : 'ぐらぐら…'}</span><span class="${this.holdDir > 0 ? 'on' : ''}">右を長押し ▶</span></div>`;
+    }
+    if (this.type === 'swipe') {
+      const done = this.arrowIndex >= this.arrows.length;
+      const left = done ? 0 : clamp(1 - (game.simTime - this.arrowAt) / 0.8, 0, 1), C = 2 * Math.PI * 24;
+      const marks = this.arrows.map((a, i) => { const r = this.results[i]; return `<span class="${r === 1 ? 'p' : r === 0.7 ? 'g' : r != null ? 'm' : ''}">${a}</span>`; }).join('');
+      body.innerHTML = `<div class="mg-row"><span class="arrow">${done ? '✓' : this.arrows[this.arrowIndex]}<svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - left)}"></circle></svg></span><span class="marks">${marks}</span></div>`;
+    }
+  },
+};
+function popTap() {
+  const el = document.createElement('span'); el.textContent = '+'; el.className = 'tap';
+  el.style.setProperty('--dx', `${rand(-70, 70)}px`); el.style.setProperty('--dy', `${rand(-50, 0)}px`);
+  $('fx').appendChild(el); setTimeout(() => el.remove(), 500);
+}
+
+// 入力：3D画面の上で受ける。PCはキーボードでも
+(function bindInput() {
+  const vp = $('viewport');
+  vp.addEventListener('pointerdown', e => {
+    if (!mg.active) return;
+    e.preventDefault();
+    const rect = vp.getBoundingClientRect(), x = (e.clientX - rect.left) / rect.width;
+    mg.swipeStart = { x: e.clientX, y: e.clientY };
+    mg.tap(); mg.hold(x < 0.5 ? -1 : 1);
+  });
+  const release = e => {
+    if (mg.swipeStart && e) {
+      const dx = e.clientX - mg.swipeStart.x, dy = e.clientY - mg.swipeStart.y;
+      if (Math.hypot(dx, dy) > 28) mg.swipe(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? '→' : '←') : (dy > 0 ? '↓' : '↑'));
+    }
+    mg.swipeStart = null; mg.hold(0);
+  };
+  vp.addEventListener('pointerup', release);
+  vp.addEventListener('pointercancel', () => release(null));
+  vp.addEventListener('pointerleave', () => release(null));
+  const keyDir = { ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓' };
+  addEventListener('keydown', e => {
+    if (!mg.active || e.repeat) return;
+    if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); mg.tap(); }
+    if (keyDir[e.code]) { e.preventDefault(); mg.swipe(keyDir[e.code]); if (e.code === 'ArrowLeft') mg.hold(-1); if (e.code === 'ArrowRight') mg.hold(1); }
+  });
+  addEventListener('keyup', e => { if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') mg.hold(0); });
+})();
+
+// ---- 区間の出入り ----
+function checkProgress(r) {
+  if (r.s >= course.finishS && r.finishedAt == null) { r.finishedAt = game.simTime; onFinish(r); }
+  const zi = course.pts[r.idx].zoneIndex;
+  const inZone = zi != null && course.pts[r.idx].kind === 'zone';
+  if (r.id !== 'me') {
+    // 相手の出来は区間ごとにばらつく
+    if (inZone && r.zoneIndex !== zi) { r.zoneIndex = zi; r.zonePerf = clamp(OPP_PERF_MEAN + (Math.random() + Math.random() + Math.random() - 1.5) * 0.3, 0.25, 0.97); }
+    return;
+  }
+  const next = course.zones.find(z => z.startS > r.s);
+  if (next && next.startS - r.s < ANNOUNCE_AHEAD_M && game.announced !== next.index) {
+    game.announced = next.index;
+    say(`次は${ZONES[next.zone].name}！${ZONES[next.zone].verb}`, 2);
+  }
+  if (inZone && r.zoneIndex !== zi) { r.zoneIndex = zi; mg.begin(course.zones[zi]); }
+  if (!inZone && mg.active) mg.end();
+  if (r.drafting && !r.wasDrafting && game.simTime - game.lastDraftSay > 3 && !mg.active) { game.lastDraftSay = game.simTime; say('スリップストリームに入った！', 1); }
+  r.wasDrafting = r.drafting;
+}
+function onFinish(r) {
+  const place = game.runners.filter(x => x.finishedAt != null).length;
+  if (r.id === 'me') {
+    game.finishedAt = performance.now();
+    burst(`${place}着！`, place !== 1);
+    say(place === 1 ? `${ME.name}、1着でゴール！` : `${ME.name}は${place}着でゴール`, 3);
+  } else if (place === 1) say(`${r.name}が1着でゴール！`, 2);
+}
+function onBump(A, B) {
+  const now = performance.now(), me = A.id === 'me' ? A : B.id === 'me' ? B : null;
+  A.squash = B.squash = 1;
+  spawnSparks((A.x + B.x) / 2, (A.y + B.y) / 2 + 0.8, (A.z + B.z) / 2);
+  if (me) {
+    game.bumps++;
+    const other = me === A ? B : A;
+    if (now - game.lastFx > 900) { burst('ゴツン！', true); camState.shake = reduceMotion ? 0 : 0.35; game.lastFx = now; if (!mg.active) forceShot('meSide', 1300); }
+    say(me.mass >= other.mass ? `${other.name}をはじき飛ばした！` : `${other.name}にはじかれた！`, 2);
+  } else if (now - game.lastBumpSay > 2000) { game.lastBumpSay = now; say(`${A.name}と${B.name}がぶつかった！`, 1); }
+}
+function rankOrder() {
+  return game.runners.slice().sort((a, b) => {
+    if (a.finishedAt != null || b.finishedAt != null) return (a.finishedAt ?? Infinity) - (b.finishedAt ?? Infinity);
+    return b.s - a.s;
+  });
+}
+function trackRanks(now) {
+  const me = game.runners[0];
+  let rank = 1;
+  for (const o of game.runners.slice(1)) {
+    if (me.finishedAt != null) { if (o.finishedAt != null && o.finishedAt < me.finishedAt) rank++; continue; }
+    if (o.finishedAt != null) { rank++; continue; }
+    const wasAhead = o.aheadOfMe ?? (o.s > me.s);
+    o.aheadOfMe = o.s > me.s + 0.6 ? true : o.s < me.s - 0.6 ? false : wasAhead;
+    if (o.aheadOfMe) rank++;
+  }
+  if (game.phase === 'race' && me.finishedAt == null && rank !== game.myRank) {
+    const up = rank < game.myRank;
+    if (up) game.overtakes++;
+    if (now - game.lastFx > 900) {
+      burst(up ? (rank === 1 ? 'トップ！' : `${rank}位に浮上！`) : `${rank}位に後退`, !up); game.lastFx = now;
+      if (up) { director.fovKick = reduceMotion ? 0 : -10; if (!mg.active) forceShot('close', 1300); }
+    }
+    say(up ? `${ME.name}、${rank}位に上がった！` : `抜かれて${rank}位！`, 1);
+  }
+  game.myRank = rank;
+  const leader = rankOrder()[0];
+  if (game.leaderId && leader.id !== game.leaderId && leader.id !== 'me' && game.phase === 'race') say(`${leader.name}がトップに立った！`, 1);
+  game.leaderId = leader.id;
+}
+function isPhotoFinishMoment() {
+  const me = game.runners[0];
+  if (me.finishedAt != null || me.s < course.finishS - 10) return false;
+  return game.opponents.some(o => o.finishedAt == null && Math.abs(o.s - me.s) < 2.5);
+}
+// ハードルの直前はスローにして、タイミングを取りやすくする（見せ場にもなる）
+function isHurdleMoment() {
+  if (mg.type !== 'timing' || !mg.active) return false;
+  const me = game.runners[0], hd = nextHurdle(me);
+  return hd && hd.s - me.s < 7 && hd.s - me.s > -0.5;
+}
+
+// ---- 画面の部品 ----
+function showView(view) {
+  $('setupView').hidden = view !== 'setup';
+  $('stageView').hidden = view !== 'race' && view !== 'result';
+  $('resultView').hidden = view !== 'result';
+  $('stepLabel').textContent = { setup: '準備', race: 'レース', result: '結果' }[view];
+}
+function say(text, prio = 1) {
+  const now = performance.now();
+  if (now < game.sayLockUntil && prio < game.sayPrio) return;
+  game.sayLockUntil = now + 1000; game.sayPrio = prio;
+  const el = $('casterText');
+  el.textContent = text; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+}
+function burst(text, dark) {
+  const el = document.createElement('span'); el.textContent = text; if (dark) el.className = 'dark';
+  $('fx').appendChild(el); setTimeout(() => el.remove(), 950);
+}
+function cutin(name, line) {
+  const el = document.createElement('div'); el.className = 'cutin';
+  el.innerHTML = `<small>${name}</small><strong>${line}</strong>`;
+  $('cutinSlot').replaceChildren(el); setTimeout(() => el.remove(), 1150);
+}
+function cover(text, isPhoto) {
+  const el = $('cover');
+  if (text == null) { el.hidden = true; return; }
+  el.hidden = false; el.textContent = text; el.className = `cover${isPhoto ? ' photo' : ''}`;
+}
+function renderBoard() {
+  $('board').innerHTML = rankOrder().map((r, i) => `<li class="${r.id === 'me' ? 'me' : ''}"><b>${i + 1}</b><i style="background:${r.body}"></i>${r.short}</li>`).join('');
+}
+function updateGapLine() {
+  const order = rankOrder(), me = game.runners[0], el = $('gapText');
+  if (me.finishedAt != null) { el.textContent = `${game.myRank}着でゴール`; el.className = game.myRank === 1 ? 'gap-ahead' : ''; return; }
+  if (game.myRank === 1) {
+    const second = order.find(r => r.id !== 'me');
+    el.textContent = `1位　2位と${Math.max(0, me.s - second.s).toFixed(0)}m差`; el.className = 'gap-ahead';
+  } else {
+    el.textContent = `${game.myRank}位　トップまで${Math.max(0, order[0].s - me.s).toFixed(0)}m`;
+    el.className = game.myRank >= 3 ? 'gap-behind' : '';
+  }
+  const done = game.zoneResults.map(z => `${ZONES[z.zone].name}${z.grade}`).join(' ');
+  $('sayText').textContent = done;
+}
+
+// ---- カメラ ----
+// ミニゲーム中は操作しやすい後ろ追い。区間の合間と終盤は中継風に切り替える
+// 見るだけの区間のカメラは、見える時間が「全体：プレイヤー：ライバル ＝ 2：7：1」になるように選ぶ。
+// 抜いたときなどに自分のアップへ強制で切り替わる分があるので、重みは自分を少し控えめにしてある。
+// 8体だと群れが前後に長く伸びるので、群れの中心を撮ると誰も大きく映らない。基本は自分を追う
+const SHOT_GROUPS = {
+  pack:  { weight: 2.6, ms: [2800, 3400], shots: ['packRear', 'packFront'] },
+  me:    { weight: 5.8, ms: [2400, 3200], shots: ['chase', 'meSide', 'meFront', 'meHigh', 'close'] },
+  rival: { weight: 1.6, ms: [2400, 2800], shots: ['rival'] },
+};
+const SHOT_NAMES = { packRear: '全体', packFront: '全体', meSide: 'サイド', meFront: 'フロント', close: 'アップ', finish: 'ゴール前', finishFront: 'ゴール前', hurdle: 'スロー' };
+const director = { shot: null, forced: null, forcedUntil: 0, cycleAt: 0, cycleShot: 'chase', lastGroup: 'me', groupIndex: {}, rivalId: null, fovKick: 0 };
+function pickGroup() {
+  // 全体とライバルは2回続けない
+  const names = Object.keys(SHOT_GROUPS).filter(g => g === 'me' || g !== director.lastGroup);
+  let roll = Math.random() * names.reduce((a, g) => a + SHOT_GROUPS[g].weight, 0);
+  for (const g of names) { roll -= SHOT_GROUPS[g].weight; if (roll < 0) return g; }
+  return 'me';
+}
+// ライバル：自分のすぐ前を走る子。いなければすぐ後ろ
+function pickRival() {
+  const me = game.runners[0], others = game.opponents.filter(o => o.finishedAt == null);
+  const ahead = others.filter(o => o.s > me.s).sort((a, b) => a.s - b.s)[0];
+  const behind = others.filter(o => o.s <= me.s).sort((a, b) => b.s - a.s)[0];
+  return (ahead && ahead.s - me.s < 25 ? ahead : behind ?? ahead)?.id ?? null;
+}
+function nextCycleShot(now) {
+  let group = pickGroup();
+  if (group === 'rival') { director.rivalId = pickRival(); if (!director.rivalId) group = 'me'; }
+  const def = SHOT_GROUPS[group], i = director.groupIndex[group] ?? 0;
+  director.groupIndex[group] = i + 1;
+  director.lastGroup = group;
+  director.cycleShot = def.shots[i % def.shots.length];
+  director.cycleAt = now + rand(def.ms[0], def.ms[1]);
+}
+function forceShot(shot, ms) { director.forced = shot; director.forcedUntil = performance.now() + ms; }
+const ptAt = s => course.pts[clamp(Math.round(s), 0, course.pts.length - 1)];
+function packCenter() {
+  const rs = game.runners, n = rs.length;
+  return { x: rs.reduce((a, r) => a + r.x, 0) / n, y: rs.reduce((a, r) => a + r.y, 0) / n, z: rs.reduce((a, r) => a + r.z, 0) / n, s: rs.reduce((a, r) => a + r.s, 0) / n };
+}
+function chooseShot(now) {
+  if (game.phase === 'intro') return 'aerial';
+  const leaderS = Math.max(...game.runners.map(r => r.s)), me = game.runners[0];
+  if (leaderS > course.finishS - 16 && (me.finishedAt == null || game.simTime - me.finishedAt < 2.5)) return 'finish';
+  if (me.finishedAt != null) return 'chase';
+  if (isHurdleMoment()) return 'hurdle';
+  if (director.forced && now < director.forcedUntil) return director.forced;
+  if (mg.active) return 'mg';
+  const next = course.zones.find(z => z.startS > me.s);
+  if (next && next.startS - me.s < 8) return 'mg'; // 区間の直前は後ろ追いに戻して、構えさせる
+  if (leaderS > course.finishS - 40) return 'finishFront';
+  if (now > director.cycleAt) nextCycleShot(now);
+  return director.cycleShot;
+}
+function shotPose(shot, now) {
+  const me = game.runners[0], c = packCenter(), V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const pm = ptAt(me.s), fx = Math.cos(pm.h), fz = Math.sin(pm.h), nx = -Math.sin(pm.h), nz = Math.cos(pm.h);
+  const pc = ptAt(c.s), cfx = Math.cos(pc.h), cfz = Math.sin(pc.h), cnx = -Math.sin(pc.h), cnz = Math.cos(pc.h);
+  switch (shot) {
+    case 'aerial': { const a = now / 2500; return { pos: V(c.x + Math.cos(a) * 16, 8, c.z + Math.sin(a) * 16), look: V(c.x, 0.8, c.z), fov: 48 }; }
+    case 'side': return { pos: V(c.x + cnx * 14, c.y + 2, c.z + cnz * 14), look: V(c.x, c.y + 0.9, c.z), fov: 32, follow: 10 };
+    case 'sideFar': return { pos: V(c.x - cnx * 15 + cfx * 6, c.y + 3, c.z - cnz * 15 + cfz * 6), look: V(c.x, c.y + 0.8, c.z), fov: 36, follow: 10 };
+    case 'front': return { pos: V(c.x + cfx * 15 + cnx * 1.5, c.y + 1.1, c.z + cfz * 15 + cnz * 1.5), look: V(c.x, c.y + 1.1, c.z), fov: 36, follow: 10 };
+    case 'finishFront': return { pos: V(me.x + fx * 10 + nx * 2, me.y + 1.0, me.z + fz * 10 + nz * 2), look: V(me.x, me.y + 1.1, me.z), fov: 42, follow: 10 };
+    case 'close': return { pos: V(me.x + nx * 3.2 + fx * 2.4, me.y + 0.55, me.z + nz * 3.2 + fz * 2.4), look: V(me.x + fx * 0.8, me.y + 1.1, me.z + fz * 0.8), fov: 50, follow: 14 };
+    case 'packRear': case 'packFront': {
+      // 群れの前後の長さに合わせて引く。全員が画面に入るように
+      const active = game.runners.filter(r => r.finishedAt == null), list = active.length ? active : game.runners;
+      const minS = Math.min(...list.map(r => r.s)), maxS = Math.max(...list.map(r => r.s)), spread = maxS - minS;
+      const mid = ptAt((minS + maxS) / 2), mfx = Math.cos(mid.h), mfz = Math.sin(mid.h);
+      if (shot === 'packRear') {
+        const back = ptAt(minS), d = 7 + spread * 0.35;
+        return { pos: V(back.x - mfx * d, back.y + 6 + spread * 0.4, back.z - mfz * d), look: V(mid.x + mfx * spread * 0.15, mid.y, mid.z + mfz * spread * 0.15), fov: 50, follow: 4 };
+      }
+      const front = ptAt(maxS + 8 + spread * 0.25);
+      return { pos: V(front.x - Math.sin(front.h) * 4, front.y + 5 + spread * 0.35, front.z + Math.cos(front.h) * 4), look: V(mid.x, mid.y + 0.5, mid.z), fov: 50, follow: 4 };
+    }
+    case 'meSide': return { pos: V(me.x + nx * 6 + fx * 0.5, me.y + 1.6, me.z + nz * 6 + fz * 0.5), look: V(me.x + fx * 0.5, me.y + 1, me.z + fz * 0.5), fov: 40, follow: 10 };
+    case 'meFront': return { pos: V(me.x + fx * 8 + nx * 1.5, me.y + 1.2, me.z + fz * 8 + nz * 1.5), look: V(me.x, me.y + 1.1, me.z), fov: 44, follow: 10 };
+    case 'meHigh': return { pos: V(me.x - fx * 4 - nx * 2.5, me.y + 5, me.z - fz * 4 - nz * 2.5), look: V(me.x + fx * 10, me.y, me.z + fz * 10), fov: 55, follow: 7 };
+    case 'rival': {
+      const r = game.runners.find(x => x.id === director.rivalId) ?? me;
+      const pr = ptAt(r.s), rfx = Math.cos(pr.h), rfz = Math.sin(pr.h), rnx = -Math.sin(pr.h), rnz = Math.cos(pr.h);
+      const side = r.lat > 0 ? 1 : -1; // 道の外側から撮る
+      return { pos: V(r.x + rnx * side * 5 + rfx * 1.5, r.y + 1.3, r.z + rnz * side * 5 + rfz * 1.5), look: V(r.x, r.y + 1, r.z), fov: 42, follow: 10 };
+    }
+    case 'mg': return { pos: V(me.x - fx * 6.5, me.y + 3.8, me.z - fz * 6.5), look: V(me.x + fx * 9, me.y + 0.2, me.z + fz * 9), fov: 62, follow: 6 };
+    case 'hurdle': return { pos: V(me.x + nx * 4.5 + fx * 1.5, me.y + 0.7, me.z + nz * 4.5 + fz * 1.5), look: V(me.x + fx * 2.5, me.y + 0.9, me.z + fz * 2.5), fov: 46, follow: 12 };
+    case 'finish': {
+      const pf = ptAt(course.finishS), gx = Math.cos(pf.h), gz = Math.sin(pf.h), gnx = -Math.sin(pf.h), gnz = Math.cos(pf.h);
+      return { pos: V(pf.x + gnx * 9 + gx * 1.5, pf.y + 1.5, pf.z + gnz * 9 + gz * 1.5), look: V(pf.x - gx * 3, pf.y + 0.9, pf.z - gz * 3), fov: 44, follow: 0 };
+    }
+    default: return { pos: V(me.x - fx * 7, me.y + 3.4, me.z - fz * 7), look: V(me.x + fx * 7, me.y + 1, me.z + fz * 7), fov: 62, follow: 5 };
+  }
+}
+// 各カメラの画角は横長（4:3.4）の画面で決めてある。縦長の画面では横が見切れるので、
+// 横に見える範囲がだいたい同じになるよう縦の画角を広げる（広げすぎると歪むので上限つき）
+const DESIGN_ASPECT = 4 / 3.4, MAX_FOV = 80;
+function fitFov(fov) {
+  const aspect = camera.aspect;
+  if (aspect >= DESIGN_ASPECT) return fov;
+  const horizontal = 2 * Math.atan(Math.tan(fov * Math.PI / 360) * DESIGN_ASPECT);
+  return Math.min(MAX_FOV, 2 * Math.atan(Math.tan(horizontal / 2) / aspect) * 180 / Math.PI);
+}
+function updateCamera(dt, now) {
+  const shot = chooseShot(now), pose = shotPose(shot, now);
+  if (shot !== director.shot || !camState.pos) {
+    camState.pos = pose.pos.clone(); camState.look = pose.look.clone(); camera.fov = fitFov(pose.fov);
+    director.shot = shot;
+    const label = shot === 'rival' ? `ライバル ${game.runners.find(x => x.id === director.rivalId)?.name ?? ''}` : SHOT_NAMES[shot];
+    $('shotLabel').textContent = label || ''; $('shotLabel').hidden = !label;
+  } else if (pose.follow === 0) {
+    camState.pos.copy(pose.pos); camState.look.copy(pose.look);
+  } else {
+    const k = 1 - Math.exp(-dt * (pose.follow || 5));
+    camState.pos.lerp(pose.pos, k); camState.look.lerp(pose.look, k);
+  }
+  director.fovKick *= Math.exp(-dt * 4);
+  // 連打が速いほど画角を広げて、速度感を出す
+  const speedFov = mg.active && mg.type === 'mash' ? mg.perf * 10 : 0;
+  camera.fov += (fitFov(pose.fov + director.fovKick + speedFov) - camera.fov) * Math.min(1, dt * 6);
+  camera.updateProjectionMatrix();
+  camState.shake *= Math.exp(-dt * 8);
+  camera.position.copy(camState.pos);
+  if (camState.shake > 0.01) camera.position.add(new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(camState.shake));
+  camera.lookAt(camState.look);
+  const leaderS = Math.max(...game.runners.map(r => r.s));
+  const hot = (mg.active && mg.perf > 0.85) || shot === 'close' || shot === 'finishFront' || shot === 'finish' || !!$('cutinSlot').firstChild;
+  $('speedlines').classList.toggle('on', !reduceMotion && game.phase === 'race' && hot);
+  $('viewport').classList.toggle('cinema', game.phase === 'race' && (leaderS > course.finishS - 40 || shot === 'finish'));
+}
+
+const sparks = [];
+function spawnSparks(x, y, z) {
+  for (let i = 0; i < 8; i++) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 4), new THREE.MeshBasicMaterial({ color: i % 2 ? '#ffffff' : '#ffd23f', transparent: true }));
+    m.position.set(x, y, z); fxGroup.add(m);
+    sparks.push({ m, vx: rand(-4, 4), vy: rand(2, 5), vz: rand(-4, 4), life: 0 });
+  }
+}
+function updateSparks(dt) {
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i]; s.life += dt; s.vy -= 12 * dt;
+    s.m.position.x += s.vx * dt; s.m.position.y += s.vy * dt; s.m.position.z += s.vz * dt;
+    s.m.material.opacity = 1 - s.life / 0.6;
+    if (s.life > 0.6) { fxGroup.remove(s.m); s.m.geometry.dispose(); s.m.material.dispose(); sparks.splice(i, 1); }
+  }
+}
+function syncMeshes(now, dt) {
+  for (const r of game.runners) {
+    const speed = Math.hypot(r.vx, r.vz);
+    const bob = reduceMotion ? 0 : Math.abs(Math.sin(now / 90 + r.laneBase)) * 0.12 * clamp(speed / 15, 0, 1);
+    const air = game.simTime - r.jumpAt, jumpY = air < JUMP_SEC ? Math.sin(Math.PI * air / JUMP_SEC) * 1.3 : 0;
+    r.mesh.position.set(r.x, r.y + bob + jumpY, r.z);
+    r.mesh.userData.shadow.position.y = 0.03 - jumpY;
+    r.mesh.rotation.y = Math.PI / 2 - r.h;
+    r.squash = Math.max(0, r.squash - dt * 3);
+    const sq = Math.sin(r.squash * Math.PI * 2) * 0.18 * r.squash;
+    r.mesh.userData.body.scale.set(1 + sq, 1 - sq, 1 + sq);
+    // つり橋で針が端に寄ると、体が傾く
+    r.mesh.userData.body.rotation.z = r.id === 'me' && mg.active && mg.type === 'balance' ? -mg.needle * 0.35 : 0;
+  }
+  const t = now / 1000, me = game.runners[0];
+  courseGroup.children.forEach(c => {
+    if (!c.userData.spectator) return;
+    const near = Math.hypot(c.position.x - me.x, c.position.z - me.z) < 30;
+    c.position.y = c.userData.baseY + (near && !reduceMotion ? Math.max(0, Math.sin(t * 9 + c.userData.phase)) * 0.4 : 0);
+  });
+}
+
+// ---- 開始と終了 ----
+function startRace() {
+  if (!window.THREE) return;
+  if (!renderer) initThree();
+  game.bumpsOn = $('bumpCheck').checked;
+  course = makeCourse();
+  Object.assign(game, { simTime: 0, timeScale: 1, bumps: 0, overtakes: 0, myRank: RUNNER_COUNT, leaderId: null, finishedAt: 0, lastFx: 0, finalSaid: false, sayLockUntil: 0, lastDraftSay: -9, zoneResults: [], announced: -1 });
+  mg.active = false; mg.type = null; mg.perf = 0.5; $('mg').hidden = true;
+  buildCourseMeshes();
+  setupRunners();
+  camState.pos = null;
+  Object.assign(director, { shot: null, forced: null, forcedUntil: 0, cycleAt: 0, cycleShot: 'chase', lastGroup: 'me', groupIndex: {}, rivalId: null, fovKick: 0 });
+  showView('race'); cover(null);
+  $('sayText').textContent = ''; $('gapText').textContent = 'スタート前'; $('gapText').className = '';
+  game.phase = 'intro'; game.phaseStart = performance.now();
+  say(`今日の順番：${course.zones.map(z => ZONES[z.zone].name).join(' → ')}`, 3);
+}
+function renderSetup() {
+  $('presets').innerHTML = PRESETS.map((p, i) => `<button class="pill ${i === game.presetIndex ? 'on' : ''}" data-i="${i}">${p.name} <small>${p.stats.sta}/${p.stats.pow}/${p.stats.tec}</small></button>`).join('');
+}
+$('presets').addEventListener('click', e => {
+  const btn = e.target.closest('.pill'); if (!btn) return;
+  game.presetIndex = +btn.dataset.i; game.myStats = { ...PRESETS[game.presetIndex].stats }; renderSetup();
+});
+$('startBtn').addEventListener('click', startRace);
+$('againBtn').addEventListener('click', startRace);
+$('backBtn').addEventListener('click', () => { game.phase = 'setup'; showView('setup'); });
+
+function finalTimes() {
+  return Object.fromEntries(game.runners.map(r => [r.id, r.finishedAt ?? game.simTime + Math.max(0, course.finishS - r.s) / Math.max(5, Math.hypot(r.vx, r.vz))]));
+}
+function endRace() {
+  mg.end();
+  const times = finalTimes();
+  if (game.opponents.some(o => Math.abs(times[o.id] - times.me) < PHOTO_SEC)) {
+    game.phase = 'photo'; game.phaseStart = performance.now(); cover('写真判定…', true); say('ほぼ同時！写真判定へ…', 3);
+  } else showResult();
+}
+function showResult() {
+  cover(null);
+  game.phase = 'result';
+  const times = finalTimes();
+  const order = game.runners.slice().sort((a, b) => times[a.id] - times[b.id]);
+  const rank = order.findIndex(r => r.id === 'me') + 1, top = times[order[0].id];
+  $('resultTitle').textContent = rank === 1 ? '1着！' : `${rank}着`;
+  $('resultSub').textContent = rank === 1 ? `2着の${order[1].name}に ${(times[order[1].id] - top).toFixed(2)}秒差` : `1着の${order[0].name}まで ${(times.me - top).toFixed(2)}秒`;
+  $('ranking').innerHTML = order.map((r, i) => `<li class="${r.id === 'me' ? 'me' : ''}"><span>${i + 1}着</span><span>${r.id === 'me' ? 'じぶん' : r.name} <small class="stats">体${r.stats.sta}・パ${r.stats.pow}・技${r.stats.tec}</small></span><span>${i ? `+${(times[r.id] - top).toFixed(2)}秒` : `${top.toFixed(2)}秒`}</span></li>`).join('');
+  $('grades').innerHTML = game.zoneResults.map(z => `<li>${ZONES[z.zone].name}<b class="${z.grade}">${z.grade}</b></li>`).join('');
+  const hl = [`Sランク ${game.zoneResults.filter(z => z.grade === 'S').length}`, `抜いた回数 ${game.overtakes}`, ...(game.bumpsOn ? [`ぶつかった回数 ${game.bumps}`] : [])];
+  if (game.opponents.some(o => Math.abs(times[o.id] - times.me) < PHOTO_SEC)) hl.push('写真判定');
+  $('highlights').innerHTML = hl.map(h => `<li>${h}</li>`).join('');
+  showView('result');
+}
+
+// ---- メインループ ----
+const FIXED_DT = 1 / 120;
+let lastT = performance.now(), acc = 0, boardTimer = 0;
+function tick(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  if (renderer && course && game.runners.length && game.phase !== 'setup') {
+    if (game.phase === 'intro') {
+      const left = INTRO_MS - (now - game.phaseStart);
+      cover(left > 2000 ? '3' : left > 1000 ? '2' : left > 0 ? '1' : 'スタート！');
+      trackRanks(now);
+      if (left <= 0) step(FIXED_DT);
+      if (left < -500) { cover(null); game.phase = 'race'; say('スタート！', 3); }
+    } else if (game.phase === 'race') {
+      game.timeScale = isHurdleMoment() ? 0.4 : isPhotoFinishMoment() ? 0.45 : 1;
+      acc += dt * game.timeScale;
+      while (acc >= FIXED_DT) { step(FIXED_DT); acc -= FIXED_DT; }
+      trackRanks(now);
+      const me = game.runners[0];
+      if (course.finishS - Math.max(...game.runners.map(r => r.s)) < 40 && !game.finalSaid) { game.finalSaid = true; say('ラストスパート！', 2); }
+      if (game.runners.every(r => r.finishedAt != null) || (me.finishedAt != null && now - game.finishedAt > FINISH_GRACE_MS)) endRace();
+    } else if (game.phase === 'photo' || game.phase === 'result') {
+      acc += dt; while (acc >= FIXED_DT) { step(FIXED_DT); acc -= FIXED_DT; }
+      if (game.phase === 'photo' && now - game.phaseStart > 1500) showResult();
+    }
+    mg.render();
+    boardTimer += dt;
+    if (boardTimer > 0.2) { boardTimer = 0; renderBoard(); if (game.phase === 'race') updateGapLine(); }
+    syncMeshes(now, dt); updateSparks(dt); updateCamera(dt, now); renderer.render(scene, camera);
+  }
+  requestAnimationFrame(tick);
+}
+
+renderSetup();
+showView('setup');
+requestAnimationFrame(tick);
+</script>
+
