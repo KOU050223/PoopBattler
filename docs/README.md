@@ -8,6 +8,7 @@
 | [IDEA.md](./IDEA.md) | 企画。ゲームループ、排便/食事ログ、プレミアム |
 | [business-plan.md](./business-plan.md) | 事業改善案。データ活用（BtoB）の方針、匿名化の整理、法務・規約の注意、進め方 |
 | [gut-data-research.md](./gut-data-research.md) | 腸内データ活用の他社事例（メタジェン、バイオーム、サイキンソーほか）と PoopBattler への示唆 |
+| [race.md](./race.md) | レースの中身の案（ミニゲーム版）。8体・約1分の3Dレース、ステータスと物理、ミニゲーム、カメラ、Native 移植の注意。試作は [prototypes/race-minigame.html](./prototypes/race-minigame.html) |
 | [battle.md](./battle.md) | バトルの正本。うんちくん相撲（リアルタイム）のルール、パーツ補正、試作のノウハウ |
 | [parts.md](./parts.md) | 強さの決まり方（種族・個体値・レベル・パーツ）、パーツの部位とゲームごとの効果、相撲での補正の幅 |
 | [level.md](./level.md) | レベル。記録を続けた日数で育つ。共通ステータス（体力・パワー・技術）、対戦ではレベルを揃える |
