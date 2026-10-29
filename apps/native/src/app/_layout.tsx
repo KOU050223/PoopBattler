@@ -50,7 +50,7 @@ export default function RootLayout() {
             key={name}
             name={name}
             options={{
-              headerShown: true,
+              headerShown: name !== "meals",
               headerTitle: () => (
                 <Text style={{ fontFamily: fonts.black, fontSize: 16, color: colors.charcoal }}>{t("Common.headerAppNameShort")}</Text>
               ),
