@@ -131,6 +131,8 @@ export type RaceCommand =
   | { type: "jump"; runner: number }
   | { type: "stumble"; runner: number }
   | { type: "boost"; runner: number; durationSec: number }
+  /** 転倒と同じ減速だけをかける。stumble イベントは出さない（S字の外し。試作は stumbleUntil だけ書き換える） */
+  | { type: "slow"; runner: number; durationSec: number }
   | { type: "setBridgeNeedle"; runner: number; needle: number | null };
 
 export interface Race {
@@ -149,3 +151,36 @@ export interface Race {
   /** 全員がゴールした */
   isFinished: boolean;
 }
+
+// ---- ミニゲーム（I255-03） ----
+
+export type Grade = "S" | "A" | "B" | "C";
+
+/** miss は跳ばずに通り過ぎた。tooEarly は 3.4m より手前、または 0.6m より奥の踏み切り（試作は同じ扱い） */
+export type HurdleJudge = "perfect" | "good" | "tooEarly" | "miss";
+
+export type ArrowJudge = "fast" | "slow" | "miss";
+
+/** 自分のミニゲームで起きたこと。UI が再生するだけの形 */
+export type MinigameEvent =
+  | { type: "begin"; zone: MiniGame; zoneIndex: number }
+  /** 連打の「＋」を散らす合図 */
+  | { type: "dashTap" }
+  | { type: "dashAllOut" }
+  | { type: "hurdleResult"; judge: HurdleJudge; perf: number }
+  | { type: "arrowResult"; arrowIndex: number; judge: ArrowJudge; perf: number }
+  | { type: "end"; zone: MiniGame; zoneIndex: number; grade: Grade; average: number };
+
+// ---- 実況・表示の出来事（I255-03） ----
+
+/** 実況の優先度。大きいほど強い（ロック中に割り込めるのは今より低くないものだけ） */
+export type SayPriority = 1 | 2 | 3;
+
+export type Presentation =
+  | { type: "say"; text: string; priority: SayPriority }
+  /** 画面中央の大きな文字。isBad は暗い色（ミス・後退） */
+  | { type: "bigText"; text: string; isBad: boolean }
+  | { type: "focusLines"; on: boolean }
+  | { type: "cinema"; on: boolean }
+  | { type: "cutIn"; name: string; line: string }
+  | { type: "photoFinish" };

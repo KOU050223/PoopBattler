@@ -124,3 +124,13 @@ describe("コマンド", () => {
     expect(race.runners[0].perf).toBe(0.9);
   });
 });
+
+describe("slow コマンド", () => {
+  it("減速だけをかけて、stumble の出来事は出さない", () => {
+    const race = createRace({ seed: SEED, racers: { player: STATS }, collisions: false });
+
+    const events = step(race, [{ type: "slow", runner: 0, durationSec: 0.3 }]);
+
+    expect([race.runners[0].stumbleUntil > race.time, events.some((event) => event.type === "stumble")]).toEqual([true, false]);
+  });
+});

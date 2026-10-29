@@ -197,4 +197,19 @@ export const DIRECTOR = {
   photoFinishCloseSec: 0.1,
   rankSwapGap: 0.6,
   finalSpurtAhead: 40,
+  /** 実況のロック(ms)。優先度の高い発言だけが割り込める */
+  sayLockMs: 1000,
+  /** 大きな文字（順位変化・ゴツン！）を出す間隔(ms) */
+  bigTextIntervalMs: 900,
+  /** 自分以外のぶつかりの実況の間隔(ms) */
+  bumpSayIntervalMs: 2000,
+  draftSayIntervalMs: 3000,
+  cutInMs: 1150,
+  /** 集中線を出すミニゲームの出来 */
+  focusLinesPerf: 0.85,
+  /** 先頭がゴールのこの手前に来たらゴール前の演出（カメラ・集中線）。自分のゴール後 finishAfterSec まで */
+  finishApproachAhead: 16,
+  finishAfterSec: 2.5,
+  /** 自分がゴールしてから、残りを待たずにレースを終えるまで(ms) */
+  finishGraceMs: 4000,
 } as const;
