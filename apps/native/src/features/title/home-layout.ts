@@ -20,6 +20,8 @@ const TABS_HEIGHT = 112;
 const SPEECH_BUBBLE_HEIGHT = 90;
 // 泡のラベルのピル（44）から、泡に重ねる分（16）を引いた高さ。
 const BUBBLE_LABEL_HEIGHT = 44 - SPACING_LG;
+// 小さい泡の列は下揃えなので、ピルの上端は列の下端から 44 上。
+const SMALL_PILL_HEIGHT = 44;
 
 // 下の泡3つ（大・小・小）が横幅に収まるよう、幅に応じて縮める。広い画面では元の大きさのまま。
 export function bubbleSizes(windowWidth: number) {
@@ -41,21 +43,43 @@ export function companionSize(windowHeight: number, largeBubbleSize: number, ver
   return Math.min(MAX_COMPANION_SIZE, Math.max(MIN_COMPANION_SIZE, fitting));
 }
 
-// 光の台座。画面の左右にはみ出させて端で切る（画面案: 「ここが舞台」の感じを強くする）。
-const HALO_BLEED = 24;
-// 泡の上に出す量。吹き出し・相棒の余白（SPACING_MD * 2）の内側に収める。
-const HALO_TOP_OVERHANG = SPACING_MD;
-// 泡の列の下端より下に伸ばす量。中心が泡の列より少し下になる。
-const HALO_BOTTOM_OVERHANG = SPACING_LG + SPACING_MD;
+// 台座（真っ白で不透明な大きな楕円）。左が高く右へ下がり、ラベルのピルが乗る面になる。
+// 座標は「泡の列の上端・画面の左端」を原点にする（padding を挟まず、画面の幅で扱うため）。
+const HALO_LEFT_BLEED = 24;
+// 左端での縁の高さ。大きい泡の中心〜下を横切らせる。
+const HALO_LEFT_EDGE_RATIO = 0.7;
+// 楕円の大きさは、縁を通す2点の間隔に対する比。縦を短くすると縁の反りが小さくなる。
+const HALO_RX_RATIO = 1;
+const HALO_RY_RATIO = 0.6;
+// 画面の下へ伸ばす分。画面の外は切れるので、どの端末の下余白でも埋まる大きさにしておく。
+const HALO_BOTTOM_EXTENT = 320;
+// 吹き出し・相棒の余白（SPACING_MD * 2）の内側に収める上端の余裕。
+const HALO_TOP_ROOM = SPACING_MD;
 
-// 泡の列（大きい泡 + ラベル）を基準に、列の左上を原点とした位置と大きさを返す。
-// 画面の親（paddingHorizontal 付き）を基準にするため、left は padding 分を引いて渡す。
+// 縁が通る2点（左: 画面の外、右: 右端の小さい泡の下のピルの上端）から、傾いた楕円を決める。
+// 2点を結ぶ弦を水平にした座標で、弦より上に頂点を持つ楕円の中心を求める。
 export function haloLayout(windowWidth: number, largeBubbleSize: number) {
   const rowHeight = largeBubbleSize + BUBBLE_LABEL_HEIGHT;
+  const left = { x: -HALO_LEFT_BLEED, y: largeBubbleSize * HALO_LEFT_EDGE_RATIO };
+  const right = { x: windowWidth - SPACING_LG, y: rowHeight - SMALL_PILL_HEIGHT };
+  const chord = Math.hypot(right.x - left.x, right.y - left.y);
+  const angle = Math.atan2(right.y - left.y, right.x - left.x);
+  const rx = chord * HALO_RX_RATIO;
+  const ry = chord * HALO_RY_RATIO;
+  const depth = ry * Math.sqrt(1 - (chord / (2 * rx)) ** 2);
+  const midX = (left.x + right.x) / 2;
+  const midY = (left.y + right.y) / 2;
   return {
-    width: windowWidth + HALO_BLEED * 2,
-    height: rowHeight + HALO_TOP_OVERHANG + HALO_BOTTOM_OVERHANG,
-    left: -(HALO_BLEED + SCREEN_PADDING / 2),
-    top: -HALO_TOP_OVERHANG,
+    // SVG の箱。上端を HALO_TOP_ROOM だけ泡の列の上に出し、そこで楕円を切る。
+    width: windowWidth,
+    height: rowHeight + HALO_BOTTOM_EXTENT + HALO_TOP_ROOM,
+    left: 0,
+    top: -HALO_TOP_ROOM,
+    // 箱の中での中心と半径、傾き（度）。
+    cx: midX - Math.sin(angle) * depth,
+    cy: midY + Math.cos(angle) * depth + HALO_TOP_ROOM,
+    rx,
+    ry,
+    rotation: (angle * 180) / Math.PI,
   };
 }

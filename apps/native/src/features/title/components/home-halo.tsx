@@ -4,11 +4,9 @@ import Svg, { Ellipse } from "react-native-svg";
 import { homePalette } from "../home-palette";
 import { haloLayout } from "../home-layout";
 
-const EDGE_WIDTH = 1.5;
-
-// 下の泡3つの後ろに敷く静止の飾り。押せるものと誤解されないよう、タップもスクリーンリーダーも素通りさせる。
+// 下の泡3つの後ろに敷く静止の台座。押せるものと誤解されないよう、タップもスクリーンリーダーも素通りさせる。
 export function HomeHalo({ windowWidth, largeBubbleSize }: { windowWidth: number; largeBubbleSize: number }) {
-  const { width, height, left, top } = haloLayout(windowWidth, largeBubbleSize);
+  const { width, height, left, top, cx, cy, rx, ry, rotation } = haloLayout(windowWidth, largeBubbleSize);
   return (
     <View
       pointerEvents="none"
@@ -17,15 +15,7 @@ export function HomeHalo({ windowWidth, largeBubbleSize }: { windowWidth: number
       style={[styles.halo, { width, height, left, top }]}
     >
       <Svg width={width} height={height}>
-        <Ellipse
-          cx={width / 2}
-          cy={height / 2}
-          rx={width / 2 - EDGE_WIDTH}
-          ry={height / 2 - EDGE_WIDTH}
-          fill={homePalette.haloFill}
-          stroke={homePalette.haloEdge}
-          strokeWidth={EDGE_WIDTH}
-        />
+        <Ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill={homePalette.haloFill} transform={`rotate(${rotation} ${cx} ${cy})`} />
       </Svg>
     </View>
   );
