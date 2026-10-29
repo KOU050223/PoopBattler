@@ -76,6 +76,25 @@ export const PHYSICS = {
   lookaheadMin: 5,
   lookaheadMax: 14,
   laneOffsets: [-4.2, -3, -1.8, -0.6, 0.6, 1.8, 3, 4.2] as readonly number[],
+  /** 勾配は前後この距離の高さの差から出す */
+  gradeSpan: 2,
+  /** 狙うレーンを、壁からこの距離より内側に収める */
+  roadEdgeMargin: 0.9,
+  /** レーンが道の内側の限界をはみ出してよい量 */
+  laneSlack: 0.5,
+  /** コースの終端に着いたあとの減速（毎ステップの倍率） */
+  courseEndDamping: 0.9,
+  /** 走者の現在地を探す範囲（前回の点からの前後の点数） */
+  trackSearchBehind: 4,
+  trackSearchAhead: 30,
+} as const;
+
+/** スタートの2列グリッド（race.md 2章）。後列に自分、前列は相手 */
+export const GRID = {
+  rowsS: [8, 12] as readonly number[],
+  laterals: [-3.6, -1.2, 1.2, 3.6] as readonly number[],
+  /** 後列の枠の数。自分はこのどれかに入る */
+  rearSlots: 4,
 } as const;
 
 // ---- 4章 ぶつかり合いと追い抜き ----
@@ -87,6 +106,10 @@ export const COLLISION = {
   wallBounce: 1.45,
   wallDamping: 0.96,
   bumpImpulse: 2.2,
+  /** 壁に当たる位置（半径に対する割合。少しめり込むまで許す） */
+  wallRadiusRatio: 0.9,
+  /** ぶつかったときの向きの崩れ方の係数 */
+  turnDisturbance: 0.04,
 } as const;
 
 export const DRAFT = { minGap: 0.8, maxGap: 7, maxLateral: 1.3, boost: 0.09 } as const;
@@ -98,6 +121,14 @@ export const OVERTAKE = {
   lineOffset: 1.8,
   clearAhead: 1.5,
   giveUpGap: 9,
+  /** 相手の左右の候補のうち、これより相手に近くなる位置は捨てる */
+  minLineGap: 1.4,
+  /** 候補の位置に他の子がいるかを見る範囲（前後と横）と減点 */
+  crowdRange: 6,
+  crowdLateral: 1.5,
+  crowdPenalty: 3,
+  /** 今の横位置から遠い候補ほど下げる係数 */
+  moveCost: 0.3,
 } as const;
 
 // ---- 5章 ミニゲーム ----
