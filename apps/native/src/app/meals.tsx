@@ -9,6 +9,9 @@ import { borderWidth, colors, fontFamily, fontSize, radius, shadow, spacing } fr
 import { HomeButton, SceneBackground } from "@/design/kids";
 import { mealGateway } from "@/gateways";
 import { useLoader } from "@/hooks/use-loader";
+import { MealEditSheet } from "@/features/meal/components/meal-edit-sheet";
+import type { MealLog } from "@/features/meal/meal-gateway";
+import type { MealEditResult } from "@/features/meal/meal-record-edit";
 import { MealAlbum } from "@/features/meal/components/meal-album";
 import { MealRecordSheet } from "@/features/meal/components/meal-record-sheet";
 import { pickMealPhoto } from "@/features/meal/meal-photo-picker";
@@ -21,6 +24,7 @@ export default function MealsScreen() {
   const [pickedUri, setPickedUri] = useState<string>();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [noticeKey, setNoticeKey] = useState<string>();
+  const [selectedLog, setSelectedLog] = useState<MealLog>();
 
   const pick = async (source: "camera" | "library") => {
     const result = await pickMealPhoto(source);
@@ -30,6 +34,12 @@ export default function MealsScreen() {
       setIsSheetOpen(true);
     }
     if (result.status === "denied") setNoticeKey(source === "camera" ? "Gohan.permissionCamera" : "Gohan.permissionLibrary");
+  };
+
+  const finishEdit = (result: MealEditResult) => {
+    setSelectedLog(undefined);
+    setNoticeKey(result.status === "skipped" ? undefined : result.noticeKey);
+    if (result.status !== "skipped") void reload();
   };
 
   return (
@@ -53,9 +63,10 @@ export default function MealsScreen() {
       </View>
 
       <View style={styles.paper}>
-        <MealAlbum logs={data ?? []} hasError={Boolean(error)} isLoading={loading} bottomInset={insets.bottom} />
+        <MealAlbum logs={data ?? []} hasError={Boolean(error)} isLoading={loading} bottomInset={insets.bottom} onSelect={setSelectedLog} />
       </View>
 
+      <MealEditSheet log={selectedLog} onClose={() => setSelectedLog(undefined)} onFinished={finishEdit} />
       <MealRecordSheet
         visible={isSheetOpen}
         initialPhotoUri={pickedUri}
