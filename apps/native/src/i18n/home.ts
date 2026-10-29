@@ -9,6 +9,7 @@ export const homeJa = {
     fallbackCompanionName: "うんちくん",
     companionHint: "{name}のあいぼうがめんをひらく",
     settings: "ほごしゃメニュー",
+    companionMessage: "きょうも ここで まってたブリ",
   },
 };
 
@@ -22,5 +23,6 @@ export const homeEn = {
     fallbackCompanionName: "Poopy",
     companionHint: "Open {name}'s page",
     settings: "Parent menu",
+    companionMessage: "I was waiting right here today!",
   },
 };
