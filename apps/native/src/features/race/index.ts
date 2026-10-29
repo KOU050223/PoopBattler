@@ -1,3 +1,4 @@
+export * from "./bots";
 export * from "./clock";
 export * from "./commentary";
 export * from "./config";
@@ -9,5 +10,6 @@ export * from "./overtake";
 export * from "./physics";
 export * from "./rng";
 export * from "./session";
+export * from "./simulate";
 export * from "./steering";
 export * from "./types";

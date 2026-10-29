@@ -1,20 +1,7 @@
 // レースのカメラの選択と画角補正（docs/race.md 6.1、試作 race-minigame.html の chooseShot / shotPose / updateCamera）。
 // three の Camera には触らず、位置・注視点・画角の数値だけを返す。
 //
-// 試作との食い違い（後で DIFFS.md へ移す）:
-// - 試作の Math.random は rng に置き換えた
-// - 試作はコース上の点を ptAt(s) で直接引く。ここでは CameraInput.pointAt として受け取る
-// - 試作の時刻は performance.now（実時間）。ここでは update の dt を足した内部時計（強制切り替え・1カットの長さ用）
-// - 試作の shot 名 'chase' は、ミニゲーム中・ゴール後・抽選の「後ろ追い」で共通。種類は同じでも
-//   ミニゲーム中は別の寄り方（試作の 'mg'）なので、kind は 'minigame' と 'chase' に分けた
-// - 1カットの長さは試作どおりグループごと（全体 2.8〜3.4、プレイヤー 2.4〜3.2、ライバル 2.4〜2.8）。
-//   race.md の「2.4〜3.4秒」はその合算の範囲
-// - 試作はスタート前を game.phase で判定。ここでは入力の isPreStart
-// - 画角の揺れ（fovKick）は試作の「抜いた」の -10 度だけ入れた。画面の揺れ（shake）は持たない
-// - 試作は強制中でもミニゲーム中の「ぶつかった」では切り替えない（!mg.active）。ここでは呼び出し側が
-//   trigger を null にして渡す前提で、camera.ts では判定しない
-// - 強制切り替えの trigger は「起きたフレームだけ」非 null で渡す。毎フレーム渡すと強制が延び続ける
-// - 表示割合は、抽選だけなら全体/プレイヤー/ライバル ≒ 重みどおり、強制を混ぜると 17/74/9 付近（camera.test.ts）
+// 試作との食い違いは DIFFS.md の「カメラ」の節を見る
 
 import { range, type Rng } from "./rng";
 
