@@ -5,6 +5,7 @@ import { initReactI18next } from "react-i18next";
 import { reportEn, reportJa } from "./report";
 import { accountBillingEn, accountBillingJa } from "./account-billing";
 import { battleMessagesEn, battleMessagesJa } from "./battle-messages";
+import { homeEn, homeJa } from "./home";
 import { parentMenuEn, parentMenuJa } from "./parent-menu";
 import { defaultLocale, resolveLocale } from "./locale";
 // web と同じ辞書を相対参照で共有する（コピーしない）。
@@ -19,8 +20,8 @@ const withBattle = <T extends { Battle: object }>(base: T, extra: object): T => 
 
 void i18next.use(initReactI18next).init({
   resources: {
-    ja: { translation: { ...withBattle(ja, battleMessagesJa), ...accountBillingJa, ...parentMenuJa, Report: { ...ja.Report, ...reportJa } } },
-    en: { translation: { ...withBattle(en, battleMessagesEn), ...accountBillingEn, ...parentMenuEn, Report: { ...en.Report, ...reportEn } } },
+    ja: { translation: { ...withBattle(ja, battleMessagesJa), ...accountBillingJa, ...parentMenuJa, ...homeJa, Report: { ...ja.Report, ...reportJa } } },
+    en: { translation: { ...withBattle(en, battleMessagesEn), ...accountBillingEn, ...parentMenuEn, ...homeEn, Report: { ...en.Report, ...reportEn } } },
   },
   lng: resolveLocale(getLocales()[0]?.languageCode),
   fallbackLng: defaultLocale,
