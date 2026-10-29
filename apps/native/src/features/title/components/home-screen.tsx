@@ -15,6 +15,7 @@ import { SceneBackground } from "@/design/kids";
 import { bubbleSizes, companionSize } from "../home-layout";
 import { useCompanion } from "../use-companion";
 import { homePalette } from "../home-palette";
+import { HomeHalo } from "./home-halo";
 import { GearButton } from "./gear-button";
 import { HomeSideTab } from "./home-side-tab";
 import { IconBubble } from "./icon-bubble";
@@ -73,6 +74,7 @@ export function HomeScreen() {
       </View>
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing.md }]}>
+        <HomeHalo windowWidth={width} largeBubbleSize={bubbles.large} />
         <IconBubble variant="large" size={bubbles.large} image={toiletImage} label={t("NativeHome.poop")} onPress={() => router.push("/(tabs)/battle")} />
         <View style={styles.subActions}>
           <IconBubble size={bubbles.small} image={mealImage} label={t("NativeHome.meal")} onPress={() => router.push("/meals")} />

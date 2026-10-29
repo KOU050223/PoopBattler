@@ -40,3 +40,22 @@ export function companionSize(windowHeight: number, largeBubbleSize: number, ver
   const fitting = Math.floor((windowHeight - reserved) / SPRITE_HEIGHT_RATIO);
   return Math.min(MAX_COMPANION_SIZE, Math.max(MIN_COMPANION_SIZE, fitting));
 }
+
+// 光の台座。画面の左右にはみ出させて端で切る（画面案: 「ここが舞台」の感じを強くする）。
+const HALO_BLEED = 24;
+// 泡の上に出す量。吹き出し・相棒の余白（SPACING_MD * 2）の内側に収める。
+const HALO_TOP_OVERHANG = SPACING_MD;
+// 泡の列の下端より下に伸ばす量。中心が泡の列より少し下になる。
+const HALO_BOTTOM_OVERHANG = SPACING_LG + SPACING_MD;
+
+// 泡の列（大きい泡 + ラベル）を基準に、列の左上を原点とした位置と大きさを返す。
+// 画面の親（paddingHorizontal 付き）を基準にするため、left は padding 分を引いて渡す。
+export function haloLayout(windowWidth: number, largeBubbleSize: number) {
+  const rowHeight = largeBubbleSize + BUBBLE_LABEL_HEIGHT;
+  return {
+    width: windowWidth + HALO_BLEED * 2,
+    height: rowHeight + HALO_TOP_OVERHANG + HALO_BOTTOM_OVERHANG,
+    left: -(HALO_BLEED + SCREEN_PADDING / 2),
+    top: -HALO_TOP_OVERHANG,
+  };
+}
