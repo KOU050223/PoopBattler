@@ -1,23 +1,15 @@
 import type { ReactNode } from "react";
-import { Modal, Pressable, StyleSheet } from "react-native";
-import Animated, { SlideInDown, useReducedMotion } from "react-native-reanimated";
+import { Modal, Pressable, StyleSheet, View } from "react-native";
 
-import { colors, radius, spacing, spring } from "../tokens";
+import { colors, radius, spacing } from "../tokens";
 
 type SheetProps = { visible: boolean; onClose: () => void; children: ReactNode };
 
 export function Sheet({ visible, onClose, children }: SheetProps) {
-  const isReducedMotion = useReducedMotion();
-
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="とじる" accessibilityRole="button" />
-      <Animated.View
-        style={styles.sheet}
-        entering={isReducedMotion ? undefined : SlideInDown.springify().damping(spring.gentle.damping).stiffness(spring.gentle.stiffness)}
-      >
-        {children}
-      </Animated.View>
+      <View style={styles.sheet}>{children}</View>
     </Modal>
   );
 }
