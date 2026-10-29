@@ -4,9 +4,8 @@ export const homePalette = {
   largeBubbleBorder: "#ffb3d0",
   smallBubbleFill: "#ffffff4d",
   smallBubbleBorder: "#ffffffd9",
-  // 光の台座。泡（#ffffff4d / #ff7aac55）より薄くして、うんちする泡を目立たせる。
-  haloFill: "#ff7aac26",
-  haloEdge: "#d9578b4d",
+  // 台座は画面案どおり真っ白で不透明。縁取り・影は付けない。
+  haloFill: "#ffffff",
   calendarTabFill: "#ffe8d0",
   calendarTabIcon: "#f08a3c",
 } as const;

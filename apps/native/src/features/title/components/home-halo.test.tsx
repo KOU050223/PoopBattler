@@ -18,6 +18,13 @@ describe("HomeHalo", () => {
     expect(element.props.importantForAccessibility).toBe("no-hide-descendants");
   });
 
+  it("台座は真っ白で不透明な楕円（縁取りなし）", () => {
+    const ellipse = element.props.children.props.children;
+    expect(ellipse.props.fill).toBe("#ffffff");
+    expect(ellipse.props.stroke).toBeUndefined();
+    expect(ellipse.props.fillOpacity).toBeUndefined();
+  });
+
   it("寸法は haloLayout の結果と一致する", () => {
     const { width, height } = haloLayout(375, 139);
     expect(element.props.style[1]).toMatchObject({ width, height });
