@@ -21,6 +21,7 @@ import type { SubscriptionSnapshot } from "@/features/billing/subscription-statu
 import { formatJstDate } from "@/features/report/report-format";
 
 import { watchAccountStatus } from "../account-watch";
+import { planView } from "./plan-view";
 
 // openAuthSessionAsync はこのスキームへの遷移を捕まえる。dev build では
 // poopbattler://auth/callback になる（app.json の scheme 済み）。
@@ -217,12 +218,7 @@ function PremiumCard({ snapshot, loaded, onChanged }: {
     }
   };
 
-  const planName = snapshot?.status === "subscribed"
-    ? t("Account.planActive")
-    : snapshot?.status === "lapsed"
-      ? t("Account.planLapsed")
-      : t("Account.planNone");
-  const canViewPlan = loaded && snapshot !== null && snapshot.status !== "subscribed";
+  const view = planView(snapshot, loaded);
 
   return (
     <ParentCard>
@@ -230,9 +226,9 @@ function PremiumCard({ snapshot, loaded, onChanged }: {
         <View style={styles.planRow}>
           <View style={styles.planText}>
             <Text style={styles.planLabel}>{t("Account.planLabel")}</Text>
-            <Text style={styles.planName}>{planName}</Text>
+            <Text style={styles.planName}>{t(view.nameKey)}</Text>
           </View>
-          {canViewPlan ? (
+          {view.canViewPlan ? (
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push("/purchase")}
@@ -244,7 +240,7 @@ function PremiumCard({ snapshot, loaded, onChanged }: {
           ) : null}
         </View>
 
-        {!loaded || snapshot === null ? (
+        {view.body === "loading" || snapshot === null ? (
           <ActivityIndicator color={colors.pink} style={styles.loader} />
         ) : snapshot.status === "subscribed" ? (
           <View style={styles.notes}>

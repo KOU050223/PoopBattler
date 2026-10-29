@@ -7,17 +7,13 @@ import { StyleSheet, Text, View } from "react-native";
 import { MenuRow, NoticeCard, ParentCard, ParentScreen } from "@/design/parent";
 import { colors, fontFamily, fontSize, spacing } from "@/design";
 import { countThisWeek } from "@/features/account/components/week-count";
+import { weekSummaryToShow, type WeekSummary, type WeekSummaryState } from "@/features/account/components/week-summary";
 import { toLoggedAtList } from "@/features/streak/use-streak";
 import { calcStreak } from "@/features/streak";
 import { battleHistoryGateway } from "@/gateways";
 
-type WeekSummary = { count: number; days: number };
-
-// 取得に失敗してもメニューは開きたいので、まとめだけ 0 のままにする。
-const EMPTY_SUMMARY: WeekSummary = { count: 0, days: 0 };
-
-function useWeekSummary(): WeekSummary {
-  const [summary, setSummary] = useState<WeekSummary>(EMPTY_SUMMARY);
+function useWeekSummary(): WeekSummary | null {
+  const [state, setState] = useState<WeekSummaryState>({ status: "loading" });
 
   useFocusEffect(
     useCallback(() => {
@@ -27,10 +23,11 @@ function useWeekSummary(): WeekSummary {
         .then((history) => {
           if (isCancelled) return;
           const loggedAt = toLoggedAtList(history);
-          setSummary({ count: countThisWeek(loggedAt), days: calcStreak(loggedAt).streakDays });
+          setState({ status: "ready", summary: { count: countThisWeek(loggedAt), days: calcStreak(loggedAt).streakDays } });
         })
         .catch(() => {
-          if (!isCancelled) setSummary(EMPTY_SUMMARY);
+          // 失敗してもメニューは開きたいので、まとめだけ出さない。
+          if (!isCancelled) setState({ status: "failed" });
         });
       return () => {
         isCancelled = true;
@@ -38,7 +35,7 @@ function useWeekSummary(): WeekSummary {
     }, []),
   );
 
-  return summary;
+  return weekSummaryToShow(state);
 }
 
 export default function ParentMenuScreen() {
@@ -46,6 +43,7 @@ export default function ParentMenuScreen() {
   const summary = useWeekSummary();
   return (
     <ParentScreen title={t("ParentMenu.title")} onBack={() => router.back()}>
+      {summary ? (
       <NoticeCard tone="info">
         <View style={styles.summary}>
           <Ionicons name="calendar-outline" size={26} color={colors.sky} />
@@ -55,6 +53,7 @@ export default function ParentMenuScreen() {
           </View>
         </View>
       </NoticeCard>
+      ) : null}
       <ParentCard>
         <MenuRow
           icon="bar-chart-outline"
