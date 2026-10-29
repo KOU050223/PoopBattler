@@ -65,7 +65,7 @@ export default function LogsScreen() {
             </View>
           </View>
         </View>
-        <View style={styles.calendar}>
+        <View style={[styles.calendar, styles.inset]}>
           <MonthCalendar
             year={year}
             monthIndex={monthIndex}
@@ -76,13 +76,14 @@ export default function LogsScreen() {
             stampedLabel={t("Kiroku.stamped")}
           />
         </View>
+        {/* 下に固定するとカレンダーの最終週を覆うため、カレンダーに続けて置いて全体をスクロールにする。 */}
+        <RecentLogsPanel
+          title={t("Kiroku.recentTitle")}
+          rows={recentRows}
+          emptyLabel={t("Kiroku.empty")}
+          errorLabel={error ? t("Kiroku.loadFailed") : undefined}
+        />
       </ScrollView>
-      <RecentLogsPanel
-        title={t("Kiroku.recentTitle")}
-        rows={recentRows}
-        emptyLabel={t("Kiroku.empty")}
-        errorLabel={error ? t("Kiroku.loadFailed") : undefined}
-      />
     </SceneBackground>
   );
 }
@@ -101,7 +102,8 @@ const styles = StyleSheet.create({
     fontSize: fontSize.childTitle,
     color: colors.ink,
   },
-  body: { padding: spacing.lg, gap: spacing.lg },
+  body: { paddingTop: spacing.lg, gap: spacing.lg },
+  inset: { paddingHorizontal: spacing.lg },
   streak: {
     alignSelf: "center",
     flexDirection: "row",
