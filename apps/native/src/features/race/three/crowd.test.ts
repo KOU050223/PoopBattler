@@ -40,6 +40,15 @@ describe("placeCrowd", () => {
     expect(placeCrowd(bridge, createRng(CROWD_SEED))).toEqual([]);
   });
 
+  it("まっすぐな道では同じ位置の左右に1つずつ置く", () => {
+    const straight = Array.from({ length: 25 }, (_, i) => ({ x: i, z: 0, y: 0, h: 0, k: 0, w: 6.5, s: i, kind: "watch" as const }));
+
+    const items = placeCrowd(straight, createRng(CROWD_SEED));
+
+    const leftCount = items.filter((item) => item.z < 0).length;
+    expect([items.length, leftCount]).toEqual([6, 3]);
+  });
+
   it("コースに観客が1人以上置かれる", () => {
     const { points } = generateCourseFromSeed(1);
 
