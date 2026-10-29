@@ -168,6 +168,9 @@ function applyCommand(race: Race, command: RaceCommand, events: RaceEvent[]): vo
     case "boost":
       runner.boostUntil = race.time + command.durationSec;
       break;
+    case "slow":
+      runner.stumbleUntil = race.time + command.durationSec;
+      break;
     case "setBridgeNeedle":
       runner.bridgeNeedle = command.needle;
       break;
