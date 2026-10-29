@@ -9,14 +9,15 @@ import { lineupOwnedIds, resolveLineup } from "@poopbattler/domain/records/party
 import { keyValueStorage } from "@/adapters/storage";
 import { collectionGateway } from "@/gateways";
 import { useLoader } from "@/hooks/use-loader";
-import { colors, fontFamily, fontSize, spacing } from "@/design";
-import { BubbleButton, HomeButton, SceneBackground } from "@/design/kids";
+import { spacing } from "@/design";
+import { HomeButton, SceneBackground } from "@/design/kids";
 import { appearanceForCharacter } from "@/features/battle/poopm-appearance";
 import { PoopmSprite } from "@/features/battle/components/poopm-sprite";
 
 import { companionLevel, currentCompanion, switchCompanion, type CompanionDirection } from "../aibou-lineup";
 import { readPartyLineup, writePartyLineup } from "../party-lineup-storage";
 import { AibouChips } from "./aibou-chips";
+import { AibouEmpty } from "./aibou-empty";
 import { AibouHeader } from "./aibou-header";
 import { AibouStatRow } from "./aibou-stat-row";
 
@@ -66,13 +67,13 @@ export function AibouView() {
           <HomeButton onPress={goHome} />
         </View>
         {loading ? null : (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle} accessibilityRole={error ? "alert" : "header"}>
-              {t(error ? "NativeAibou.loadFailed" : "NativeAibou.emptyTitle")}
-            </Text>
-            {error ? null : <Text style={styles.emptyHint}>{t("NativeAibou.emptyHint")}</Text>}
-            <BubbleButton label={t("NativeAibou.goHome")} onPress={goHome} />
-          </View>
+          <AibouEmpty
+            title={t(error ? "NativeAibou.loadFailed" : "NativeAibou.emptyTitle")}
+            hint={error ? undefined : t("NativeAibou.emptyHint")}
+            actionLabel={t("NativeAibou.goHome")}
+            isError={Boolean(error)}
+            onAction={goHome}
+          />
         )}
       </SceneBackground>
     );
@@ -119,7 +120,4 @@ export function AibouView() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   stage: { flex: 1, alignItems: "center", justifyContent: "center" },
-  empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.lg, paddingHorizontal: spacing.xl },
-  emptyTitle: { fontFamily: fontFamily.jaBlack, fontSize: fontSize.childBase + 4, color: colors.ink, textAlign: "center" },
-  emptyHint: { fontFamily: fontFamily.jaBold, fontSize: fontSize.childBase, color: colors.inkSoft, textAlign: "center" },
 });
