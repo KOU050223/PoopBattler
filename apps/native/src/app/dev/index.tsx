@@ -13,6 +13,7 @@ export default function DevMenuScreen() {
       <Button label="3D プローブ" variant="secondary" onPress={() => router.push("/dev/poopm-3d")} />
       <Button label="うんち相撲（NPC戦）" variant="secondary" onPress={() => router.push("/dev/sumo")} />
       <Button label="うんちレース 3D（NPCのみ）" variant="secondary" onPress={() => router.push("/dev/race-3d")} />
+      <Button label="うんちレース（遊べる）" variant="secondary" onPress={() => router.push("/dev/race")} />
       <Button label="レースのオーバーレイ" variant="secondary" onPress={() => router.push("/dev/race-overlay")} />
       <Button label="ジェスチャー検証" variant="secondary" onPress={() => router.push("/dev/gesture-probe")} />
     </View>
