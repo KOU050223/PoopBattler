@@ -10,11 +10,11 @@ import { createRunnerPose, poseRunner } from "./runner-pose";
 
 /** モデル空間で足先は原点より 2.25 下（poopm-3d-camera.ts の MODEL_FEET_Y） */
 const MODEL_FEET_DROP = 2.25;
-/**
- * 見た目の大きさ。当たり判定は半径 RUNNER_RADIUS（0.75）の円のままで、高さ約 1.7（試作のうんちくんと同じ）に合わせた値。
- * モデルの横幅は未計測なので、実機で当たり判定の円と見比べて調整する
- */
-export const RUNNER_MODEL_SCALE = 0.6;
+/** 当たり判定の直径（RUNNER_RADIUS 0.75 の 2 倍）。見た目の横幅はこれに収める */
+const RUNNER_BODY_WIDTH = 1.5;
+/** poopm_base.glb を idle で再生して測った横幅（腕込み、モデル空間で 3.07。体のトーラスだけだと 2.02） */
+const MODEL_WIDTH = 3.07;
+export const RUNNER_MODEL_SCALE = Math.round((RUNNER_BODY_WIDTH / MODEL_WIDTH) * 100) / 100;
 
 const SHADOW_RADIUS = 0.8;
 const SHADOW_OPACITY = 0.16;

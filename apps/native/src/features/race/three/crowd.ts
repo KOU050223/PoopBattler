@@ -1,4 +1,4 @@
-// 観客（トイレットペーパー）の配置。試作は道の脇に12m間隔で左右交互に置く。
+// 観客（トイレットペーパー）の配置。試作は道の脇に12m間隔で左右交互に置くが、こちらは両側に置く（DIFFS.md）。
 // 見た目の位置だけを決める純関数で、シミュレーションには関わらない。
 import type { CoursePoint } from "../types";
 import type { Rng } from "../rng";
@@ -32,10 +32,8 @@ export function placeCrowd(points: readonly CoursePoint[], rng: Rng): CrowdItem[
   points.forEach((point, i) => {
     if (i % CROWD.spacing !== 0 || point.zone === "bridge") return;
     for (const side of SIDES) {
-      // 左右の乱数は置かない側でも引く（弾かれても後ろの配置がずれないように）
       const margin = CROWD.minMargin + rng() * CROWD.marginSpread;
       const phase = Math.floor(rng() * CROWD.phaseCount);
-      if ((i / CROWD.spacing + (side > 0 ? 1 : 0)) % 2 !== 0) continue;
       const distance = point.w / 2 + margin;
       const x = point.x - Math.sin(point.h) * side * distance;
       const z = point.z + Math.cos(point.h) * side * distance;
