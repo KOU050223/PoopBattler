@@ -1,6 +1,5 @@
 import "@/i18n";
 
-import { Nunito_500Medium, Nunito_700Bold, Nunito_800ExtraBold } from "@expo-google-fonts/nunito";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -10,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { Text } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { fontAssets } from "@/design";
 import { ensureAnonymousSession } from "@/lib/anonymous-session";
 import { bindAutoRefreshToAppState, getSupabase } from "@/lib/supabase";
 import { colors, fonts } from "@/theme";
@@ -22,7 +22,7 @@ void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { t } = useTranslation();
-  const [fontsLoaded, fontError] = useFonts({ Nunito_500Medium, Nunito_700Bold, Nunito_800ExtraBold });
+  const [fontsLoaded, fontError] = useFonts(fontAssets);
 
   useEffect(() => {
     const supabase = getSupabase();
