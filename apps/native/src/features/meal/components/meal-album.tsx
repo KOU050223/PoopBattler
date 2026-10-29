@@ -12,13 +12,13 @@ import { groupMealLogsByDay, mealSlotOf } from "../meal-time";
 const COLUMNS = 2;
 const CARD_GAP = spacing.md;
 
-function MealCard({ log }: { log: MealLog }) {
+function MealCard({ log, onSelect }: { log: MealLog; onSelect: (log: MealLog) => void }) {
   const { t } = useTranslation();
   const [isMissing, setIsMissing] = useState(false);
   const foods = foodLabelKeys(log.foodGroups).map((key) => t(key)).join("・");
 
   return (
-    <View style={styles.card}>
+    <Pressable style={styles.card} onPress={() => onSelect(log)} accessibilityRole="button" accessibilityLabel={`${t(`Gohan.slot.${mealSlotOf(log.eatenAt)}`)} ${foods}`}>
       <View style={styles.photoFrame}>
         {isMissing ? (
           <Ionicons name="image-outline" size={28} color={colors.inkSoft} accessibilityLabel={t("Gohan.photoMissing")} />
@@ -30,13 +30,13 @@ function MealCard({ log }: { log: MealLog }) {
         </View>
       </View>
       <Text style={styles.foods} numberOfLines={2}>{foods}</Text>
-    </View>
+    </Pressable>
   );
 }
 
-type MealAlbumProps = { logs: readonly MealLog[]; hasError: boolean; isLoading: boolean; bottomInset: number };
+type MealAlbumProps = { logs: readonly MealLog[]; hasError: boolean; isLoading: boolean; bottomInset: number; onSelect: (log: MealLog) => void };
 
-export function MealAlbum({ logs, hasError, isLoading, bottomInset }: MealAlbumProps) {
+export function MealAlbum({ logs, hasError, isLoading, bottomInset, onSelect }: MealAlbumProps) {
   const { t } = useTranslation();
   const sections = groupMealLogsByDay(logs);
 
@@ -48,7 +48,7 @@ export function MealAlbum({ logs, hasError, isLoading, bottomInset }: MealAlbumP
         <View key={section.day} style={styles.section}>
           <Text style={styles.sectionTitle} accessibilityRole="header">{t(`Gohan.${section.day}`)}</Text>
           <View style={styles.grid}>
-            {section.logs.map((log) => <MealCard key={log.id} log={log} />)}
+            {section.logs.map((log) => <MealCard key={log.id} log={log} onSelect={onSelect} />)}
           </View>
         </View>
       ))}
