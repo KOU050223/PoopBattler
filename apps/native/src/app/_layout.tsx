@@ -45,7 +45,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         {/* タブ外の詳細画面はヘッダー + 戻るボタンを出す（web のページ内遷移に相当）。
             ヘッダー中央は web と同じく固定ワードマーク。ページ名は各画面内の大見出しが担う。 */}
-        {(["meals", "report", "account", "dev/index", "dev/toilet-detect", "dev/poopm-3d", "dev/design-gallery"] as const).map((name) => (
+        {(["meals", "dev/index", "dev/toilet-detect", "dev/poopm-3d", "dev/design-gallery"] as const).map((name) => (
           <Stack.Screen
             key={name}
             name={name}
@@ -57,6 +57,11 @@ export default function RootLayout() {
             }}
           />
         ))}
+        {/* 親の画面は ParentScreen が自前のヘッダー（戻る + 見出し）を持つので、ワードマークのヘッダーは出さない。 */}
+        <Stack.Screen name="parent" />
+        <Stack.Screen name="report" />
+        <Stack.Screen name="account" />
+        <Stack.Screen name="purchase" />
       </Stack>
     </SafeAreaProvider>
   );
