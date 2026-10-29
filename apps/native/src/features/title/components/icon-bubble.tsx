@@ -6,11 +6,8 @@ import { usePressSpring } from "@/design/kids/use-press-spring";
 
 import { homePalette } from "../home-palette";
 
-const LARGE_SIZE = 152;
-const SMALL_SIZE = 104;
 // 絵は泡の内側に少し小さい円で収める（画面案: 152/104 に対して 116/78）。
-const LARGE_IMAGE_SIZE = 116;
-const SMALL_IMAGE_SIZE = 78;
+const IMAGE_RATIO = 0.75;
 
 type IconBubbleProps = {
   label: string;
@@ -18,14 +15,15 @@ type IconBubbleProps = {
   onPress: () => void;
   // large はホームの「うんちする」だけに使う。
   variant?: "large" | "small";
+  // 小さい画面で縮めるため、呼び出し側が幅から計算して渡す（home-layout.ts）。
+  size: number;
 };
 
 // design の BubbleButton はラベルだけでピル形のため、絵入りの丸い泡をホーム専用に持つ。
-export function IconBubble({ label, image, onPress, variant = "small" }: IconBubbleProps) {
+export function IconBubble({ label, image, onPress, variant = "small", size }: IconBubbleProps) {
   const { animatedStyle, onPressIn, onPressOut } = usePressSpring();
   const isLarge = variant === "large";
-  const size = isLarge ? LARGE_SIZE : SMALL_SIZE;
-  const imageSize = isLarge ? LARGE_IMAGE_SIZE : SMALL_IMAGE_SIZE;
+  const imageSize = Math.round(size * IMAGE_RATIO);
 
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
