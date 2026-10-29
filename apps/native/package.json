@@ -3,15 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "main": "index.ts",
-  "expo": {
-    "autolinking": {
-      "exclude": [
-        "react-native-gesture-handler",
-        "react-native-reanimated",
-        "react-native-worklets"
-      ]
-    }
-  },
   "scripts": {
     "start": "expo start --dev-client",
     "ios": "expo run:ios",
@@ -21,6 +12,7 @@
   },
   "dependencies": {
     "@expo-google-fonts/nunito": "0.4.2",
+    "@expo-google-fonts/zen-maru-gothic": "^0.4.2",
     "@expo/vector-icons": "15.0.2",
     "@poopbattler/domain": "*",
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -50,12 +42,15 @@
     "react-i18next": "17.0.16",
     "react-native": "0.86.3",
     "react-native-fast-tflite": "2.0.0",
+    "react-native-gesture-handler": "~2.32.0",
     "react-native-purchases": "10.11.0",
+    "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "5.7.0",
     "react-native-screens": "4.26.0",
     "react-native-svg": "15.15.4",
     "react-native-url-polyfill": "4.0.0",
     "react-native-vision-camera": "4.7.3",
+    "react-native-worklets": "0.10.1",
     "react-native-worklets-core": "1.6.3",
     "three": "0.185.1",
     "vision-camera-resize-plugin": "3.2.0",

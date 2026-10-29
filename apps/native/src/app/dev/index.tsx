@@ -12,6 +12,7 @@ export default function DevMenuScreen() {
       <Button label="便器検出プローブ" onPress={() => router.push("/dev/toilet-detect")} />
       <Button label="3D プローブ" variant="secondary" onPress={() => router.push("/dev/poopm-3d")} />
       <Button label="うんち相撲（NPC戦）" variant="secondary" onPress={() => router.push("/dev/sumo")} />
+      <Button label="部品集（デザイン確認）" variant="secondary" onPress={() => router.push("/dev/design-gallery")} />
     </View>
   );
 }

@@ -1,3 +1,3 @@
-import { TitleScreen } from "@/features/title/components/title-screen";
+import { HomeScreen } from "@/features/title/components/home-screen";
 
-export default TitleScreen;
+export default HomeScreen;

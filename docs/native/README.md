@@ -6,5 +6,6 @@
 - [web-retirement-plan.md](./web-retirement-plan.md): 案Cの続き。`apps/web` を退役させ、ブラウザ版を Expo web、サーバー処理を `apps/api`（Hono）に移す計画。
 
 - [screen-sequence.md](./screen-sequence.md): web版の画面遷移の実測と、native 側の対照。
+- [ui-redesign-plan.md](./ui-redesign-plan.md): native UI 改修の計画（フェーズ・並列タスクの担当範囲・Reanimated導入のリスク）。
 
 `current-architecture.md` が参照する `.orch/native-diagrams/` の調査メモはgit管理外で、リポジトリには含まれない。

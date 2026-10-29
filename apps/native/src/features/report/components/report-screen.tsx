@@ -1,16 +1,15 @@
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { SIGNED_OUT_ACCOUNT_STATUS, type AccountStatus } from "@poopbattler/domain/account/account.types";
 
 import { watchAccountStatus } from "@/features/account/account-watch";
-import { EmptyState } from "@/components/ui";
+import { colors, fontFamily, fontSize, spacing } from "@/design";
+import { NoticeCard, ParentScreen } from "@/design/parent";
 import { reportGateway } from "@/gateways";
 import { getSupabase } from "@/lib/supabase";
-import { colors, fonts, spacing } from "@/theme";
 
 import type { ReportResult } from "../report-gateway";
 import { TeaserReport } from "./teaser-report";
@@ -26,7 +25,7 @@ import { WeeklyReportView } from "./weekly-report-view";
  */
 export function ReportScreen() {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [account, setAccount] = useState<AccountStatus>(SIGNED_OUT_ACCOUNT_STATUS);
   const [result, setResult] = useState<ReportResult | null>(null);
   const [failed, setFailed] = useState(false);
@@ -52,43 +51,28 @@ export function ReportScreen() {
   );
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.lg }]}
+    <ParentScreen
+      title={t("Report.title")}
+      onBack={() => (router.canGoBack() ? router.back() : router.replace("/parent"))}
     >
       {!loaded ? (
         <View style={styles.loading}>
-          <ActivityIndicator color={colors.flushEdge} />
+          <ActivityIndicator color={colors.inkSoft} />
         </View>
       ) : failed || result === null ? (
-        <EmptyState title={t("Report.errorTitle")} description={t("Report.errorDescription")} />
+        <NoticeCard tone="warn" title={t("Report.errorTitle")}>
+          <Text style={styles.errorDescription}>{t("Report.errorDescription")}</Text>
+        </NoticeCard>
       ) : result.entitled ? (
         <WeeklyReportView report={result.report} />
       ) : (
-        <View>
-          <TeaserHeader />
-          <TeaserReport teaser={result.teaser} account={account} />
-        </View>
+        <TeaserReport teaser={result.teaser} account={account} />
       )}
-    </ScrollView>
-  );
-}
-
-function TeaserHeader() {
-  const { t } = useTranslation();
-  return (
-    <View style={styles.header}>
-      <Text style={styles.premiumLabel}>{t("Report.premium")}</Text>
-      <Text style={styles.title} accessibilityRole="header">{t("Report.title")}</Text>
-    </View>
+    </ParentScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
   loading: { paddingVertical: spacing.xxl, alignItems: "center" },
-  header: { marginBottom: spacing.lg },
-  premiumLabel: { fontFamily: fonts.bold, fontSize: 14, color: colors.charcoal, marginBottom: 4 },
-  title: { fontFamily: fonts.black, fontSize: 26, color: colors.charcoal, letterSpacing: -0.5 },
+  errorDescription: { fontFamily: fontFamily.jaMedium, fontSize: fontSize.caption, lineHeight: 19, color: colors.inkSoft },
 });

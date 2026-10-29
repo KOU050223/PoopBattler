@@ -2,8 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import {
   SIGNED_OUT_ACCOUNT_STATUS,
@@ -14,8 +13,8 @@ import { watchAccountStatus } from "@/features/account/account-watch";
 import { accountGateway, iapGateway } from "@/gateways";
 import { getSupabase } from "@/lib/supabase";
 import { waitForEntitlement, type PurchaseOffer } from "@/features/billing/iap-gateway";
-import { Button, cardStyle } from "@/components/ui";
-import { colors, fonts, spacing } from "@/theme";
+import { colors, fontFamily, fontSize, spacing } from "@/design";
+import { NoticeCard, ParentButton, ParentCard, ParentScreen } from "@/design/parent";
 
 type LoadState = "loading" | "unavailable" | "error" | "ready" | "empty";
 
@@ -39,7 +38,6 @@ function periodKey(period: string | null): string | null {
 export default function PurchaseScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [account, setAccount] = useState<AccountStatus>(SIGNED_OUT_ACCOUNT_STATUS);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [offers, setOffers] = useState<PurchaseOffer[]>([]);
@@ -127,116 +125,101 @@ export default function PurchaseScreen() {
     else router.replace("/report");
   };
 
+  const premiumIcon = <Ionicons name="ribbon-outline" size={22} color={colors.goldEdge} />;
+
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md }]}
-    >
-      <View style={styles.header}>
-        <Pressable onPress={goBack} accessibilityRole="button" accessibilityLabel={t("AccountMenu.cancel")} style={styles.back}>
-          <Ionicons name="chevron-back" size={22} color={colors.charcoal} />
-        </Pressable>
-        <Text style={styles.title} accessibilityRole="header">{t("Billing.purchaseTitle")}</Text>
-      </View>
-      <Text style={styles.lead}>{t("Billing.purchaseDescription")}</Text>
+    <ParentScreen title={t("Billing.purchaseTitle")} onBack={goBack}>
+      <NoticeCard tone="gold" title={t("Billing.premiumTitle")} icon={premiumIcon}>
+        <Text style={styles.lead}>{t("Billing.purchaseDescription")}</Text>
+        {FEATURE_KEYS.map((key) => (
+          <View key={key} style={styles.featureRow}>
+            <Ionicons name="checkmark" size={18} color={colors.leaf} />
+            <Text style={styles.featureText}>{t(key)}</Text>
+          </View>
+        ))}
+      </NoticeCard>
 
       {reflected ? (
-        <View style={[styles.card, styles.reflectedCard]}>
-          <Ionicons name="checkmark-circle" size={20} color={colors.flushEdge} />
-          <Text style={styles.cardText}>{t("Billing.reflected")}</Text>
-          <View style={styles.buttonColumn}>
-            <Button
-              label={t("Billing.openReport")}
-              onPress={() => router.replace("/report")}
-            />
+        <ParentCard>
+          <View style={styles.cardBody}>
+            <Text style={styles.cardTitle}>{t("Billing.reflected")}</Text>
+            <ParentButton label={t("Billing.openReport")} variant="primary" onPress={() => router.replace("/report")} />
           </View>
-        </View>
+        </ParentCard>
       ) : needsLink ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>{t("Report.linkRequiredTitle")}</Text>
-          <Text style={styles.cardText}>{t("Report.linkRequiredDescription")}</Text>
-          <View style={styles.buttonColumn}>
-            <Button
+        <ParentCard>
+          <View style={styles.cardBody}>
+            <Text style={styles.cardTitle}>{t("Report.linkRequiredTitle")}</Text>
+            <Text style={styles.cardText}>{t("Report.linkRequiredDescription")}</Text>
+            <ParentButton
               label={t("Report.linkAccount")}
+              variant="primary"
               onPress={() => router.push("/account")}
-              icon={<Ionicons name="link" size={16} color={colors.paperWhite} />}
+              icon={<Ionicons name="link" size={16} color={colors.paper} />}
             />
           </View>
-        </View>
+        </ParentCard>
       ) : (
-        <View style={styles.card}>
-          {loadState === "loading" ? (
-            <ActivityIndicator color={colors.flushEdge} style={styles.loader} />
-          ) : loadState === "unavailable" ? (
-            <Text style={styles.cardText}>{t("Billing.unavailable")}</Text>
-          ) : loadState === "error" ? (
-            <Text style={styles.cardText}>{t("Billing.failed")}</Text>
-          ) : loadState === "empty" ? (
-            <Text style={styles.cardText}>{t("Billing.noOffers")}</Text>
-          ) : (
-            offers.map((offer) => (
-              <View key={offer.identifier} style={styles.offerRow}>
-                <View style={styles.offerText}>
-                  <Text style={styles.offerTitle} numberOfLines={2}>{offer.title}</Text>
-                  <Text style={styles.offerPrice}>
+        <ParentCard>
+          <View style={styles.cardBody}>
+            {loadState === "loading" ? (
+              <ActivityIndicator color={colors.pink} style={styles.loader} />
+            ) : loadState === "unavailable" ? (
+              <Text style={styles.cardText}>{t("Billing.unavailable")}</Text>
+            ) : loadState === "error" ? (
+              <Text style={styles.cardText}>{t("Billing.failed")}</Text>
+            ) : loadState === "empty" ? (
+              <Text style={styles.cardText}>{t("Billing.noOffers")}</Text>
+            ) : (
+              offers.map((offer) => (
+                <View key={offer.identifier} style={styles.offer}>
+                  <Text style={styles.cardTitle} numberOfLines={2}>{offer.title}</Text>
+                  <Text style={styles.price}>
                     {offer.priceString}
-                    {periodKey(offer.subscriptionPeriod) ? ` / ${t(periodKey(offer.subscriptionPeriod)!)}` : ""}
+                    {periodKey(offer.subscriptionPeriod) ? <Text style={styles.period}>{` / ${t(periodKey(offer.subscriptionPeriod)!)}`}</Text> : null}
                   </Text>
-                </View>
-                <View style={styles.offerButton}>
-                  <Button
+                  <ParentButton
                     label={busy === "buy" ? t("Billing.purchasing") : t("Billing.buy")}
+                    variant="primary"
                     onPress={() => void buy(offer)}
                     disabled={busy !== null}
                   />
                 </View>
-              </View>
-            ))
-          )}
-        </View>
+              ))
+            )}
+            {loadState === "ready" ? <Text style={styles.caption}>{t("Billing.priceNote")}</Text> : null}
+          </View>
+        </ParentCard>
       )}
 
-      <View style={styles.restoreRow}>
-        {busy === "restore" ? (
-          <ActivityIndicator color={colors.flushEdge} />
-        ) : (
-          <Button
-            label={t("Billing.restore")}
-            onPress={() => void restore()}
-            disabled={busy !== null}
-            variant="secondary"
-          />
-        )}
-      </View>
+      {busy === "restore" ? (
+        <ActivityIndicator color={colors.pink} />
+      ) : (
+        <ParentButton label={t("Billing.restore")} onPress={() => void restore()} disabled={busy !== null} />
+      )}
 
       {message ? (
         <Text style={styles.message} accessibilityLiveRegion="polite">{message}</Text>
       ) : null}
 
-      <Text style={styles.note}>{t("Billing.autoRenewNote")}</Text>
-    </ScrollView>
+      <Text style={styles.caption}>{t("Billing.autoRenewNote")}</Text>
+    </ParentScreen>
   );
 }
 
+const FEATURE_KEYS = ["Billing.featureDaily", "Billing.featureCompare", "Billing.featureRatio"] as const;
+
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
-  header: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  back: { width: 40, height: 40, alignItems: "center", justifyContent: "center", marginLeft: -spacing.sm },
-  title: { fontFamily: fonts.black, fontSize: 26, color: colors.charcoal, letterSpacing: -0.5 },
-  lead: { fontFamily: fonts.regular, fontSize: 14, color: colors.pencilGray, marginTop: 4, marginBottom: spacing.lg },
-  card: { ...cardStyle, padding: spacing.lg },
-  reflectedCard: { alignItems: "center", gap: spacing.sm },
-  cardTitle: { fontFamily: fonts.black, fontSize: 17, color: colors.charcoal },
-  cardText: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: colors.pencilGray, marginTop: spacing.sm },
+  lead: { fontFamily: fontFamily.jaMedium, fontSize: fontSize.body, lineHeight: 24, color: colors.ink },
+  featureRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  featureText: { flex: 1, fontFamily: fontFamily.jaMedium, fontSize: fontSize.body, color: colors.ink },
+  cardBody: { padding: spacing.lg, gap: spacing.md },
+  cardTitle: { fontFamily: fontFamily.jaBold, fontSize: fontSize.body, color: colors.ink },
+  cardText: { fontFamily: fontFamily.jaMedium, fontSize: fontSize.body, lineHeight: 24, color: colors.inkSoft },
   loader: { alignSelf: "flex-start" },
-  offerRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm },
-  offerText: { flex: 1, minWidth: 0 },
-  offerTitle: { fontFamily: fonts.bold, fontSize: 15, color: colors.charcoal },
-  offerPrice: { fontFamily: fonts.regular, fontSize: 13, color: colors.pencilGray, marginTop: 2 },
-  offerButton: { minWidth: 120 },
-  buttonColumn: { marginTop: spacing.md, alignSelf: "stretch" },
-  restoreRow: { marginTop: spacing.lg, alignSelf: "stretch" },
-  message: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.charcoal, marginTop: spacing.md },
-  note: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, color: colors.pencilGray, marginTop: spacing.lg },
+  offer: { gap: spacing.sm },
+  price: { fontFamily: fontFamily.numExtraBold, fontSize: fontSize.title, color: colors.ink },
+  period: { fontFamily: fontFamily.jaMedium, fontSize: fontSize.caption, color: colors.inkSoft },
+  message: { fontFamily: fontFamily.jaMedium, fontSize: fontSize.caption, lineHeight: 19, color: colors.ink },
+  caption: { fontFamily: fontFamily.jaMedium, fontSize: fontSize.caption, lineHeight: 19, color: colors.inkSoft },
 });

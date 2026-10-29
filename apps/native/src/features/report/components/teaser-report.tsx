@@ -4,18 +4,18 @@ import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 
 import type { AccountStatus } from "@poopbattler/domain/account/account.types";
-import { BOWEL_COLOR_LABELS, weekdayShortLabel, type BowelColor, type Weekday } from "@poopbattler/domain/report/report-labels";
+import { weekdayShortLabel, type Weekday } from "@poopbattler/domain/report/report-labels";
 import { createTeaserPlaceholder } from "@poopbattler/domain/report/teaser-placeholder";
 
-import { Button, cardStyle } from "@/components/ui";
-import { colors, fonts, spacing } from "@/theme";
+import { colors, fontFamily, fontSize, spacing } from "@/design";
+import { NoticeCard, ParentButton, ParentCard } from "@/design/parent";
 
 import type { ReportTeaser } from "../report-gateway";
-import { BarChart, ShareBar, TrendLine } from "./charts";
+import { DailyBarChart } from "./charts";
 
 const WEEKDAYS: Weekday[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-const TIME_OF_DAY_KEYS = ["morning", "afternoon", "evening", "night"] as const;
-const TIME_OF_DAY_COLORS = ["#ffd28f", colors.flushPink, colors.flushEdge, colors.nightInk];
+const SAMPLE_COUNT_INDEX = 0;
+const SAMPLE_RATE_INDEX = 3;
 
 /**
  * 非課金ユーザーへ見せるレポート。
@@ -27,46 +27,52 @@ const TIME_OF_DAY_COLORS = ["#ffd28f", colors.flushPink, colors.flushEdge, color
 export function TeaserReport({ teaser, account }: { teaser: ReportTeaser; account: AccountStatus }) {
   const { t } = useTranslation();
   const placeholder = createTeaserPlaceholder(teaser.bowelCount);
+  const sampleBars = WEEKDAYS.map((weekday, index) => ({
+    key: weekday,
+    label: weekdayShortLabel(weekday),
+    count: placeholder.weekdayCounts[index] ?? 0,
+  }));
 
   return (
-    <View style={styles.stack}>
-      <View style={styles.card}>
-        <View style={styles.countRow}>
-          <View style={styles.countIcon}>
-            <Ionicons name="calendar" size={20} color={colors.flushEdge} />
-          </View>
-          <View style={styles.countText}>
-            <Text style={styles.cardHeading}>{t("Report.recordedCount", { count: teaser.bowelCount })}</Text>
-            <Text style={styles.cardSub}>{t("Report.recordedDays", { count: teaser.recordedDays })}</Text>
-          </View>
+    <>
+      <ParentCard>
+        <View style={styles.cardBody}>
+          <Text style={styles.heading}>{t("Report.recordedCount", { count: teaser.bowelCount })}</Text>
+          <Text style={styles.description}>{t("Report.recordedDays", { count: teaser.recordedDays })}</Text>
         </View>
-      </View>
+      </ParentCard>
 
       {/* 見本であることを必ず読める位置に置く */}
-      <View style={styles.card}>
-        <View style={styles.sampleBadge}>
-          <Ionicons name="lock-closed" size={12} color={colors.flushEdge} />
-          <Text style={styles.sampleBadgeText}>{t("Report.teaserSampleLabel")}</Text>
+      <ParentCard>
+        <View style={styles.cardBody}>
+          <View style={styles.sampleBadge}>
+            <Ionicons name="lock-closed" size={12} color={colors.goldEdge} />
+            <Text style={styles.sampleBadgeText}>{t("Report.teaserSampleLabel")}</Text>
+          </View>
+          {/* RN に CSS blur は無いため、ダミー値を薄く表示して「見本」の見た目にする。実値ではないので読めても問題ない。 */}
+          <View style={styles.sampleBody} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <View style={styles.sampleStats}>
+              <SampleStat label={t("Report.statCount")} value={placeholder.metrics[SAMPLE_COUNT_INDEX]?.value ?? ""} />
+              <SampleStat label={t("Report.statWellFormed")} value={placeholder.metrics[SAMPLE_RATE_INDEX]?.value ?? ""} />
+            </View>
+            <DailyBarChart items={sampleBars} accessibilityLabel="" />
+          </View>
         </View>
-        {/* RN に CSS blur は無いため、ダミー値を薄く表示して「見本」の
-            見た目にする。実値ではないので読めても問題ない。 */}
-        <View
-          style={styles.sampleBody}
-          accessibilityElementsHidden
-          importantForAccessibility="no"
-        >
-          <SamplePreview placeholder={placeholder} />
-        </View>
-      </View>
+      </ParentCard>
 
-      <View style={[styles.card, styles.lockedCard]}>
-        <View style={styles.lockedIcon}>
-          <Ionicons name="sparkles" size={20} color={colors.paperWhite} />
-        </View>
-        <Text style={styles.lockedTitle}>{t("Report.lockedTitle")}</Text>
-        <Text style={styles.lockedDescription}>{t("Report.lockedDescription")}</Text>
+      <NoticeCard tone="gold" title={t("Report.lockedTitle")} icon={<Ionicons name="sparkles" size={20} color={colors.goldEdge} />}>
+        <Text style={styles.description}>{t("Report.lockedDescription")}</Text>
         <PurchaseCallToAction account={account} />
-      </View>
+      </NoticeCard>
+    </>
+  );
+}
+
+function SampleStat({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.sampleStat}>
+      <Text style={styles.sampleStatLabel}>{label}</Text>
+      <Text style={styles.sampleStatValue}>{value}</Text>
     </View>
   );
 }
@@ -74,9 +80,8 @@ export function TeaserReport({ teaser, account }: { teaser: ReportTeaser; accoun
 /**
  * 購入への導線。
  *
- * 匿名・Google未連携の人には購入ボタンではなく連携への導線を出す
- * （web の PurchaseCallToAction と同じ判断）。連携しないと別端末で
- * 購入を復元できないため、先にアカウント画面へ送る。
+ * 匿名・Google未連携の人には購入ボタンではなく連携への導線を出す。
+ * 連携しないと別端末で購入を復元できないため、先にアカウント画面へ送る。
  */
 function PurchaseCallToAction({ account }: { account: AccountStatus }) {
   const { t } = useTranslation();
@@ -84,214 +89,42 @@ function PurchaseCallToAction({ account }: { account: AccountStatus }) {
 
   if (account.isAnonymous || !account.hasGoogleIdentity) {
     return (
-      <View style={styles.ctaBlock}>
+      <View style={styles.cta}>
         <Text style={styles.ctaTitle}>{t("Report.linkRequiredTitle")}</Text>
-        <Text style={styles.ctaDescription}>{t("Report.linkRequiredDescription")}</Text>
-        <View style={styles.ctaButton}>
-          <Button
-            label={t("Report.linkAccount")}
-            onPress={() => router.push("/account")}
-            icon={<Ionicons name="link" size={16} color={colors.paperWhite} />}
-          />
-        </View>
+        <Text style={styles.description}>{t("Report.linkRequiredDescription")}</Text>
+        <ParentButton
+          label={t("Report.linkAccount")}
+          variant="primary"
+          onPress={() => router.push("/account")}
+          icon={<Ionicons name="link" size={16} color={colors.paper} />}
+        />
       </View>
     );
   }
 
   return (
-    <View style={styles.ctaButton}>
-      <Button
+    <View style={styles.cta}>
+      <ParentButton
         label={t("Report.purchase")}
+        variant="primary"
         onPress={() => router.push("/purchase")}
-        icon={<Ionicons name="sparkles" size={16} color={colors.paperWhite} />}
+        icon={<Ionicons name="sparkles" size={16} color={colors.paper} />}
       />
     </View>
   );
 }
 
-/** ぼかしの下に敷く見本。実データは受け取らない。 */
-function SamplePreview({ placeholder }: { placeholder: ReturnType<typeof createTeaserPlaceholder> }) {
-  const { t } = useTranslation();
-  const metricLabels = [t("Report.bowelCount"), t("Report.recordDays"), t("Report.averageHardness"), t("Report.stableRate")];
-
-  return (
-    <View style={styles.sampleStack}>
-      <View>
-        <Text style={styles.cardHeading}>{t("Report.highlights")}</Text>
-        <View style={styles.metricGrid}>
-          {metricLabels.map((label, index) => (
-            <View key={label} style={styles.metric}>
-              <Text style={styles.metricLabel}>{label}</Text>
-              <Text style={styles.metricValue}>{placeholder.metrics[index]?.value}</Text>
-              <Text style={styles.metricDetail}>{placeholder.metrics[index]?.detail}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View>
-        <Text style={styles.cardHeading}>{t("Report.hardnessTitle")}</Text>
-        <BarChart
-          label={t("Report.recordsByHardness")}
-          emptyLabel={t("Report.noRecords")}
-          bars={placeholder.hardnessCounts.map((count, index) => ({
-            label: String(index + 1),
-            value: count,
-            highlighted: index + 1 >= 3 && index + 1 <= 5,
-          }))}
-        />
-      </View>
-
-      <View>
-        <Text style={styles.groupHeading}>{t("Report.amount")}</Text>
-        <ShareBar
-          label={t("Report.amount")}
-          emptyLabel={t("Report.noRecords")}
-          segments={[t("Report.small"), t("Report.normal"), t("Report.large")].map((label, index) => ({
-            key: label,
-            label,
-            value: placeholder.amount[index] ?? 0,
-            color: [colors.cottonPink, colors.flushPink, colors.flushEdge][index],
-          }))}
-        />
-      </View>
-      <View>
-        <Text style={styles.groupHeading}>{t("Report.ease")}</Text>
-        <ShareBar
-          label={t("Report.ease")}
-          emptyLabel={t("Report.noRecords")}
-          segments={[t("Report.easy"), t("Report.normal"), t("Report.hard")].map((label, index) => ({
-            key: label,
-            label,
-            value: placeholder.ease[index] ?? 0,
-            color: [colors.cottonPink, colors.flushPink, colors.flushEdge][index],
-          }))}
-        />
-      </View>
-
-      <View>
-        <Text style={styles.cardHeading}>{t("Report.colorTitle")}</Text>
-        <ShareBar
-          label={t("Report.colorTitle")}
-          emptyLabel={t("Report.noRecords")}
-          segments={(Object.keys(BOWEL_COLOR_LABELS) as BowelColor[]).map((key, index) => ({
-            key,
-            label: BOWEL_COLOR_LABELS[key].label,
-            value: placeholder.colorCounts[index] ?? 0,
-            color: BOWEL_COLOR_LABELS[key].hex,
-          }))}
-        />
-      </View>
-
-      <View>
-        <Text style={styles.cardHeading}>{t("Report.weekdayAndTime")}</Text>
-        <BarChart
-          label={t("Report.weekdayAndTime")}
-          emptyLabel={t("Report.noRecords")}
-          height="sm"
-          bars={WEEKDAYS.map((weekday, index) => ({
-            label: weekdayShortLabel(weekday),
-            value: placeholder.weekdayCounts[index] ?? 0,
-          }))}
-        />
-        <Text style={[styles.groupHeading, { marginTop: spacing.md }]}>{t("Report.timeOfDay")}</Text>
-        <ShareBar
-          label={t("Report.timeOfDay")}
-          emptyLabel={t("Report.noRecords")}
-          segments={TIME_OF_DAY_KEYS.map((key, index) => ({
-            key,
-            label: t(`Report.${key}`),
-            value: placeholder.timeOfDayCounts[index] ?? 0,
-            color: TIME_OF_DAY_COLORS[index],
-          }))}
-        />
-      </View>
-
-      <View>
-        <Text style={styles.cardHeading}>{t("Report.fourWeekTrend")}</Text>
-        <TrendLine
-          label={t("Report.fourWeekTrend")}
-          emptyLabel={t("Report.noRecords")}
-          points={placeholder.fourWeekTrend.map((week, index) => ({
-            key: String(index),
-            label: `${index + 1}${t("Report.week")}`,
-            value: week.count,
-            caption: t("Report.average", { value: week.average }),
-          }))}
-        />
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  stack: { gap: spacing.lg, paddingBottom: spacing.lg },
-  card: { ...cardStyle, padding: spacing.lg },
-  cardHeading: { fontFamily: fonts.black, fontSize: 18, color: colors.charcoal, letterSpacing: -0.3 },
-  cardSub: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: colors.pencilGray, marginTop: 4 },
-  countRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
-  countIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: colors.blushWash,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  countText: { flex: 1 },
-  sampleBadge: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    borderRadius: 6,
-    backgroundColor: colors.blushWash,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    marginBottom: spacing.md,
-  },
-  sampleBadgeText: { fontFamily: fonts.bold, fontSize: 11, color: colors.flushEdge },
-  sampleBody: { opacity: 0.45 },
-  sampleStack: { gap: spacing.xl },
-  metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, marginTop: spacing.lg },
-  metric: {
-    flexBasis: "46%",
-    flexGrow: 1,
-    borderRadius: 10,
-    backgroundColor: colors.blushWash,
-    padding: spacing.md,
-  },
-  metricLabel: { fontFamily: fonts.regular, fontSize: 12, color: colors.pencilGray },
-  metricValue: { fontFamily: fonts.black, fontSize: 20, color: colors.charcoal, marginTop: 4 },
-  metricDetail: { fontFamily: fonts.regular, fontSize: 11, color: colors.pencilGray, marginTop: 4 },
-  groupHeading: { fontFamily: fonts.black, fontSize: 14, color: colors.charcoal },
-  lockedCard: { alignItems: "center" },
-  lockedIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.flushPink,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  lockedTitle: { fontFamily: fonts.black, fontSize: 18, color: colors.charcoal, marginTop: spacing.md, textAlign: "center" },
-  lockedDescription: {
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.charcoal,
-    marginTop: spacing.sm,
-    textAlign: "center",
-  },
-  ctaBlock: { marginTop: spacing.md, alignItems: "center" },
-  ctaTitle: { fontFamily: fonts.bold, fontSize: 14, color: colors.charcoal, textAlign: "center" },
-  ctaDescription: {
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.pencilGray,
-    marginTop: 4,
-    textAlign: "center",
-  },
-  ctaButton: { marginTop: spacing.lg, alignSelf: "stretch" },
+  cardBody: { padding: spacing.lg, gap: spacing.sm },
+  heading: { fontFamily: fontFamily.jaBold, fontSize: fontSize.body, color: colors.ink },
+  description: { fontFamily: fontFamily.jaMedium, fontSize: fontSize.caption, lineHeight: 19, color: colors.inkSoft },
+  sampleBadge: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  sampleBadgeText: { fontFamily: fontFamily.jaBold, fontSize: fontSize.caption, color: colors.goldEdge },
+  sampleBody: { opacity: 0.45, gap: spacing.lg, marginTop: spacing.sm },
+  sampleStats: { flexDirection: "row", gap: spacing.lg },
+  sampleStat: { gap: spacing.xs },
+  sampleStatLabel: { fontFamily: fontFamily.jaBold, fontSize: fontSize.caption, color: colors.inkSoft },
+  sampleStatValue: { fontFamily: fontFamily.numExtraBold, fontSize: fontSize.childTitle, color: colors.ink },
+  cta: { gap: spacing.md, marginTop: spacing.sm },
+  ctaTitle: { fontFamily: fontFamily.jaBold, fontSize: fontSize.caption, color: colors.ink },
 });
