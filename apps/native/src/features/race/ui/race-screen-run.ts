@@ -14,7 +14,7 @@ import { HURDLE_TAP_MAX_DISTANCE_M, IDLE, touchCancel, touchDown, touchUp, type 
 import { placeRivalLabel, type RivalLabelPlacement } from "./overlay-state";
 import type { MiniGamePanelView } from "./MiniGamePanel";
 import { cameraInputOf, RIVAL_LABEL_HEIGHT_M, triggerOf } from "./race-screen-camera";
-import { isSamePanelSpec, panelSpecOf, type PanelSpec } from "./race-screen-panel";
+import { isSamePanelSpec, panelSpecOf, upcomingZoneOf, type PanelSpec } from "./race-screen-panel";
 import { buildResult, createTally, tallyFrame, type RaceResultView } from "./race-screen-result";
 import type { SessionOptions } from "./race-screen-setup";
 import { countdownLabel, hasHitTimeLimit, isCountdown, MAX_FRAME_SEC } from "./race-screen-timing";
@@ -24,6 +24,7 @@ import { useRaceOverlay } from "./use-race-overlay";
 
 /** director の乱数。レース本体の乱数とは分け、カメラの抽選がレースの展開を変えないようにする */
 const DIRECTOR_SEED_SALT = 0x5eed;
+const PLAYER_INDEX = 0;
 const INITIAL_ASPECT = 9 / 16;
 /** ハードルが残っていないときにパネルへ渡す距離。HURDLE_TAP_MAX_DISTANCE_M より大きければ「まだ遠い」の表示になる */
 const NO_HURDLE_DISTANCE_M = HURDLE_TAP_MAX_DISTANCE_M * 2;
@@ -138,7 +139,7 @@ export function useRaceRun(options: SessionOptions, onOver: (result: RaceResultV
         lastRank = race.playerRank;
         setRank(lastRank);
       }
-      const spec = panelSpecOf(session.minigame);
+      const spec = panelSpecOf(session.minigame, upcomingZoneOf(race.course, race.runners[PLAYER_INDEX].s));
       if (!isSamePanelSpec(spec, lastPanelSpec)) {
         lastPanelSpec = spec;
         setPanelSpec(spec);
@@ -190,6 +191,7 @@ export function useRaceRun(options: SessionOptions, onOver: (result: RaceResultV
 
   const panel = useMemo<MiniGamePanelView | null>(() => {
     if (!panelSpec) return null;
+    if (panelSpec.isReady) return { kind: panelSpec.kind, isReady: true };
     switch (panelSpec.kind) {
       case "dash":
         return { kind: "dash", gauge, tapCount };
