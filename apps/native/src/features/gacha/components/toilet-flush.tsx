@@ -1,104 +1,130 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { useEffect, useRef } from "react";
-import { Animated, Easing, StyleSheet, View } from "react-native";
+import { Canvas, useFrame } from "@react-three/fiber/native";
+import { useEffect, useMemo, useRef } from "react";
+import { StyleSheet, View } from "react-native";
+import * as THREE from "three";
 
-import { borderWidth, colors, radius } from "@/design";
-
-export const FLUSH_DURATION_MS = 1800;
-const SWIRL_TURNS = 3;
-const SHAKE_PX = 3;
-const SHAKE_STEPS = 12;
+import {
+  FLUSH_DURATION_MS,
+  REDUCED_FLUSH_DURATION_MS,
+  flushProgress,
+  shakeOffset,
+  swirlAngle,
+  waterLevel,
+} from "../toilet-flush-motion";
 
 type ToiletFlushProps = {
   isFlushing: boolean;
-  /** 「視差効果を減らす」がオンなら回転・揺れを止め、待ち時間だけ残す。 */
+  /** 「視差効果を減らす」がオンなら揺れと回転を止め、待ち時間だけ残す。 */
   reduceMotion: boolean;
   onFlushed: () => void;
   size: number;
 };
 
-// 流れる演出は絵を増やさず View で組む。水面の渦が回りながら縮み、最後にうんちが現れる流れ。
-export function ToiletFlush({ isFlushing, reduceMotion, onFlushed, size }: ToiletFlushProps) {
-  const progress = useRef(new Animated.Value(0)).current;
+const PORCELAIN = "#ffffff";
+const WATER = "#9fdcf7";
+const SWIRL_DOT_COUNT = 6;
+const SWIRL_RADIUS = 0.55;
+// 便器の外形（半径, 高さ）。回転体にして、丸い鉢とくびれを1つの形で作る。
+const BOWL_PROFILE: [number, number][] = [
+  [0.0, 0.0],
+  [0.32, 0.02],
+  [0.55, 0.12],
+  [0.8, 0.35],
+  [0.9, 0.62],
+  [0.86, 0.8],
+];
+
+// 画面の絵を使わず three で組む。GLB が用意できたらこの中身だけ差し替えればよい（props は変えない）。
+function Toilet({ isFlushing, reduceMotion, onFlushed }: Omit<ToiletFlushProps, "size">) {
+  const root = useRef<THREE.Group>(null);
+  const water = useRef<THREE.Mesh>(null);
+  const swirl = useRef<THREE.Group>(null);
+  const startedAt = useRef<number | null>(null);
+  const hasNotified = useRef(false);
+  const bowlGeometry = useMemo(() => new THREE.LatheGeometry(BOWL_PROFILE.map(([x, y]) => new THREE.Vector2(x, y)), 32), []);
 
   useEffect(() => {
-    if (!isFlushing) {
-      progress.setValue(0);
-      return;
-    }
-    const animation = Animated.timing(progress, {
-      toValue: 1,
-      duration: reduceMotion ? 400 : FLUSH_DURATION_MS,
-      easing: Easing.inOut(Easing.quad),
-      useNativeDriver: true,
-    });
-    animation.start(({ finished }) => {
-      if (finished) onFlushed();
-    });
-    return () => animation.stop();
-  }, [isFlushing, reduceMotion, onFlushed, progress]);
+    startedAt.current = null;
+    hasNotified.current = false;
+  }, [isFlushing]);
 
-  const spin = progress.interpolate({ inputRange: [0, 1], outputRange: ["0deg", `${-360 * SWIRL_TURNS}deg`] });
-  const swirlScale = progress.interpolate({ inputRange: [0, 0.8, 1], outputRange: [1, 0.6, 0] });
-  const shakeRange = Array.from({ length: SHAKE_STEPS + 1 }, (_, i) => i / SHAKE_STEPS);
-  const shakeX = progress.interpolate({
-    inputRange: shakeRange,
-    outputRange: shakeRange.map((_, i) => (i % 2 === 0 || i === SHAKE_STEPS ? 0 : i % 4 === 1 ? SHAKE_PX : -SHAKE_PX)),
+  useFrame((state) => {
+    const group = root.current;
+    if (!group) return;
+    const now = state.clock.elapsedTime * 1000;
+    let progress = 0;
+    if (isFlushing) {
+      startedAt.current ??= now;
+      progress = flushProgress(now - startedAt.current, reduceMotion ? REDUCED_FLUSH_DURATION_MS : FLUSH_DURATION_MS);
+      if (progress >= 1 && !hasNotified.current) {
+        hasNotified.current = true;
+        onFlushed();
+      }
+    }
+    // 待機中はゆっくり左右に首を振るだけ。流している間は揺れに任せる。
+    group.rotation.y = reduceMotion ? 0 : isFlushing ? 0 : Math.sin(now / 900) * 0.25;
+    group.position.x = reduceMotion || !isFlushing ? 0 : shakeOffset(progress);
+    if (water.current) water.current.scale.y = Math.max(0.001, waterLevel(progress));
+    if (swirl.current) {
+      swirl.current.rotation.y = reduceMotion ? 0 : swirlAngle(progress);
+      swirl.current.visible = isFlushing;
+      swirl.current.scale.setScalar(Math.max(0.001, 1 - progress * 0.9));
+    }
   });
 
-  const tankWidth = size * 0.5;
-  const bowlWidth = size * 0.9;
-  const bowlHeight = size * 0.5;
-
   return (
-    <Animated.View
-      accessibilityRole="image"
-      style={[styles.root, { width: size, height: size }, !reduceMotion && { transform: [{ translateX: shakeX }] }]}
-    >
-      <View style={[styles.tank, { width: tankWidth, height: size * 0.32 }]}>
-        <View style={styles.lever} />
-      </View>
-      <View style={[styles.bowl, { width: bowlWidth, height: bowlHeight }]}>
-        <View style={[styles.water, { width: bowlWidth * 0.78, height: bowlHeight * 0.62 }]}>
-          <Animated.View style={reduceMotion ? undefined : { transform: [{ rotate: spin }, { scale: swirlScale }] }}>
-            <Ionicons name="sync" size={size * 0.28} color={colors.sky} />
-          </Animated.View>
-        </View>
-      </View>
-      <View style={[styles.base, { width: size * 0.4, height: size * 0.12 }]} />
-    </Animated.View>
+    <group ref={root}>
+      <mesh position={[0, 0.2, 0]}>
+        <cylinderGeometry args={[0.5, 0.62, 0.4, 32]} />
+        <meshStandardMaterial color={PORCELAIN} roughness={0.35} />
+      </mesh>
+      <mesh geometry={bowlGeometry} position={[0, 0.4, 0]}>
+        <meshStandardMaterial color={PORCELAIN} roughness={0.3} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 1.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.88, 0.08, 16, 48]} />
+        <meshStandardMaterial color={PORCELAIN} roughness={0.3} />
+      </mesh>
+      <mesh ref={water} position={[0, 1.08, 0]}>
+        <cylinderGeometry args={[0.78, 0.78, 0.1, 32]} />
+        <meshStandardMaterial color={WATER} roughness={0.15} />
+      </mesh>
+      <group ref={swirl} position={[0, 1.15, 0]}>
+        {Array.from({ length: SWIRL_DOT_COUNT }, (_, i) => {
+          const angle = (i / SWIRL_DOT_COUNT) * Math.PI * 2;
+          return (
+            <mesh key={i} position={[Math.cos(angle) * SWIRL_RADIUS, 0, Math.sin(angle) * SWIRL_RADIUS]}>
+              <sphereGeometry args={[0.09, 12, 12]} />
+              <meshStandardMaterial color="#ffffff" />
+            </mesh>
+          );
+        })}
+      </group>
+      <mesh position={[0, 1.75, -0.8]}>
+        <boxGeometry args={[1.5, 1.0, 0.5]} />
+        <meshStandardMaterial color={PORCELAIN} roughness={0.35} />
+      </mesh>
+      <mesh position={[0.5, 2.3, -0.8]}>
+        <boxGeometry args={[0.4, 0.1, 0.2]} />
+        <meshStandardMaterial color="#f5b81c" />
+      </mesh>
+    </group>
+  );
+}
+
+export function ToiletFlush({ size, ...toiletProps }: ToiletFlushProps) {
+  return (
+    <View pointerEvents="none" style={{ width: size, height: size }} accessibilityRole="image">
+      <Canvas camera={{ position: [0, 2.4, 6], fov: 32 }} gl={{ antialias: true, alpha: true }} style={styles.canvas} onCreated={({ camera }) => camera.lookAt(0, 1.3, 0)}>
+        <ambientLight intensity={1.1} />
+        <hemisphereLight args={["#e8f2ff", "#8a7f76", 0.5]} />
+        <directionalLight position={[2, 4, 6]} intensity={1.4} />
+        <Toilet {...toiletProps} />
+      </Canvas>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { alignItems: "center", justifyContent: "flex-end" },
-  tank: {
-    backgroundColor: colors.paper,
-    borderRadius: radius.card / 2,
-    borderWidth: borderWidth.bubble,
-    borderColor: colors.sky,
-    alignItems: "flex-end",
-    padding: 6,
-  },
-  lever: { width: 18, height: 8, borderRadius: 4, backgroundColor: colors.gold },
-  bowl: {
-    marginTop: -6,
-    backgroundColor: colors.paper,
-    borderWidth: borderWidth.bubble,
-    borderColor: colors.sky,
-    borderTopLeftRadius: radius.card,
-    borderTopRightRadius: radius.card,
-    borderBottomLeftRadius: radius.pill,
-    borderBottomRightRadius: radius.pill,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  water: {
-    backgroundColor: colors.skySoft,
-    borderRadius: radius.pill,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  base: { backgroundColor: colors.paper, borderWidth: borderWidth.bubble, borderColor: colors.sky, borderRadius: radius.card / 2 },
+  canvas: { flex: 1, backgroundColor: "transparent" },
 });
