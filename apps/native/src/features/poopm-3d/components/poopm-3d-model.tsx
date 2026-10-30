@@ -44,6 +44,9 @@ export type Poopm3DModelProps = {
   position?: [number, number, number];
   scale?: number;
   onMotionFinished?: (name: Poopm3DBattleMotion) => void;
+  // GLB の読み込み完了（初回描画できる状態）と失敗の通知。呼び出し側が 2D へ退避するために使う。
+  onReady?: () => void;
+  onLoadError?: (error: unknown) => void;
 };
 
 function materialsOf(mesh: THREE.Mesh): THREE.Material[] {
@@ -67,14 +70,17 @@ function cloneMaterials(mesh: THREE.Mesh) {
 }
 
 // loadGlb は Promise なので Suspense の代わりに state で受ける。キャッシュ済みなら即解決する。
-function useAsync<T>(load: () => Promise<T>, deps: readonly unknown[]): T | undefined {
+function useAsync<T>(load: () => Promise<T>, deps: readonly unknown[], onError?: (error: unknown) => void): T | undefined {
   const [value, setValue] = useState<T>();
   useEffect(() => {
     let alive = true;
     setValue(undefined);
     load()
       .then((v) => alive && setValue(v))
-      .catch((e) => console.warn("[poopm-3d] 読み込みに失敗:", e));
+      .catch((e) => {
+        console.warn("[poopm-3d] 読み込みに失敗:", e);
+        if (alive) onError?.(e);
+      });
     return () => {
       alive = false;
     };
@@ -84,8 +90,8 @@ function useAsync<T>(load: () => Promise<T>, deps: readonly unknown[]): T | unde
 }
 
 export function Poopm3DModel(props: Poopm3DModelProps) {
-  const base = useAsync(() => loadGlb(poopm3DBaseGlb()), []);
-  const head = useAsync(() => loadGlb(poopm3DHeadVarGlb(props.appearance.head)), [props.appearance.head]);
+  const base = useAsync(() => loadGlb(poopm3DBaseGlb()), [], props.onLoadError);
+  const head = useAsync(() => loadGlb(poopm3DHeadVarGlb(props.appearance.head)), [props.appearance.head], props.onLoadError);
   if (!base || !head) return null;
   return <LoadedModel {...props} base={base} headGltf={head} />;
 }
@@ -98,6 +104,7 @@ function LoadedModel({
   position = [0, 0, 0],
   scale = 1,
   onMotionFinished,
+  onReady,
   base,
   headGltf,
 }: Poopm3DModelProps & { base: GLTF; headGltf: GLTF }) {
@@ -159,6 +166,12 @@ function LoadedModel({
   }, [cloned, clonedHead, headMount]);
 
   const mixer = useMemo(() => new THREE.AnimationMixer(cloned), [cloned]);
+
+  useEffect(() => {
+    onReady?.();
+    // 読み込み完了の通知は 1 回でよい（モデルが差し替わるたびに呼び直す）。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloned]);
 
   // 頭バリアントのドームも poopm_body マテリアルなので同じ色を書き込む。
   useEffect(() => {
