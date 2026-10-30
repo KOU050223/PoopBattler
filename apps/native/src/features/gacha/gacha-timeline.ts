@@ -18,9 +18,11 @@ export const DROP_CAMERA: CameraPose = { distance: 3.4, elevationDeg: 58 };
 export const WIDE_CAMERA: CameraPose = { distance: 9.5, elevationDeg: 24 };
 export const RESULT_CAMERA: CameraPose = { distance: 5.6, elevationDeg: 20 };
 
-export const SPIN_TURNS = 10;
+// 回転は最後ほど速い。総回転数を増やしつつ、序盤はほとんど回らないようにする。
+export const SPIN_TURNS = 12;
 export const MIN_TOILET_SCALE = 0.22;
-const SPIN_EASE_POWER = 2.4;
+// 回り始めが遅いほど、先に引いたカメラの後から回転が立ち上がる。
+const SPIN_EASE_POWER = 3.2;
 const SWIRL_TURNS = 3;
 // 水が引き始める進み具合。それまでは渦の回転だけ。
 const DRAIN_START = 0.35;
@@ -44,6 +46,7 @@ export type TimelineFrame = {
 
 const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
 const easeInQuad = (t: number) => t * t;
+const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
 const easeInPow = (t: number, power: number) => t ** power;
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
 const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - 2 ** (-10 * t));
@@ -85,7 +88,8 @@ export function frameAt(elapsedMs: number | null, isReduced = false): TimelineFr
     const p = (elapsed - DROP_MS) / SPIN_MS;
     return {
       phase: "spin",
-      camera: lerpCamera(DROP_CAMERA, WIDE_CAMERA, easeInOutCubic(p)),
+      // カメラは先に勢いよく引き、近距離でタンクが鉢に重なって回り込む場面を短くする。
+      camera: lerpCamera(DROP_CAMERA, WIDE_CAMERA, easeOutCubic(p)),
       toiletYaw: Math.PI * 2 * SPIN_TURNS * easeInPow(p, SPIN_EASE_POWER),
       toiletScale: lerp(1, MIN_TOILET_SCALE, easeInOutCubic(p)),
       stoneProgress: null,

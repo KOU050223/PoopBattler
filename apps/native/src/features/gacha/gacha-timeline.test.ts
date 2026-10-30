@@ -59,6 +59,15 @@ describe("frameAt（通常）", () => {
     expect(delta(SPIN_MS - 200)).toBeGreaterThan(delta(200));
   });
 
+  it("回転が始まって最初の 0.3 秒では、まだ四分の一回転も回らない", () => {
+    expect(frameAt(DROP_MS + 300).toiletYaw).toBeLessThan(Math.PI / 2);
+  });
+
+  it("便器が四分の一回転するころには、カメラは大きく引いている", () => {
+    const quarterTurn = Array.from({ length: SPIN_MS }, (_, ms) => frameAt(DROP_MS + ms)).find((f) => f.toiletYaw >= Math.PI / 2);
+    expect(quarterTurn?.camera.distance).toBeGreaterThan((DROP_CAMERA.distance + WIDE_CAMERA.distance) / 2);
+  });
+
   it("回転の総量はちょうど整数回転で、止まると正面を向く", () => {
     expect(frameAt(SPIN_END - 0.001).toiletYaw / (Math.PI * 2)).toBeCloseTo(SPIN_TURNS, 2);
     expect(frameAt(SPIN_END).toiletYaw).toBe(0);
