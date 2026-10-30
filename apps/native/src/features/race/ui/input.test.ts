@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   HURDLE_TAP_MAX_DISTANCE_M,
   IDLE,
-  SWIPE_THRESHOLD_PX,
+  SWIPE_AXIS_DOMINANCE,
+  SWIPE_MIN_DISTANCE_DP,
+  SWIPE_WIDTH_RATIO,
   shouldAcceptHurdleTap,
+  swipeThresholdPx,
   touchCancel,
   touchDown,
   touchUp,
@@ -12,8 +15,9 @@ import {
 const WIDTH = 400;
 const START = { x: 200, y: 500 };
 const press = (x = START.x, y = START.y, atMs = 1000) => touchDown(IDLE, { x, y, width: WIDTH, atMs });
-const release = (dx: number, dy: number) =>
-  touchUp(press().phase, { x: START.x + dx, y: START.y + dy });
+const THRESHOLD = swipeThresholdPx(WIDTH);
+const release = (dx: number, dy: number, width = WIDTH) =>
+  touchUp(press().phase, { x: START.x + dx, y: START.y + dy, width });
 const swipesOf = (commands: { type: string }[]) => commands.filter((command) => command.type === "swipe");
 
 describe("tap", () => {
@@ -53,26 +57,70 @@ describe("swipe", () => {
     ["left", -1, 0],
     ["right", 1, 0],
   ] as const)("しきい値を超えて動かして離すと %s のスワイプ", (dir, sx, sy) => {
-    const amount = SWIPE_THRESHOLD_PX + 0.01;
+    const amount = THRESHOLD + 0.01;
     expect(swipesOf(release(sx * amount, sy * amount).commands)).toEqual([{ type: "swipe", dir }]);
   });
 
   it("しきい値ちょうどの移動ではスワイプにならない", () => {
-    expect(swipesOf(release(SWIPE_THRESHOLD_PX, 0).commands)).toHaveLength(0);
+    expect(swipesOf(release(THRESHOLD, 0).commands)).toHaveLength(0);
   });
 
   it("しきい値を0.01px超えるとスワイプになる", () => {
-    expect(swipesOf(release(SWIPE_THRESHOLD_PX + 0.01, 0).commands)).toHaveLength(1);
+    expect(swipesOf(release(THRESHOLD + 0.01, 0).commands)).toHaveLength(1);
   });
 
   it("縦横に動かしたときは移動量の大きい軸で向きが決まる", () => {
-    expect(swipesOf(release(20, -40).commands)).toEqual([{ type: "swipe", dir: "up" }]);
+    expect(swipesOf(release(20, -80).commands)).toEqual([{ type: "swipe", dir: "up" }]);
+  });
+
+  it("試作の28pxでは届かない（実機で指がずれただけで通っていた距離）", () => {
+    expect(swipesOf(release(28.01, 0).commands)).toHaveLength(0);
+  });
+});
+
+describe("swipe の斜め判定", () => {
+  const major = THRESHOLD + 10;
+
+  it("大きい軸が小さい軸のちょうど倍率分なら向きが定まりスワイプになる", () => {
+    expect(swipesOf(release(major, major / SWIPE_AXIS_DOMINANCE).commands)).toEqual([{ type: "swipe", dir: "right" }]);
+  });
+
+  it("大きい軸が倍率に少し足りない斜めは無視する", () => {
+    expect(swipesOf(release(major, major / SWIPE_AXIS_DOMINANCE + 0.01).commands)).toHaveLength(0);
+  });
+
+  it("ほぼ45度の斜めは無視する", () => {
+    expect(swipesOf(release(major, -major).commands)).toHaveLength(0);
+  });
+
+  it("斜めを無視しても長押しは0に戻る", () => {
+    expect(release(major, major).commands).toEqual([{ type: "hold", dir: 0 }]);
+  });
+});
+
+describe("swipeThresholdPx", () => {
+  it("狭い画面では最低値を使う", () => {
+    expect(swipeThresholdPx(200)).toBe(SWIPE_MIN_DISTANCE_DP);
+  });
+
+  it("広い画面では幅に比例して大きくなる", () => {
+    expect(swipeThresholdPx(1000)).toBe(1000 * SWIPE_WIDTH_RATIO);
+  });
+
+  it("幅が0（レイアウト前）でも最低値を下回らない", () => {
+    expect(swipeThresholdPx(0)).toBe(SWIPE_MIN_DISTANCE_DP);
+  });
+
+  it("画面幅が広いと同じ移動量でもスワイプにならない", () => {
+    const distance = swipeThresholdPx(400) + 1;
+    expect(swipesOf(release(distance, 0, 400).commands)).toHaveLength(1);
+    expect(swipesOf(release(distance, 0, 1000).commands)).toHaveLength(0);
   });
 });
 
 describe("touchUp", () => {
   it("指を置いていない状態で離しても何も出ない", () => {
-    expect(touchUp(IDLE, { x: 0, y: 0 }).commands).toEqual([]);
+    expect(touchUp(IDLE, { x: 0, y: 0, width: WIDTH }).commands).toEqual([]);
   });
 });
 

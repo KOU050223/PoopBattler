@@ -80,7 +80,7 @@ export function useRaceRun(options: SessionOptions, onOver: (result: RaceResultV
     },
     [accept],
   );
-  const onTouchUp = useCallback((x: number, y: number) => accept(touchUp(phaseRef.current, { x, y })), [accept]);
+  const onTouchUp = useCallback((x: number, y: number) => accept(touchUp(phaseRef.current, { x, y, width: viewportRef.current.width })), [accept]);
   const onTouchCancel = useCallback(() => accept(touchCancel(phaseRef.current)), [accept]);
   const onLayout = useCallback((size: { width: number; height: number }) => {
     viewportRef.current = size;
