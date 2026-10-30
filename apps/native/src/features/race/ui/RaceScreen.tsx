@@ -1,5 +1,5 @@
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -131,22 +131,29 @@ function RaceView({ options, onOver, onQuit }: { options: SessionOptions; onOver
     };
   }, []);
 
+  // worklet は掴んだ値を UI スレッドへ凍結して渡す。run をそのまま掴むと raceRef・cameraRef 経由でレース状態が凍結され、
+  // JS ループが毎フレーム書き換えるたびに警告が出るので、触る3つの関数だけを取り出して掴ませる
+  const { onTouchDown, onTouchUp, onTouchCancel } = run;
   // 判定は JS 側（input.ts）に集約し、worklet からは座標だけ渡す。レース画面全体で受けるので、パネルにはタッチを通さない
-  const gesture = Gesture.Manual()
-    .onTouchesDown((event, stateManager) => {
-      const touch = event.changedTouches[0];
-      stateManager.activate();
-      scheduleOnRN(run.onTouchDown, touch.x, touch.y);
-    })
-    .onTouchesUp((event, stateManager) => {
-      const touch = event.changedTouches[0];
-      stateManager.end();
-      scheduleOnRN(run.onTouchUp, touch.x, touch.y);
-    })
-    .onTouchesCancelled((_event, stateManager) => {
-      stateManager.fail();
-      scheduleOnRN(run.onTouchCancel);
-    });
+  const gesture = useMemo(
+    () =>
+      Gesture.Manual()
+        .onTouchesDown((event, stateManager) => {
+          const touch = event.changedTouches[0];
+          stateManager.activate();
+          scheduleOnRN(onTouchDown, touch.x, touch.y);
+        })
+        .onTouchesUp((event, stateManager) => {
+          const touch = event.changedTouches[0];
+          stateManager.end();
+          scheduleOnRN(onTouchUp, touch.x, touch.y);
+        })
+        .onTouchesCancelled((_event, stateManager) => {
+          stateManager.fail();
+          scheduleOnRN(onTouchCancel);
+        }),
+    [onTouchDown, onTouchUp, onTouchCancel],
+  );
 
   return (
     <GestureHandlerRootView style={styles.race}>
