@@ -38,7 +38,11 @@ const SWIRL_DOT_SIZE = 0.009;
 const SWIRL_LIFT = 0.006;
 // フタは隠す。開けて立てると、タンクの手前に同じ色の板が重なって「便器が二つ」に見えるため。
 const LID_NODE = "Group";
-const HANDLE_NODE = "toiletSquare_1";
+// この GLB は便器の本体とレバーを、2 つのノードにそれぞれ丸ごと持っている（同じ位置に二重）。
+// レバーを動かすノードを丸ごと回すと、二つ目の便器が重なって回ってしまうため、
+// レバーのメッシュだけを軸に入れ、重複するメッシュは隠す。
+const HANDLE_MESH = "toiletSquare_3";
+const DUPLICATE_MESHES = ["toiletSquare_2_1", "toiletSquare_3_1"];
 const HANDLE_CENTER = { x: -0.044, y: 0.386, z: 0.302 };
 const HANDLE_PRESS_RAD = 0.5;
 // 注視点は便器の中ほど。縮むときは便器と一緒に下がる。
@@ -105,7 +109,11 @@ function Toilet({ isFlushing, reduceMotion, onSlam, onFlushed }: Omit<ToiletFlus
     if (!gltf) return null;
     const copy = gltf.scene.clone(true);
     // レバーは頂点が原点基準で入っているため、軸の位置に置いた空のグループへ入れ替えて回す。
-    const handle = copy.getObjectByName(HANDLE_NODE);
+    const handle = copy.getObjectByName(HANDLE_MESH);
+    for (const name of DUPLICATE_MESHES) {
+      const duplicate = copy.getObjectByName(name);
+      if (duplicate) duplicate.visible = false;
+    }
     const lid = copy.getObjectByName(LID_NODE);
     if (lid) lid.visible = false;
     if (handle) withPivot(handle, HANDLE_CENTER, "HandlePivot");
