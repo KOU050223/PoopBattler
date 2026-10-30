@@ -1,8 +1,8 @@
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Animated, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors, fontFamily, fontSize, spacing } from "@/design";
@@ -14,14 +14,16 @@ import { useReduceMotion } from "@/features/poopm-3d/use-reduce-motion";
 import type { GachaItem } from "../gacha-pool";
 import { DUPLICATE_REFUND, PULL_COST } from "../gacha-state";
 import { useGacha } from "../use-gacha";
+import { Confetti } from "./confetti";
 import { ToiletFlush } from "./toilet-flush";
 
 type Phase = "idle" | "flushing" | "revealed";
 type Reveal = { item: GachaItem; isDuplicate: boolean };
 
 const MAX_CONTENT_WIDTH = 420;
-const TOILET_RATIO = 0.62;
-const STAGE_RATIO = 0.7;
+const REVEAL_RATIO = 0.8;
+const FLASH_PEAK_OPACITY = 0.9;
+const FLASH_MS = 380;
 
 export function GachaScreen() {
   const { t } = useTranslation();
@@ -31,9 +33,12 @@ export function GachaScreen() {
   const { state, isReady, pull } = useGacha();
   const [phase, setPhase] = useState<Phase>("idle");
   const [reveal, setReveal] = useState<Reveal>();
+  // 「もういっかい」で再演出するたびに紙吹雪を最初から降らせ直すためのキー。
+  const [pullCount, setPullCount] = useState(0);
   const [isShortOfStones, setIsShortOfStones] = useState(false);
 
-  const stageSize = Math.min(width, MAX_CONTENT_WIDTH) * TOILET_RATIO;
+  const stageSize = Math.min(width, MAX_CONTENT_WIDTH);
+  const flash = useRef(new Animated.Value(0)).current;
   const canFlush = isReady && phase !== "flushing";
 
   const onFlush = useCallback(async () => {
@@ -44,8 +49,17 @@ export function GachaScreen() {
       return;
     }
     setReveal({ item: result.item, isDuplicate: result.isDuplicate });
+    setPullCount((count) => count + 1);
     setPhase("flushing");
   }, [pull]);
+
+  // 「デン！」: 白くフラッシュさせ、強く振動させる。
+  const onSlam = useCallback(() => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+    if (reduceMotion) return;
+    flash.setValue(FLASH_PEAK_OPACITY);
+    Animated.timing(flash, { toValue: 0, duration: FLASH_MS, useNativeDriver: true }).start();
+  }, [flash, reduceMotion]);
 
   const onFlushed = useCallback(() => {
     setPhase("revealed");
@@ -62,9 +76,15 @@ export function GachaScreen() {
 
         <View style={styles.stage}>
           {phase === "revealed" && reveal ? (
-            <RevealView reveal={reveal} reduceMotion={reduceMotion} size={stageSize * STAGE_RATIO + stageSize * 0.3} />
+            <RevealView reveal={reveal} reduceMotion={reduceMotion} size={stageSize * REVEAL_RATIO} />
           ) : (
-            <ToiletFlush size={stageSize} isFlushing={phase === "flushing"} reduceMotion={reduceMotion} onFlushed={onFlushed} />
+            <ToiletFlush
+              size={stageSize}
+              isFlushing={phase === "flushing"}
+              reduceMotion={reduceMotion}
+              onSlam={onSlam}
+              onFlushed={onFlushed}
+            />
           )}
           {phase === "flushing" ? <Text style={styles.note}>{t("Gacha.flushing")}</Text> : null}
           {isShortOfStones ? <Text style={styles.warning}>{t("Gacha.noStones")}</Text> : null}
@@ -82,6 +102,8 @@ export function GachaScreen() {
           <BubbleButton label={t("Gacha.close")} onPress={() => router.back()} />
         </View>
       </View>
+      <Animated.View pointerEvents="none" style={[styles.flash, { opacity: flash }]} />
+      {phase === "revealed" && !reduceMotion ? <Confetti key={pullCount} /> : null}
     </SceneBackground>
   );
 }
@@ -116,6 +138,7 @@ const styles = StyleSheet.create({
   actions: { alignItems: "center", gap: spacing.md },
   note: { fontFamily: fontFamily.jaMedium, fontSize: fontSize.childMin, color: colors.inkSoft, textAlign: "center" },
   warning: { fontFamily: fontFamily.jaBlack, fontSize: fontSize.childMin, color: colors.ink, textAlign: "center" },
+  flash: { ...StyleSheet.absoluteFill, backgroundColor: colors.paper },
   reveal: { alignItems: "center", gap: spacing.sm },
   revealHeading: { fontFamily: fontFamily.jaBlack, fontSize: fontSize.childBase, color: colors.goldEdge },
   revealName: { fontFamily: fontFamily.jaBlack, fontSize: fontSize.childTitle, color: colors.ink },

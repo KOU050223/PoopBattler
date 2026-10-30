@@ -7,19 +7,14 @@ import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { loadGlb } from "@/features/poopm-3d/poopm-3d-glb-loader";
 
 import { TOILET_GLB_MODULE } from "../toilet-glb-module";
-import {
-  FLUSH_DURATION_MS,
-  REDUCED_FLUSH_DURATION_MS,
-  flushProgress,
-  shakeOffset,
-  swirlAngle,
-  waterLevel,
-} from "../toilet-flush-motion";
+import { IDLE_CAMERA, cameraPosition, frameAt, swirlAngle, waterLevel, type Phase } from "../gacha-timeline";
 
 type ToiletFlushProps = {
   isFlushing: boolean;
   /** 「視差効果を減らす」がオンなら揺れと回転を止め、待ち時間だけ残す。 */
   reduceMotion: boolean;
+  /** 回転が止まってカメラが寄る瞬間（「デン！」）。フラッシュや振動を重ねる。 */
+  onSlam: () => void;
   onFlushed: () => void;
   size: number;
 };
@@ -37,6 +32,13 @@ const SWIRL_DOT_SIZE = 0.022;
 // フタは蝶番（後ろ）を軸に、前を持ち上げて立てる。
 const LID_OPEN_RAD = -1.75;
 const HANDLE_PRESS_RAD = 0.5;
+// 注視点は便器の中ほど（モデル座標 × 拡大 / 2 あたり）。縮むときは便器と一緒に下がる。
+const TARGET_Y = 1.0;
+// 石は便器の真上に浮かび、押すと開口へ落ちる。
+const STONE_HOVER_Y = 0.65;
+const STONE_SIZE = 0.032;
+const STONE_BOB = 0.015;
+const GOLD = "#f5b81c";
 
 function useToiletGltf(): GLTF | undefined {
   const [gltf, setGltf] = useState<GLTF>();
@@ -52,13 +54,14 @@ function useToiletGltf(): GLTF | undefined {
   return gltf;
 }
 
-function Toilet({ isFlushing, reduceMotion, onFlushed }: Omit<ToiletFlushProps, "size">) {
+function Toilet({ isFlushing, reduceMotion, onSlam, onFlushed }: Omit<ToiletFlushProps, "size">) {
   const gltf = useToiletGltf();
   const root = useRef<THREE.Group>(null);
   const water = useRef<THREE.Mesh>(null);
   const swirl = useRef<THREE.Group>(null);
+  const stone = useRef<THREE.Mesh>(null);
   const startedAt = useRef<number | null>(null);
-  const hasNotified = useRef(false);
+  const lastPhase = useRef<Phase>("idle");
 
   const scene = useMemo(() => {
     if (!gltf) return null;
@@ -69,31 +72,48 @@ function Toilet({ isFlushing, reduceMotion, onFlushed }: Omit<ToiletFlushProps, 
 
   useEffect(() => {
     startedAt.current = null;
-    hasNotified.current = false;
+    lastPhase.current = "idle";
   }, [isFlushing]);
 
   useFrame((state) => {
     const group = root.current;
     if (!group) return;
     const now = state.clock.elapsedTime * 1000;
-    let progress = 0;
-    if (isFlushing) {
-      startedAt.current ??= now;
-      progress = flushProgress(now - startedAt.current, reduceMotion ? REDUCED_FLUSH_DURATION_MS : FLUSH_DURATION_MS);
-      if (progress >= 1 && !hasNotified.current) {
-        hasNotified.current = true;
-        onFlushed();
-      }
+    if (isFlushing) startedAt.current ??= now;
+    const elapsed = isFlushing && startedAt.current !== null ? now - startedAt.current : null;
+    const frame = frameAt(elapsed, reduceMotion);
+
+    if (frame.phase !== lastPhase.current) {
+      lastPhase.current = frame.phase;
+      if (frame.phase === "slam") onSlam();
+      if (frame.phase === "done") onFlushed();
     }
-    // 待機中はゆっくり左右に首を振るだけ。流している間は揺れに任せる。
-    group.rotation.y = reduceMotion || isFlushing ? 0 : Math.sin(now / 900) * 0.25;
-    group.position.x = reduceMotion || !isFlushing ? 0 : shakeOffset(progress);
-    scene?.getObjectByName("ToiletFlushHandle")?.rotation.set(0, 0, isFlushing ? HANDLE_PRESS_RAD : 0);
-    if (water.current) water.current.scale.y = Math.max(0.001, waterLevel(progress));
+
+    // 待機中だけ、ゆっくり首を振って「押して」と誘う。
+    const sway = reduceMotion || frame.phase !== "idle" ? 0 : Math.sin(now / 900) * 0.25;
+    group.rotation.y = frame.toiletYaw + sway;
+    group.scale.setScalar(frame.toiletScale);
+
+    const targetY = TARGET_Y * frame.toiletScale;
+    const [x, y, z] = cameraPosition(frame.camera, targetY);
+    state.camera.position.set(x, y, z);
+    state.camera.lookAt(0, targetY, 0);
+
+    scene?.getObjectByName("ToiletFlushHandle")?.rotation.set(0, 0, frame.isHandlePressed ? HANDLE_PRESS_RAD : 0);
+    if (water.current) water.current.scale.y = Math.max(0.001, waterLevel(frame.spinProgress));
     if (swirl.current) {
-      swirl.current.rotation.y = reduceMotion ? 0 : swirlAngle(progress);
-      swirl.current.visible = isFlushing;
-      swirl.current.scale.setScalar(Math.max(0.001, 1 - progress * 0.9));
+      swirl.current.rotation.y = reduceMotion ? 0 : swirlAngle(frame.spinProgress);
+      swirl.current.visible = frame.phase === "spin";
+      swirl.current.scale.setScalar(Math.max(0.001, 1 - frame.spinProgress * 0.9));
+    }
+    if (stone.current) {
+      const progress = frame.stoneProgress;
+      stone.current.visible = progress !== null;
+      if (progress !== null) {
+        const bob = frame.phase === "idle" ? Math.sin(now / 350) * STONE_BOB : 0;
+        stone.current.position.y = STONE_HOVER_Y + (BOWL_CENTER.y + 0.03 - STONE_HOVER_Y) * progress + bob;
+        stone.current.rotation.y = now / 400;
+      }
     }
   });
 
@@ -105,6 +125,10 @@ function Toilet({ isFlushing, reduceMotion, onFlushed }: Omit<ToiletFlushProps, 
         <mesh ref={water} position={[BOWL_CENTER.x, BOWL_CENTER.y, BOWL_CENTER.z]}>
           <cylinderGeometry args={[WATER_RADIUS, WATER_RADIUS, 0.02, 32]} />
           <meshStandardMaterial color={WATER} roughness={0.15} />
+        </mesh>
+        <mesh ref={stone} position={[BOWL_CENTER.x, STONE_HOVER_Y, BOWL_CENTER.z]}>
+          <octahedronGeometry args={[STONE_SIZE, 0]} />
+          <meshStandardMaterial color={GOLD} emissive={GOLD} emissiveIntensity={0.5} roughness={0.25} />
         </mesh>
         <group ref={swirl} position={[BOWL_CENTER.x, BOWL_CENTER.y + 0.02, BOWL_CENTER.z]}>
           {Array.from({ length: SWIRL_DOT_COUNT }, (_, i) => {
@@ -125,12 +149,7 @@ function Toilet({ isFlushing, reduceMotion, onFlushed }: Omit<ToiletFlushProps, 
 export function ToiletFlush({ size, ...toiletProps }: ToiletFlushProps) {
   return (
     <View pointerEvents="none" style={{ width: size, height: size }} accessibilityRole="image">
-      <Canvas
-        camera={{ position: [0, 2.2, 5], fov: 32 }}
-        gl={{ antialias: true, alpha: true }}
-        style={styles.canvas}
-        onCreated={({ camera }) => camera.lookAt(0, 1.0, 0)}
-      >
+      <Canvas camera={{ position: cameraPosition(IDLE_CAMERA, TARGET_Y), fov: 32 }} gl={{ antialias: true, alpha: true }} style={styles.canvas}>
         <ambientLight intensity={1.7} />
         <hemisphereLight args={["#e8f2ff", "#8a7f76", 0.5]} />
         <directionalLight position={[2, 4, 6]} intensity={1.4} />
