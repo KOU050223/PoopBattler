@@ -132,8 +132,8 @@ function RaceView({ options, onOver, onQuit }: { options: SessionOptions; onOver
   }, []);
 
   // worklet は掴んだ値を UI スレッドへ凍結して渡す。run をそのまま掴むと raceRef・cameraRef 経由でレース状態が凍結され、
-  // JS ループが毎フレーム書き換えるたびに警告が出るので、触る3つの関数だけを取り出して掴ませる
-  const { onTouchDown, onTouchUp, onTouchCancel } = run;
+  // JS ループが毎フレーム書き換えるたびに警告が出るので、触る4つの関数だけを取り出して掴ませる
+  const { onTouchDown, onTouchMove, onTouchUp, onTouchCancel } = run;
   // 判定は JS 側（input.ts）に集約し、worklet からは座標だけ渡す。レース画面全体で受けるので、パネルにはタッチを通さない
   const gesture = useMemo(
     () =>
@@ -142,6 +142,10 @@ function RaceView({ options, onOver, onQuit }: { options: SessionOptions; onOver
           const touch = event.changedTouches[0];
           stateManager.activate();
           scheduleOnRN(onTouchDown, touch.x, touch.y);
+        })
+        .onTouchesMove((event, _stateManager) => {
+          const touch = event.changedTouches[0];
+          scheduleOnRN(onTouchMove, touch.x, touch.y);
         })
         .onTouchesUp((event, stateManager) => {
           const touch = event.changedTouches[0];
@@ -152,7 +156,7 @@ function RaceView({ options, onOver, onQuit }: { options: SessionOptions; onOver
           stateManager.fail();
           scheduleOnRN(onTouchCancel);
         }),
-    [onTouchDown, onTouchUp, onTouchCancel],
+    [onTouchDown, onTouchMove, onTouchUp, onTouchCancel],
   );
 
   return (

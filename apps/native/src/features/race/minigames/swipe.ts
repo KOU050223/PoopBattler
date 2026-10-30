@@ -18,6 +18,8 @@ export interface SwipeState {
   /** 今の矢印が出た（シミュレーション）時刻 */
   arrowStartSec: number;
   results: number[];
+  /** 指を置いた時点の矢印の番号。スワイプは押した時の矢印にだけ効かせる（未設定か null なら今の矢印に効く） */
+  pressedArrowIndex?: number | null;
 }
 
 export function beginSwipe(rng: Rng, race: Race, startPerf: number): SwipeState {
@@ -28,6 +30,7 @@ export function beginSwipe(rng: Rng, race: Race, startPerf: number): SwipeState 
     arrowIndex: 0,
     arrowStartSec: race.time,
     results: [],
+    pressedArrowIndex: null,
   };
 }
 
@@ -52,8 +55,14 @@ function resolveArrow(state: SwipeState, race: Race, isCorrect: boolean, out: Mi
 
 export const isSwipeDone = (state: SwipeState) => state.arrowIndex >= state.arrows.length;
 
+export function pressSwipe(state: SwipeState): void {
+  state.pressedArrowIndex = state.arrowIndex;
+}
+
 export function swipeSwipe(state: SwipeState, dir: SwipeDir, race: Race, out: MinigameOutput): void {
   if (isSwipeDone(state)) return;
+  // 押している間にその矢印が解決済み（時間切れ）なら、次の矢印に流さず捨てる
+  if (state.pressedArrowIndex != null && state.pressedArrowIndex !== state.arrowIndex) return;
   resolveArrow(state, race, dir === state.arrows[state.arrowIndex], out);
 }
 

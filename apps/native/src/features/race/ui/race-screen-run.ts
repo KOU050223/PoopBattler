@@ -10,7 +10,7 @@ import { createRng } from "../rng";
 import { createSession, runFrame } from "../session";
 import { projectToScreen } from "../three/project";
 import type { Race } from "../types";
-import { HURDLE_TAP_MAX_DISTANCE_M, IDLE, touchCancel, touchDown, touchUp, type InputCommand, type TouchPhase, type TouchStep } from "./input";
+import { HURDLE_TAP_MAX_DISTANCE_M, IDLE, touchCancel, touchDown, touchMove, touchUp, type InputCommand, type TouchPhase, type TouchStep } from "./input";
 import { placeRivalLabel, type RivalLabelPlacement } from "./overlay-state";
 import type { MiniGamePanelView } from "./MiniGamePanel";
 import { cameraInputOf, RIVAL_LABEL_HEIGHT_M, triggerOf } from "./race-screen-camera";
@@ -40,6 +40,7 @@ export interface RaceRun {
   rival: { name: string; placement: ReturnType<typeof useSharedValue<RivalLabelPlacement>> } | null;
   onLayout: (size: { width: number; height: number }) => void;
   onTouchDown: (x: number, y: number) => void;
+  onTouchMove: (x: number, y: number) => void;
   onTouchUp: (x: number, y: number) => void;
   onTouchCancel: () => void;
 }
@@ -81,6 +82,7 @@ export function useRaceRun(options: SessionOptions, onOver: (result: RaceResultV
     },
     [accept],
   );
+  const onTouchMove = useCallback((x: number, y: number) => accept(touchMove(phaseRef.current, { x, y, width: viewportRef.current.width })), [accept]);
   const onTouchUp = useCallback((x: number, y: number) => accept(touchUp(phaseRef.current, { x, y, width: viewportRef.current.width })), [accept]);
   const onTouchCancel = useCallback(() => accept(touchCancel(phaseRef.current)), [accept]);
   const onLayout = useCallback((size: { width: number; height: number }) => {
@@ -206,5 +208,5 @@ export function useRaceRun(options: SessionOptions, onOver: (result: RaceResultV
 
   const rival = rivalIndex === null ? null : { name: options.runnerNames[rivalIndex] ?? "", placement: rivalPlacement };
 
-  return { raceRef, cameraRef, overlay, rank, total: RUNNER_COUNT, panel, rival, onLayout, onTouchDown, onTouchUp, onTouchCancel };
+  return { raceRef, cameraRef, overlay, rank, total: RUNNER_COUNT, panel, rival, onLayout, onTouchDown, onTouchMove, onTouchUp, onTouchCancel };
 }

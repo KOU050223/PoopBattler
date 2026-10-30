@@ -9,6 +9,7 @@ import {
   swipeThresholdPx,
   touchCancel,
   touchDown,
+  touchMove,
   touchUp,
 } from "./input";
 
@@ -141,5 +142,56 @@ describe("shouldAcceptHurdleTap", () => {
 
   it("次のハードルまで8.01mのタップは無視する", () => {
     expect(shouldAcceptHurdleTap(8.01)).toBe(false);
+  });
+});
+
+describe("touchMove（動かした瞬間のスワイプ）", () => {
+  const pressed = () => press().phase;
+  const move = (phase: ReturnType<typeof pressed>, dx: number, dy: number) =>
+    touchMove(phase, { x: START.x + dx, y: START.y + dy, width: WIDTH });
+
+  it("しきい値を初めて超えて動かした瞬間にスワイプが1回出る", () => {
+    expect(move(pressed(), THRESHOLD + 0.01, 0).commands).toEqual([{ type: "swipe", dir: "right" }]);
+  });
+
+  it("しきい値に届かない動きでは何も出ず、押した状態のまま", () => {
+    const step = move(pressed(), THRESHOLD, 0);
+    expect(step.commands).toEqual([]);
+    expect(step.phase).toEqual(pressed());
+  });
+
+  it("斜めの動きでは出ない", () => {
+    expect(move(pressed(), THRESHOLD + 10, THRESHOLD + 10).commands).toEqual([]);
+  });
+
+  it("出したあとに動かし続けても2回目は出ない", () => {
+    const first = move(pressed(), THRESHOLD + 1, 0);
+    expect(move(first.phase, THRESHOLD + 50, 0).commands).toEqual([]);
+  });
+
+  it("出したあとに逆向きへ動かしても2回目は出ない", () => {
+    const first = move(pressed(), THRESHOLD + 1, 0);
+    expect(swipesOf(move(first.phase, -(THRESHOLD + 50), 0).commands)).toHaveLength(0);
+  });
+
+  it("出したあとに離してもスワイプは出ず、長押しだけ0に戻る", () => {
+    const first = move(pressed(), THRESHOLD + 1, 0);
+    const up = touchUp(first.phase, { x: START.x + THRESHOLD + 50, y: START.y, width: WIDTH });
+    expect(up.commands).toEqual([{ type: "hold", dir: 0 }]);
+  });
+
+  it("移動を取りこぼしても、離したときに条件を満たしていればスワイプが出る", () => {
+    expect(swipesOf(release(THRESHOLD + 1, 0).commands)).toEqual([{ type: "swipe", dir: "right" }]);
+  });
+
+  it("次に押し直せばまたスワイプが出せる", () => {
+    const first = move(pressed(), THRESHOLD + 1, 0);
+    const up = touchUp(first.phase, { x: START.x, y: START.y, width: WIDTH });
+    expect(move(press().phase, THRESHOLD + 1, 0).commands).toHaveLength(1);
+    expect(up.phase).toEqual(IDLE);
+  });
+
+  it("指を置いていない状態で動かしても何も出ない", () => {
+    expect(touchMove(IDLE, { x: 999, y: 999, width: WIDTH }).commands).toEqual([]);
   });
 });
