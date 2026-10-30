@@ -7,6 +7,9 @@ import { Poopm3DSolo } from "@/features/poopm-3d/components/poopm-3d-solo";
 
 // PoopmSprite は幅 size に対して高さ size * 260 / 207。3D も同じ箱に収めて入れ替え時にレイアウトが動かないようにする。
 const SPRITE_HEIGHT_RATIO = 260 / 207;
+// 足元の接地影は足裏より手前（画面の下側）へ広がるので、箱ぴったりだとキャンバス端で切れる。
+// 描画領域だけ広げる（モデルの見かけの大きさは変わらない）。
+const SHADOW_OVERSCAN = 1.35;
 const IDLE_MOTION = { name: "idle", nonce: 0 } as const;
 
 // GL コンテキストの生成失敗など描画中の例外で、ホーム全体を落とさず 2D に戻すための境界。
@@ -41,7 +44,7 @@ export function HomeCompanion({ appearance, size }: { appearance: PoopmAppearanc
       {!hasFailed && (
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, !isReady && styles.hidden]}>
           <FallbackBoundary onError={handleFail}>
-            <Poopm3DSolo appearance={appearance} motion={IDLE_MOTION} onReady={handleReady} onLoadError={handleFail} />
+            <Poopm3DSolo appearance={appearance} motion={IDLE_MOTION} overscan={SHADOW_OVERSCAN} onReady={handleReady} onLoadError={handleFail} />
           </FallbackBoundary>
         </View>
       )}
