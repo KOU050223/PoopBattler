@@ -1,5 +1,5 @@
 // 演出を「経過時間 → その瞬間の状態」の純粋関数にする。three に依存させず、テストで時間配分の形を固定する。
-// 流れ: 上アングルで石が浮く → 石が落ちる(drop) → 加速回転しながら小さくなる(spin, ドラムロール)
+// 流れ: 上アングルで石が浮く → 石が落ちる(drop、開口へ寄る) → 加速回転しながら小さくなる(spin, ドラムロール)
 //       → 止まってカメラが寄る(slam, デン！) → 結果(done)。
 
 const DEG_TO_RAD = Math.PI / 180;
@@ -12,7 +12,9 @@ export const TOTAL_MS = DROP_MS + SPIN_MS + SLAM_MS;
 export const REDUCED_MS = 400;
 
 export type CameraPose = { distance: number; elevationDeg: number };
-export const IDLE_CAMERA: CameraPose = { distance: 6.4, elevationDeg: 62 };
+export const IDLE_CAMERA: CameraPose = { distance: 4.6, elevationDeg: 60 };
+// 石が落ちる間に開口へ寄る。ここから回転で一気に引く落差が「ドラムロール」の勢いになる。
+export const DROP_CAMERA: CameraPose = { distance: 2.9, elevationDeg: 58 };
 export const WIDE_CAMERA: CameraPose = { distance: 9.5, elevationDeg: 24 };
 export const RESULT_CAMERA: CameraPose = { distance: 5.6, elevationDeg: 20 };
 
@@ -72,14 +74,15 @@ export function frameAt(elapsedMs: number | null, isReduced = false): TimelineFr
   }
 
   if (elapsed < DROP_MS) {
-    return { ...IDLE_FRAME, phase: "drop", stoneProgress: easeInQuad(elapsed / DROP_MS) };
+    const t = elapsed / DROP_MS;
+    return { ...IDLE_FRAME, phase: "drop", camera: lerpCamera(IDLE_CAMERA, DROP_CAMERA, easeInOutCubic(t)), stoneProgress: easeInQuad(t) };
   }
 
   if (elapsed < DROP_MS + SPIN_MS) {
     const p = (elapsed - DROP_MS) / SPIN_MS;
     return {
       phase: "spin",
-      camera: lerpCamera(IDLE_CAMERA, WIDE_CAMERA, easeInOutCubic(p)),
+      camera: lerpCamera(DROP_CAMERA, WIDE_CAMERA, easeInOutCubic(p)),
       toiletYaw: Math.PI * 2 * SPIN_TURNS * easeInPow(p, SPIN_EASE_POWER),
       toiletScale: lerp(1, MIN_TOILET_SCALE, easeInOutCubic(p)),
       stoneProgress: null,

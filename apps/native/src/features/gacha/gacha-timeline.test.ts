@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   DROP_MS,
+  DROP_CAMERA,
   IDLE_CAMERA,
   MIN_TOILET_SCALE,
   REDUCED_MS,
@@ -34,6 +35,17 @@ describe("frameAt（通常）", () => {
     expect(frameAt(DROP_MS / 2).stoneProgress).toBeGreaterThan(0);
     expect(frameAt(DROP_MS / 2).stoneProgress).toBeLessThan(1);
     expect(frameAt(DROP_MS).stoneProgress).toBeNull();
+  });
+
+  it("石が落ちる間にカメラが開口へ寄っていく", () => {
+    const start = frameAt(0).camera.distance;
+    const end = frameAt(DROP_MS - 1).camera.distance;
+    expect(end).toBeLessThan(start);
+    expect(end).toBeCloseTo(DROP_CAMERA.distance, 1);
+  });
+
+  it("回転が始まる瞬間は、寄ったカメラ位置から引き始める", () => {
+    expect(frameAt(DROP_MS).camera).toEqual(DROP_CAMERA);
   });
 
   it("回転中は便器が小さくなり、カメラが引く", () => {
