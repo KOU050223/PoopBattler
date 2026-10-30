@@ -23,11 +23,13 @@ import { HURDLE_TAP_MAX_DISTANCE_M, type SwipeDir } from "./input";
  * React の props で受けるのは、矢印の並びと今の番号のように区間の中で数回しか変わらないものだけ
  */
 export type MiniGamePanelView =
-  | { kind: "dash"; gauge: SharedValue<number>; tapCount: SharedValue<number> }
+  /** 予告中。区間に入るまで判定しないので、動く値は持たない */
+  | { kind: MiniGame; isReady: true }
+  | { kind: "dash"; isReady?: false; gauge: SharedValue<number>; tapCount: SharedValue<number> }
   /** distance は次のハードルまで(m)。残りが無いときは HURDLE_TAP_MAX_DISTANCE_M より大きい値 */
-  | { kind: "hurdle"; distance: SharedValue<number> }
-  | { kind: "bridge"; needle: SharedValue<number> }
-  | { kind: "swipe"; arrows: readonly SwipeDir[]; arrowIndex: number };
+  | { kind: "hurdle"; isReady?: false; distance: SharedValue<number> }
+  | { kind: "bridge"; isReady?: false; needle: SharedValue<number> }
+  | { kind: "swipe"; isReady?: false; arrows: readonly SwipeDir[]; arrowIndex: number };
 
 const PANEL_MAX_WIDTH = 440;
 const BOTTOM_MARGIN = spacing.md;
@@ -52,6 +54,20 @@ export function MiniGamePanel({ panel, motion }: Props) {
   const insets = useSafeAreaInsets();
   if (!panel) return null;
   const label = ZONE_LABELS[panel.kind satisfies MiniGame];
+  if (panel.isReady) {
+    return (
+      <View pointerEvents="none" style={[styles.dock, { paddingBottom: insets.bottom + BOTTOM_MARGIN }]}>
+        <View style={[styles.card, styles.cardReady]}>
+          <View style={styles.header}>
+            <Text style={styles.title}>{label.name}</Text>
+            <Text style={styles.verb}>{label.verb}</Text>
+            <Text style={styles.readyBadge}>じゅんび中</Text>
+          </View>
+          <ReadyBody kind={panel.kind} />
+        </View>
+      </View>
+    );
+  }
   return (
     <View pointerEvents="none" style={[styles.dock, { paddingBottom: insets.bottom + BOTTOM_MARGIN }]}>
       <View style={styles.card}>
@@ -65,6 +81,27 @@ export function MiniGamePanel({ panel, motion }: Props) {
         {panel.kind === "bridge" ? <BridgeBody needle={panel.needle} /> : null}
         {panel.kind === "swipe" ? <SwipeBody arrows={panel.arrows} arrowIndex={panel.arrowIndex} /> : null}
       </View>
+    </View>
+  );
+}
+
+// ---- 予告中（準備中） ----
+
+const READY_HINTS: Record<MiniGame, string> = {
+  dash: "ここを連打！",
+  hurdle: "光るところでタップ",
+  bridge: "左右を長押しでバランス",
+  swipe: "矢印の向きにスワイプ",
+};
+
+/** 判定前なので、ゲージ・針は止めて中央に置く。S字は矢印をまだ見せない */
+function ReadyBody({ kind }: { kind: MiniGame }) {
+  return (
+    <View>
+      {kind === "swipe" ? null : (
+        <View style={styles.track}>{kind === "bridge" ? <View style={[styles.needle, styles.needleCentered]} /> : null}</View>
+      )}
+      <Text style={styles.caption}>{READY_HINTS[kind]}</Text>
     </View>
   );
 }
@@ -204,6 +241,9 @@ function SwipeBody({ arrows, arrowIndex }: { arrows: readonly SwipeDir[]; arrowI
 const styles = StyleSheet.create({
   dock: { position: "absolute", left: 0, right: 0, bottom: 0, alignItems: "center", paddingHorizontal: spacing.lg },
   card: { width: "100%", maxWidth: PANEL_MAX_WIDTH, backgroundColor: "rgba(255,255,255,0.93)", borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
+  cardReady: { opacity: 0.7 },
+  readyBadge: { fontFamily: fonts.bold, fontSize: CAPTION_FONT_SIZE, color: colors.pencilGray },
+  needleCentered: { left: "50%" },
   header: { flexDirection: "row", alignItems: "baseline", gap: spacing.sm },
   title: { fontFamily: fonts.black, fontSize: 16, color: colors.charcoal },
   verb: { fontFamily: fonts.bold, fontSize: 14, color: colors.pencilGray, flex: 1 },
