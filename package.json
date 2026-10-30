@@ -12,6 +12,7 @@
     "build": "npm run build -w apps/web",
     "lint": "npm run lint -w apps/web && npm run lint -w packages/domain",
     "test": "npm run test -w apps/web && npm run test -w packages/domain && npm run test -w apps/native",
+    "test:balance": "npm run test:balance -w apps/native",
     "typecheck": "npm run typecheck -w apps/web && npm run typecheck -w packages/domain && npm run typecheck -w apps/native",
     "db:new": "supabase migration new",
     "db:migrate": "supabase migration up",
