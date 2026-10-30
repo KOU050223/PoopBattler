@@ -6,6 +6,3 @@ android/
 .env.*
 !.env.example
 expo-env.d.ts
-
-# 便器のGLB: 再配布不可のライセンスのため（apps/native/assets/gacha/README.md）
-/assets/gacha/*.glb

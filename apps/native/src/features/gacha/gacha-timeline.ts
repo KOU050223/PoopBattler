@@ -12,9 +12,9 @@ export const TOTAL_MS = DROP_MS + SPIN_MS + SLAM_MS;
 export const REDUCED_MS = 400;
 
 export type CameraPose = { distance: number; elevationDeg: number };
-export const IDLE_CAMERA: CameraPose = { distance: 4.6, elevationDeg: 60 };
+export const IDLE_CAMERA: CameraPose = { distance: 5.4, elevationDeg: 60 };
 // 石が落ちる間に開口へ寄る。ここから回転で一気に引く落差が「ドラムロール」の勢いになる。
-export const DROP_CAMERA: CameraPose = { distance: 2.9, elevationDeg: 58 };
+export const DROP_CAMERA: CameraPose = { distance: 3.4, elevationDeg: 58 };
 export const WIDE_CAMERA: CameraPose = { distance: 9.5, elevationDeg: 24 };
 export const RESULT_CAMERA: CameraPose = { distance: 5.6, elevationDeg: 20 };
 

@@ -19,26 +19,41 @@ type ToiletFlushProps = {
   size: number;
 };
 
-// GLB は高さ約 0.67・前が +Z・原点は背面の床。画面に収まる大きさへ拡大し、奥行きの中心を原点へ寄せる。
-const MODEL_SCALE = 3.3;
-const MODEL_CENTER_Z = 0.31;
+// Kenney "Toilet Square"（CC0）。高さ約 0.45、前は -Z（タンクが +Z 側）、頂点は原点基準ではなく (x -0.3〜0, z 0〜0.39)。
+// 画面に収まる大きさへ拡大し、向きを手前へ回して、モデルの中心を原点へ寄せる。
+const MODEL_SCALE = 4.9;
+const MODEL_CENTER = { x: -0.15, z: 0.195 };
 const WATER = "#9fdcf7";
 const SWIRL_DOT_COUNT = 6;
 // 便座の開口の中心と水面の高さ（モデル座標）。
-const BOWL_CENTER = { x: 0, y: 0.335, z: 0.41 };
-const WATER_RADIUS = 0.14;
-const SWIRL_RADIUS = 0.085;
-const SWIRL_DOT_SIZE = 0.022;
-// フタは蝶番（後ろ）を軸に、前を持ち上げて立てる。
-const LID_OPEN_RAD = -1.75;
+const BOWL_CENTER = { x: -0.152, y: 0.205, z: 0.145 };
+const WATER_RADIUS = 0.075;
+const SWIRL_RADIUS = 0.045;
+const SWIRL_DOT_SIZE = 0.012;
+const WATER_THICKNESS = 0.015;
+// フタは蝶番（背面側のふち）を軸に、前を持ち上げて立てる。
+const LID_NODE = "Group";
+const LID_HINGE = { x: -0.152, y: 0.24, z: 0.266 };
+const LID_OPEN_RAD = 1.7;
+const HANDLE_NODE = "toiletSquare_1";
+const HANDLE_CENTER = { x: -0.044, y: 0.386, z: 0.302 };
 const HANDLE_PRESS_RAD = 0.5;
-// 注視点は便器の中ほど（モデル座標 × 拡大 / 2 あたり）。縮むときは便器と一緒に下がる。
+// 注視点は便器の中ほど。縮むときは便器と一緒に下がる。
 const TARGET_Y = 1.0;
 // 石は便器の真上に浮かび、押すと開口へ落ちる。
-const STONE_HOVER_Y = 0.65;
-const STONE_SIZE = 0.032;
-const STONE_BOB = 0.015;
+const STONE_HOVER_Y = 0.45;
+const STONE_SIZE = 0.02;
+const STONE_BOB = 0.01;
 const GOLD = "#f5b81c";
+function withPivot(node: THREE.Object3D, at: { x: number; y: number; z: number }, name: string): THREE.Group {
+  const pivot = new THREE.Group();
+  pivot.name = name;
+  pivot.position.set(at.x, at.y, at.z);
+  node.parent?.add(pivot);
+  pivot.add(node);
+  node.position.set(-at.x, -at.y, -at.z);
+  return pivot;
+}
 
 function useToiletGltf(): GLTF | undefined {
   const [gltf, setGltf] = useState<GLTF>();
@@ -66,7 +81,14 @@ function Toilet({ isFlushing, reduceMotion, onSlam, onFlushed }: Omit<ToiletFlus
   const scene = useMemo(() => {
     if (!gltf) return null;
     const copy = gltf.scene.clone(true);
-    copy.getObjectByName("ToiletSeatCover")?.rotation.set(LID_OPEN_RAD, 0, 0);
+    // 頂点が原点基準で入っているため、軸の位置に置いた空のグループへ入れ替えて回す。
+    const lid = copy.getObjectByName(LID_NODE);
+    const handle = copy.getObjectByName(HANDLE_NODE);
+    if (lid) {
+      const pivot = withPivot(lid, LID_HINGE, "LidPivot");
+      pivot.rotation.x = LID_OPEN_RAD;
+    }
+    if (handle) withPivot(handle, HANDLE_CENTER, "HandlePivot");
     return copy;
   }, [gltf]);
 
@@ -99,7 +121,7 @@ function Toilet({ isFlushing, reduceMotion, onSlam, onFlushed }: Omit<ToiletFlus
     state.camera.position.set(x, y, z);
     state.camera.lookAt(0, targetY, 0);
 
-    scene?.getObjectByName("ToiletFlushHandle")?.rotation.set(0, 0, frame.isHandlePressed ? HANDLE_PRESS_RAD : 0);
+    scene?.getObjectByName("HandlePivot")?.rotation.set(0, 0, frame.isHandlePressed ? HANDLE_PRESS_RAD : 0);
     if (water.current) water.current.scale.y = Math.max(0.001, waterLevel(frame.spinProgress));
     if (swirl.current) {
       swirl.current.rotation.y = reduceMotion ? 0 : swirlAngle(frame.spinProgress);
@@ -120,26 +142,30 @@ function Toilet({ isFlushing, reduceMotion, onSlam, onFlushed }: Omit<ToiletFlus
   if (!scene) return null;
   return (
     <group ref={root}>
-      <group scale={MODEL_SCALE} position={[0, 0, -MODEL_CENTER_Z * MODEL_SCALE]}>
-        <primitive object={scene} />
-        <mesh ref={water} position={[BOWL_CENTER.x, BOWL_CENTER.y, BOWL_CENTER.z]}>
-          <cylinderGeometry args={[WATER_RADIUS, WATER_RADIUS, 0.02, 32]} />
-          <meshStandardMaterial color={WATER} roughness={0.15} />
-        </mesh>
-        <mesh ref={stone} position={[BOWL_CENTER.x, STONE_HOVER_Y, BOWL_CENTER.z]}>
-          <octahedronGeometry args={[STONE_SIZE, 0]} />
-          <meshStandardMaterial color={GOLD} emissive={GOLD} emissiveIntensity={0.5} roughness={0.25} />
-        </mesh>
-        <group ref={swirl} position={[BOWL_CENTER.x, BOWL_CENTER.y + 0.02, BOWL_CENTER.z]}>
-          {Array.from({ length: SWIRL_DOT_COUNT }, (_, i) => {
-            const angle = (i / SWIRL_DOT_COUNT) * Math.PI * 2;
-            return (
-              <mesh key={i} position={[Math.cos(angle) * SWIRL_RADIUS, 0, Math.sin(angle) * SWIRL_RADIUS]}>
-                <sphereGeometry args={[SWIRL_DOT_SIZE, 12, 12]} />
-                <meshStandardMaterial color="#ffffff" />
-              </mesh>
-            );
-          })}
+      <group scale={MODEL_SCALE}>
+        <group rotation={[0, Math.PI, 0]}>
+          <group position={[-MODEL_CENTER.x, 0, -MODEL_CENTER.z]}>
+            <primitive object={scene} />
+            <mesh ref={water} position={[BOWL_CENTER.x, BOWL_CENTER.y, BOWL_CENTER.z]}>
+              <cylinderGeometry args={[WATER_RADIUS, WATER_RADIUS, WATER_THICKNESS, 32]} />
+              <meshStandardMaterial color={WATER} roughness={0.15} />
+            </mesh>
+            <mesh ref={stone} position={[BOWL_CENTER.x, STONE_HOVER_Y, BOWL_CENTER.z]}>
+              <octahedronGeometry args={[STONE_SIZE, 0]} />
+              <meshStandardMaterial color={GOLD} emissive={GOLD} emissiveIntensity={0.5} roughness={0.25} />
+            </mesh>
+            <group ref={swirl} position={[BOWL_CENTER.x, BOWL_CENTER.y + 0.01, BOWL_CENTER.z]}>
+              {Array.from({ length: SWIRL_DOT_COUNT }, (_, i) => {
+                const angle = (i / SWIRL_DOT_COUNT) * Math.PI * 2;
+                return (
+                  <mesh key={i} position={[Math.cos(angle) * SWIRL_RADIUS, 0, Math.sin(angle) * SWIRL_RADIUS]}>
+                    <sphereGeometry args={[SWIRL_DOT_SIZE, 12, 12]} />
+                    <meshStandardMaterial color="#ffffff" />
+                  </mesh>
+                );
+              })}
+            </group>
+          </group>
         </group>
       </group>
     </group>
@@ -150,9 +176,9 @@ export function ToiletFlush({ size, ...toiletProps }: ToiletFlushProps) {
   return (
     <View pointerEvents="none" style={{ width: size, height: size }} accessibilityRole="image">
       <Canvas camera={{ position: cameraPosition(IDLE_CAMERA, TARGET_Y), fov: 32 }} gl={{ antialias: true, alpha: true }} style={styles.canvas}>
-        <ambientLight intensity={1.7} />
-        <hemisphereLight args={["#e8f2ff", "#8a7f76", 0.5]} />
-        <directionalLight position={[2, 4, 6]} intensity={1.4} />
+        <ambientLight intensity={0.8} />
+        <hemisphereLight args={["#e8f2ff", "#8a7f76", 0.6]} />
+        <directionalLight position={[2, 5, 4]} intensity={1.3} />
         <Toilet {...toiletProps} />
       </Canvas>
     </View>
