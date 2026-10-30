@@ -2,6 +2,7 @@ import type { Poopm3DClip } from "@/features/poopm-3d/poopm-3d-assets";
 
 // バトル画面で使うモーション名。GLB のクリップ名と対応させる。
 // heal は戦闘では使わない（Issue #199）ためここには置かない。
+// run はレース（Issue #266）で使う。
 export const POOPM_3D_BATTLE_MOTIONS = [
   "idle",
   "attack",
@@ -13,6 +14,7 @@ export const POOPM_3D_BATTLE_MOTIONS = [
   "ko",
   "lose",
   "win",
+  "run",
 ] as const;
 export type Poopm3DBattleMotion = (typeof POOPM_3D_BATTLE_MOTIONS)[number];
 
@@ -34,6 +36,7 @@ export const POOPM_3D_MOTION: Record<Poopm3DBattleMotion, Poopm3DMotionSpec> = {
   ko: { clip: "ko", loop: "once", fadeMs: 150 },
   lose: { clip: "lose", loop: "once", fadeMs: 250 },
   win: { clip: "win", loop: "once", fadeMs: 250 },
+  run: { clip: "run", loop: "repeat", fadeMs: 200 },
 };
 
 export function poopm3DMotionSpec(

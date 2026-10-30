@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber/native";
 import * as THREE from "three";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -41,6 +41,8 @@ export type Poopm3DModelProps = {
   facing?: "front" | "back";
   // バトル倍速。AnimationMixer.timeScale にそのまま掛ける。
   timeScale?: number;
+  // 毎フレーム変わる再生速度（レースの足の回転数）。React の再描画を避けるため ref で渡し、timeScale より優先する。
+  timeScaleRef?: RefObject<number>;
   position?: [number, number, number];
   scale?: number;
   onMotionFinished?: (name: Poopm3DBattleMotion) => void;
@@ -101,6 +103,7 @@ function LoadedModel({
   motion,
   facing = "front",
   timeScale = 1,
+  timeScaleRef,
   position = [0, 0, 0],
   scale = 1,
   onMotionFinished,
@@ -227,7 +230,7 @@ function LoadedModel({
   }, [mixer, onMotionFinished]);
 
   useFrame((_, delta) => {
-    mixer.update(delta * timeScale);
+    mixer.update(delta * (timeScaleRef ? timeScaleRef.current : timeScale));
   });
 
   return (
