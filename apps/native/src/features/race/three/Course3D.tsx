@@ -3,22 +3,24 @@ import { useFrame } from "@react-three/fiber/native";
 import {
   BufferAttribute,
   BufferGeometry,
-  CylinderGeometry,
   DataTexture,
   DoubleSide,
   InstancedMesh,
+  LinearFilter,
   NearestFilter,
   Object3D,
+  PlaneGeometry,
   RGBAFormat,
+  SRGBColorSpace,
   UnsignedByteType,
 } from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 import { COURSE } from "../config";
 import { createRng } from "../rng";
 import type { Course, CoursePoint, MiniGame, Race, Terrain } from "../types";
-import { buildCurb, buildRoad, hexToRgb, type RibbonData } from "./course-mesh";
+import { buildCurb, buildRoad, type RibbonData } from "./course-mesh";
 import { CROWD, crowdHop, placeCrowd } from "./crowd";
+import { CROWD_VARIANTS, renderCrowdAtlas } from "./crowd-sprite";
 
 /** 観客の配置のシード。コースが同じなら同じ見た目にする */
 const CROWD_SEED = 20260101;
@@ -64,22 +66,23 @@ function checkerTexture(): DataTexture {
   return texture;
 }
 
-/** 観客1体の形。巻紙の円柱と芯の円柱を頂点色で塗り分けて1つの形にまとめる（InstancedMesh 1つで描くため） */
-function toiletPaperGeometry(): BufferGeometry {
-  const paint = (geometry: BufferGeometry, hex: string) => {
-    const [r, g, b] = hexToRgb(hex);
-    const count = geometry.getAttribute("position").count;
-    const colors = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) colors.set([r, g, b], i * 3);
-    geometry.setAttribute("color", new BufferAttribute(colors, 3));
-    return geometry;
-  };
-  const roll = paint(new CylinderGeometry(CROWD.rollRadius, CROWD.rollRadius, CROWD.rollHeight, 16), "#ffffff");
-  const core = paint(new CylinderGeometry(0.28, 0.28, CROWD.rollHeight + 0.02, 10), "#e4b5c9");
-  const merged = mergeGeometries([roll, core]);
-  roll.dispose();
-  core.dispose();
-  return merged;
+/** 観客のスプライト用の板。アトラスの variant 番目の区画だけを映すように UV を割り当てる */
+function spriteGeometry(variant: number): BufferGeometry {
+  const geometry = new PlaneGeometry(CROWD.spriteSize, CROWD.spriteSize);
+  geometry.translate(0, CROWD.spriteSize / 2, 0);
+  const uv = geometry.getAttribute("uv");
+  for (let i = 0; i < uv.count; i++) uv.setX(i, (variant + uv.getX(i)) / CROWD_VARIANTS);
+  return geometry;
+}
+
+function crowdAtlasTexture(): DataTexture {
+  const { pixels, width, height } = renderCrowdAtlas();
+  const texture = new DataTexture(pixels, width, height, RGBAFormat, UnsignedByteType);
+  texture.magFilter = LinearFilter;
+  texture.minFilter = LinearFilter;
+  texture.colorSpace = SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 /** 道の進行方向 +x、横 +z の局所座標にそろえる土台（three の rotation.y = -h） */
@@ -226,33 +229,54 @@ function Lines({ course }: { course: Course }) {
   );
 }
 
-/** 観客は InstancedMesh 1つ。走者の近くの観客だけ跳ねるので、毎フレーム行列を書き直す */
+/**
+ * 観客は絵柄ごとに InstancedMesh 1つ（計4描画）。常にカメラの方を向く板なので、走者の近くが跳ねるのと合わせて毎フレーム行列を書き直す。
+ * 半透明の並べ替えは要らないよう、縁は alphaTest で抜く。
+ */
 function Crowd({ raceRef, isReducedMotion }: { raceRef: RefObject<Race>; isReducedMotion: boolean }) {
-  const meshRef = useRef<InstancedMesh>(null);
-  const items = useMemo(() => placeCrowd(raceRef.current.course.points, createRng(CROWD_SEED)), [raceRef]);
-  const geometry = useMemo(toiletPaperGeometry, []);
+  const meshRefs = useRef<(InstancedMesh | null)[]>([]);
+  const groups = useMemo(() => {
+    const items = placeCrowd(raceRef.current.course.points, createRng(CROWD_SEED));
+    return Array.from({ length: CROWD_VARIANTS }, (_, variant) => items.filter((item) => item.variant === variant));
+  }, [raceRef]);
+  const geometries = useMemo(() => Array.from({ length: CROWD_VARIANTS }, (_, variant) => spriteGeometry(variant)), []);
+  const texture = useMemo(crowdAtlasTexture, []);
   const dummy = useMemo(() => new Object3D(), []);
-  useEffect(() => () => geometry.dispose(), [geometry]);
+  useEffect(
+    () => () => {
+      geometries.forEach((geometry) => geometry.dispose());
+      texture.dispose();
+    },
+    [geometries, texture],
+  );
 
-  useFrame(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
+  useFrame(({ camera }) => {
     const race = raceRef.current;
     const player = race.runners[0];
-    items.forEach((item, index) => {
-      const hop = crowdHop(item, race.time, Math.hypot(item.x - player.x, item.z - player.z), isReducedMotion);
-      dummy.position.set(item.x, item.y + CROWD.rollHeight / 2 + hop, item.z);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(index, dummy.matrix);
+    groups.forEach((items, variant) => {
+      const mesh = meshRefs.current[variant];
+      if (!mesh) return;
+      items.forEach((item, index) => {
+        const hop = crowdHop(item, race.time, Math.hypot(item.x - player.x, item.z - player.z), isReducedMotion);
+        dummy.position.set(item.x, item.y + hop, item.z);
+        // 縦には倒さず、横方向だけカメラに向ける（見上げても足元が地面から浮かない）
+        dummy.rotation.set(0, Math.atan2(camera.position.x - item.x, camera.position.z - item.z), 0);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(index, dummy.matrix);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
     });
-    mesh.instanceMatrix.needsUpdate = true;
   });
 
   return (
-    // 跳ねて境界球から出ることがあるので、カリングは切る（数十個なので描画コストは小さい）
-    <instancedMesh ref={meshRef} args={[geometry, undefined, items.length]} frustumCulled={false}>
-      <meshLambertMaterial vertexColors />
-    </instancedMesh>
+    <>
+      {groups.map((items, variant) => (
+        // 跳ねて境界球から出ることがあるので、カリングは切る（数十個なので描画コストは小さい）
+        <instancedMesh key={variant} ref={(mesh) => void (meshRefs.current[variant] = mesh)} args={[geometries[variant], undefined, items.length]} frustumCulled={false}>
+          <meshBasicMaterial map={texture} alphaTest={0.5} side={DoubleSide} />
+        </instancedMesh>
+      ))}
+    </>
   );
 }
 

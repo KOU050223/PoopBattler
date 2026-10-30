@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { generateCourseFromSeed } from "../course";
 import { createRng } from "../rng";
+import { CROWD_VARIANTS } from "./crowd-sprite";
 import { CROWD, crowdHop, placeCrowd } from "./crowd";
 
 const COURSE_SEEDS = [1, 7, 42, 20260101, 999];
@@ -31,7 +32,7 @@ describe("placeCrowd", () => {
     const items = placeCrowd(points, createRng(CROWD_SEED));
 
     const shortestMargin = Math.min(...items.map((item) => Math.min(...points.map((p) => Math.hypot(p.x - item.x, p.z - item.z) - p.w / 2))));
-    expect(shortestMargin).toBeGreaterThan(CROWD.rollRadius);
+    expect(shortestMargin).toBeGreaterThan(CROWD.spriteHalfWidth);
   });
 
   it("つり橋だけの道には置かない", () => {
@@ -49,6 +50,14 @@ describe("placeCrowd", () => {
     expect([items.length, leftCount]).toEqual([6, 3]);
   });
 
+  it("4種類の絵柄がすべて使われる", () => {
+    const { points } = generateCourseFromSeed(1);
+
+    const variants = new Set(placeCrowd(points, createRng(CROWD_SEED)).map((item) => item.variant));
+
+    expect(variants.size).toBe(CROWD_VARIANTS);
+  });
+
   it("コースに観客が1人以上置かれる", () => {
     const { points } = generateCourseFromSeed(1);
 
@@ -57,7 +66,7 @@ describe("placeCrowd", () => {
 });
 
 describe("crowdHop", () => {
-  const item = { x: 0, y: 0, z: 0, phase: 0 };
+  const item = { x: 0, y: 0, z: 0, phase: 0, variant: 0 };
   const peakTime = Math.PI / 2 / CROWD.hopSpeed;
 
   it("近くにいるとき跳ねる", () => {

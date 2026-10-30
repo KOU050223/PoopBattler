@@ -1,7 +1,8 @@
-// 観客（トイレットペーパー）の配置。試作は道の脇に12m間隔で左右交互に置くが、こちらは両側に置く（DIFFS.md）。
+// 観客（2Dうんちくん）の配置。試作は道の脇に12m間隔で左右交互に置くが、こちらは両側に置く（DIFFS.md）。
 // 見た目の位置だけを決める純関数で、シミュレーションには関わらない。
 import type { CoursePoint } from "../types";
 import type { Rng } from "../rng";
+import { CROWD_VARIANTS } from "./crowd-sprite";
 
 export interface CrowdItem {
   x: number;
@@ -9,6 +10,8 @@ export interface CrowdItem {
   z: number;
   /** 跳ねる位相の違い */
   phase: number;
+  /** 絵柄（0〜CROWD_VARIANTS-1）。見た目だけ */
+  variant: number;
 }
 
 export const CROWD = {
@@ -17,8 +20,9 @@ export const CROWD = {
   minMargin: 3,
   marginSpread: 4,
   phaseCount: 7,
-  rollHeight: 1.4,
-  rollRadius: 0.7,
+  /** スプライトの大きさ（正方形）。足元が地面に付く */
+  spriteSize: 2,
+  spriteHalfWidth: 0.9,
   nearDistance: 30,
   hopHeight: 0.4,
   hopSpeed: 9,
@@ -34,10 +38,11 @@ export function placeCrowd(points: readonly CoursePoint[], rng: Rng): CrowdItem[
     for (const side of SIDES) {
       const margin = CROWD.minMargin + rng() * CROWD.marginSpread;
       const phase = Math.floor(rng() * CROWD.phaseCount);
+      const variant = Math.floor(rng() * CROWD_VARIANTS);
       const distance = point.w / 2 + margin;
       const x = point.x - Math.sin(point.h) * side * distance;
       const z = point.z + Math.cos(point.h) * side * distance;
-      items.push({ x, y: point.y, z, phase });
+      items.push({ x, y: point.y, z, phase, variant });
     }
   });
   return items;
