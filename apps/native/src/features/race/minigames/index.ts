@@ -7,7 +7,7 @@ import { beginBridge, bridgeAverage, updateBridge, type BridgeState } from "./br
 import { beginDash, dashAverage, tapDash, updateDash, type DashState } from "./dash";
 import { beginHurdle, hurdleAverage, isHurdleSlowMoment, tapHurdle, updateHurdle, type HurdleState } from "./hurdle";
 import { gradeOf, PLAYER_INDEX, type MinigameOutput } from "./shared";
-import { beginSwipe, swipeAverage, swipeSwipe, updateSwipe, type SwipeState } from "./swipe";
+import { beginSwipe, pressSwipe, swipeAverage, swipeSwipe, updateSwipe, type SwipeState } from "./swipe";
 
 export * from "./shared";
 export * from "./dash";
@@ -64,6 +64,7 @@ export function applyInput(game: Minigame, race: Race, input: InputCommand, out:
       if (input.type === "hold") game.holdDir = input.dir;
       return;
     case "swipe":
+      if (input.type === "tap") pressSwipe(game);
       if (input.type === "swipe") swipeSwipe(game, input.dir, race, out);
       return;
   }

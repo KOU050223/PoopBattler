@@ -1,6 +1,6 @@
 // タッチ入力 → レースへのコマンドの変換。画面にもロジックにも依存しない純関数だけを置く。
 // gesture-handler でも素のタッチイベントでも、down / move / up を渡せばつながる。
-// 仕様: docs/race.md 5章 / 7章の4・5。試作の bindInput（pointerdown / pointerup / pointercancel）と同じタイミングで出す
+// 仕様: docs/race.md 5章 / 7章の4・5。タップ・長押しは試作の bindInput と同じタイミングで出す。スワイプは試作と違い、動かして条件を満たした瞬間に出す
 
 /**
  * スワイプとみなす最低の移動量(dp)。試作は 28 CSS px だったが、実機（Pixel 9a）では指がずれただけで通ってしまった。
@@ -28,7 +28,8 @@ export type InputCommand =
 
 export type TouchPhase =
   | { kind: "idle" }
-  | { kind: "pressed"; startX: number; startY: number };
+  /** isSwipeSent: この押下で swipe を出し済みか。1回の押下で出す swipe は1回だけにする */
+  | { kind: "pressed"; startX: number; startY: number; isSwipeSent: boolean };
 
 export interface TouchStep {
   phase: TouchPhase;
@@ -75,7 +76,7 @@ export function shouldAcceptHurdleTap(distanceToHurdleM: number): boolean {
 export function touchDown(phase: TouchPhase, point: { x: number; y: number; width: number; atMs: number }): TouchStep {
   if (phase.kind !== "idle") return none(phase);
   return {
-    phase: { kind: "pressed", startX: point.x, startY: point.y },
+    phase: { kind: "pressed", startX: point.x, startY: point.y, isSwipeSent: false },
     commands: [
       { type: "tap", atMs: point.atMs },
       { type: "hold", dir: holdDirOfX(point.x, point.width) },
@@ -83,14 +84,21 @@ export function touchDown(phase: TouchPhase, point: { x: number; y: number; widt
   };
 }
 
-/** 長押しの向きは置いた位置で決まり、動かしても変わない。スワイプは離した時点で判定する */
-export function touchMove(phase: TouchPhase): TouchStep {
-  return none(phase);
+/**
+ * 長押しの向きは置いた位置で決まり、動かしても変わない。
+ * スワイプは条件を初めて満たした瞬間に出す。離すのを待つと、押してから離すまでの間に矢印が時間切れで進み、次の矢印を巻き込むため
+ */
+export function touchMove(phase: TouchPhase, point: { x: number; y: number; width: number }): TouchStep {
+  if (phase.kind !== "pressed" || phase.isSwipeSent) return none(phase);
+  const swipe = classifySwipe(point.x - phase.startX, point.y - phase.startY, point.width);
+  if (!swipe) return none(phase);
+  return { phase: { ...phase, isSwipeSent: true }, commands: [{ type: "swipe", dir: swipe }] };
 }
 
+/** 移動イベントを取りこぼして、まだスワイプを出していないときの保険 */
 export function touchUp(phase: TouchPhase, point: { x: number; y: number; width: number }): TouchStep {
   if (phase.kind !== "pressed") return none(IDLE);
-  const swipe = classifySwipe(point.x - phase.startX, point.y - phase.startY, point.width);
+  const swipe = phase.isSwipeSent ? null : classifySwipe(point.x - phase.startX, point.y - phase.startY, point.width);
   const commands: InputCommand[] = swipe ? [{ type: "swipe", dir: swipe }] : [];
   return { phase: IDLE, commands: [...commands, { type: "hold", dir: 0 }] };
 }

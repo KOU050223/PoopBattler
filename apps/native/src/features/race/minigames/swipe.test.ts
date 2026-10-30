@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { beginSwipe, judgeArrow, swipeSwipe, updateSwipe } from "./swipe";
+import { beginSwipe, judgeArrow, pressSwipe, swipeSwipe, updateSwipe } from "./swipe";
 import { createOutput } from "./shared";
 import { makeRace, SEED } from "./test-helpers";
 import { createRng } from "../rng";
@@ -99,5 +99,57 @@ describe("S字の矢印", () => {
     swipeSwipe(state, "up", race, out);
 
     expect(out.events).toEqual([]);
+  });
+});
+
+describe("S字のスワイプは押した時の矢印に効く", () => {
+  it("押した時の矢印が未解決なら、その矢印に効く", () => {
+    const race = makeRace();
+    const state = beginSwipe(createRng(SEED), race, 0.5);
+    const out = createOutput();
+    pressSwipe(state);
+    race.time = state.arrowStartSec + 0.3;
+
+    swipeSwipe(state, state.arrows[0], race, out);
+
+    expect(state.arrowIndex).toBe(1);
+  });
+
+  it("押している間にその矢印が時間切れになったら、スワイプは捨てて次の矢印に流さない", () => {
+    const race = makeRace();
+    const state = beginSwipe(createRng(SEED), race, 0.5);
+    const out = createOutput();
+    pressSwipe(state);
+    race.time = state.arrowStartSec + 0.81;
+    updateSwipe(state, race, out);
+    const resultsBefore = state.results.length;
+
+    swipeSwipe(state, state.arrows[1], race, out);
+
+    expect(state.results).toHaveLength(resultsBefore);
+    expect(state.arrowIndex).toBe(1);
+  });
+
+  it("捨てたあとに押し直せば、新しい矢印に効く", () => {
+    const race = makeRace();
+    const state = beginSwipe(createRng(SEED), race, 0.5);
+    const out = createOutput();
+    pressSwipe(state);
+    race.time = state.arrowStartSec + 0.81;
+    updateSwipe(state, race, out);
+    pressSwipe(state);
+
+    swipeSwipe(state, state.arrows[1], race, out);
+
+    expect(state.arrowIndex).toBe(2);
+  });
+
+  it("押した記録がなければ今の矢印に効く", () => {
+    const race = makeRace();
+    const state = beginSwipe(createRng(SEED), race, 0.5);
+
+    swipeSwipe(state, state.arrows[0], race, createOutput());
+
+    expect(state.arrowIndex).toBe(1);
   });
 });
