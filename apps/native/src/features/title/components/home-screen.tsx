@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DEFAULT_APPEARANCE, appearanceForCharacter } from "@/features/battle/poopm-appearance";
-import { PoopmSprite } from "@/features/battle/components/poopm-sprite";
 import toiletImage from "../../../../assets/design/home-toilet.png";
 import mealImage from "../../../../assets/design/home-meal.png";
 import logImage from "../../../../assets/design/home-log.png";
@@ -15,6 +14,7 @@ import { SceneBackground } from "@/design/kids";
 import { bubbleSizes, companionSize } from "../home-layout";
 import { useCompanion } from "../use-companion";
 import { homePalette } from "../home-palette";
+import { HomeCompanion } from "./home-companion";
 import { HomeHalo } from "./home-halo";
 import { GearButton } from "./gear-button";
 import { HomeSideTab } from "./home-side-tab";
@@ -69,7 +69,7 @@ export function HomeScreen() {
           accessibilityLabel={t("NativeHome.companionHint", { name })}
           onPress={() => router.push("/(tabs)/collection")}
         >
-          <PoopmSprite appearance={appearance} hitKey={0} size={companionPx} />
+          <HomeCompanion appearance={appearance} size={companionPx} />
         </Pressable>
       </View>
 

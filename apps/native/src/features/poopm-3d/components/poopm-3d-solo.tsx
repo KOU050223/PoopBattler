@@ -25,6 +25,8 @@ export type Poopm3DSoloProps = {
    * 傾けた姿勢（頭がカメラ側へ倒れる等）がキャンバス端で切れるのを防ぐ。
    */
   overscan?: number;
+  onReady?: () => void;
+  onLoadError?: (error: unknown) => void;
 };
 
 const BASE_FOV_DEG = 30;
@@ -79,7 +81,7 @@ function GravityAligned({ up, children }: { up: GravityVec3 | null | undefined; 
 
 // うんちくん1体だけを透明背景で描く小型ステージ。親の箱いっぱいに広がる。
 // ガチャの這い出しや結果カードなど、画面上の任意の位置に重ねて使う。
-export function Poopm3DSolo({ appearance, motion, onMotionFinished, gravityUp = null, overscan = 1 }: Poopm3DSoloProps) {
+export function Poopm3DSolo({ appearance, motion, onMotionFinished, gravityUp = null, overscan = 1, onReady, onLoadError }: Poopm3DSoloProps) {
   const canvas = (
     <Canvas
       camera={{ position: [0, 0.7, 6.6], fov: overscanFovDeg(overscan) }}
@@ -98,6 +100,8 @@ export function Poopm3DSolo({ appearance, motion, onMotionFinished, gravityUp = 
           facing="front"
           position={[0, -STAGE_GROUND_Y, 0]}
           onMotionFinished={onMotionFinished}
+          onReady={onReady}
+          onLoadError={onLoadError}
         />
         <Poopm3DBlobShadow x={0} z={0} y={0} />
       </GravityAligned>
