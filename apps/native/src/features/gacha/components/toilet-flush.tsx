@@ -1,8 +1,12 @@
 import { Canvas, useFrame } from "@react-three/fiber/native";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import * as THREE from "three";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
+import { loadGlb } from "@/features/poopm-3d/poopm-3d-glb-loader";
+
+import { TOILET_GLB_MODULE } from "../toilet-glb-module";
 import {
   FLUSH_DURATION_MS,
   REDUCED_FLUSH_DURATION_MS,
@@ -20,28 +24,48 @@ type ToiletFlushProps = {
   size: number;
 };
 
-const PORCELAIN = "#ffffff";
+// GLB は高さ約 0.67・前が +Z・原点は背面の床。画面に収まる大きさへ拡大し、奥行きの中心を原点へ寄せる。
+const MODEL_SCALE = 3.3;
+const MODEL_CENTER_Z = 0.31;
 const WATER = "#9fdcf7";
 const SWIRL_DOT_COUNT = 6;
-const SWIRL_RADIUS = 0.55;
-// 便器の外形（半径, 高さ）。回転体にして、丸い鉢とくびれを1つの形で作る。
-const BOWL_PROFILE: [number, number][] = [
-  [0.0, 0.0],
-  [0.32, 0.02],
-  [0.55, 0.12],
-  [0.8, 0.35],
-  [0.9, 0.62],
-  [0.86, 0.8],
-];
+// 便座の開口の中心と水面の高さ（モデル座標）。
+const BOWL_CENTER = { x: 0, y: 0.335, z: 0.41 };
+const WATER_RADIUS = 0.14;
+const SWIRL_RADIUS = 0.085;
+const SWIRL_DOT_SIZE = 0.022;
+// フタは蝶番（後ろ）を軸に、前を持ち上げて立てる。
+const LID_OPEN_RAD = -1.75;
+const HANDLE_PRESS_RAD = 0.5;
 
-// 画面の絵を使わず three で組む。GLB が用意できたらこの中身だけ差し替えればよい（props は変えない）。
+function useToiletGltf(): GLTF | undefined {
+  const [gltf, setGltf] = useState<GLTF>();
+  useEffect(() => {
+    let isAlive = true;
+    loadGlb(TOILET_GLB_MODULE)
+      .then((loaded) => isAlive && setGltf(loaded))
+      .catch((error: unknown) => console.warn("[gacha] 便器の読み込みに失敗:", error));
+    return () => {
+      isAlive = false;
+    };
+  }, []);
+  return gltf;
+}
+
 function Toilet({ isFlushing, reduceMotion, onFlushed }: Omit<ToiletFlushProps, "size">) {
+  const gltf = useToiletGltf();
   const root = useRef<THREE.Group>(null);
   const water = useRef<THREE.Mesh>(null);
   const swirl = useRef<THREE.Group>(null);
   const startedAt = useRef<number | null>(null);
   const hasNotified = useRef(false);
-  const bowlGeometry = useMemo(() => new THREE.LatheGeometry(BOWL_PROFILE.map(([x, y]) => new THREE.Vector2(x, y)), 32), []);
+
+  const scene = useMemo(() => {
+    if (!gltf) return null;
+    const copy = gltf.scene.clone(true);
+    copy.getObjectByName("ToiletSeatCover")?.rotation.set(LID_OPEN_RAD, 0, 0);
+    return copy;
+  }, [gltf]);
 
   useEffect(() => {
     startedAt.current = null;
@@ -62,8 +86,9 @@ function Toilet({ isFlushing, reduceMotion, onFlushed }: Omit<ToiletFlushProps, 
       }
     }
     // 待機中はゆっくり左右に首を振るだけ。流している間は揺れに任せる。
-    group.rotation.y = reduceMotion ? 0 : isFlushing ? 0 : Math.sin(now / 900) * 0.25;
+    group.rotation.y = reduceMotion || isFlushing ? 0 : Math.sin(now / 900) * 0.25;
     group.position.x = reduceMotion || !isFlushing ? 0 : shakeOffset(progress);
+    scene?.getObjectByName("ToiletFlushHandle")?.rotation.set(0, 0, isFlushing ? HANDLE_PRESS_RAD : 0);
     if (water.current) water.current.scale.y = Math.max(0.001, waterLevel(progress));
     if (swirl.current) {
       swirl.current.rotation.y = reduceMotion ? 0 : swirlAngle(progress);
@@ -72,42 +97,27 @@ function Toilet({ isFlushing, reduceMotion, onFlushed }: Omit<ToiletFlushProps, 
     }
   });
 
+  if (!scene) return null;
   return (
     <group ref={root}>
-      <mesh position={[0, 0.2, 0]}>
-        <cylinderGeometry args={[0.5, 0.62, 0.4, 32]} />
-        <meshStandardMaterial color={PORCELAIN} roughness={0.35} />
-      </mesh>
-      <mesh geometry={bowlGeometry} position={[0, 0.4, 0]}>
-        <meshStandardMaterial color={PORCELAIN} roughness={0.3} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[0, 1.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.88, 0.08, 16, 48]} />
-        <meshStandardMaterial color={PORCELAIN} roughness={0.3} />
-      </mesh>
-      <mesh ref={water} position={[0, 1.08, 0]}>
-        <cylinderGeometry args={[0.78, 0.78, 0.1, 32]} />
-        <meshStandardMaterial color={WATER} roughness={0.15} />
-      </mesh>
-      <group ref={swirl} position={[0, 1.15, 0]}>
-        {Array.from({ length: SWIRL_DOT_COUNT }, (_, i) => {
-          const angle = (i / SWIRL_DOT_COUNT) * Math.PI * 2;
-          return (
-            <mesh key={i} position={[Math.cos(angle) * SWIRL_RADIUS, 0, Math.sin(angle) * SWIRL_RADIUS]}>
-              <sphereGeometry args={[0.09, 12, 12]} />
-              <meshStandardMaterial color="#ffffff" />
-            </mesh>
-          );
-        })}
+      <group scale={MODEL_SCALE} position={[0, 0, -MODEL_CENTER_Z * MODEL_SCALE]}>
+        <primitive object={scene} />
+        <mesh ref={water} position={[BOWL_CENTER.x, BOWL_CENTER.y, BOWL_CENTER.z]}>
+          <cylinderGeometry args={[WATER_RADIUS, WATER_RADIUS, 0.02, 32]} />
+          <meshStandardMaterial color={WATER} roughness={0.15} />
+        </mesh>
+        <group ref={swirl} position={[BOWL_CENTER.x, BOWL_CENTER.y + 0.02, BOWL_CENTER.z]}>
+          {Array.from({ length: SWIRL_DOT_COUNT }, (_, i) => {
+            const angle = (i / SWIRL_DOT_COUNT) * Math.PI * 2;
+            return (
+              <mesh key={i} position={[Math.cos(angle) * SWIRL_RADIUS, 0, Math.sin(angle) * SWIRL_RADIUS]}>
+                <sphereGeometry args={[SWIRL_DOT_SIZE, 12, 12]} />
+                <meshStandardMaterial color="#ffffff" />
+              </mesh>
+            );
+          })}
+        </group>
       </group>
-      <mesh position={[0, 1.75, -0.8]}>
-        <boxGeometry args={[1.5, 1.0, 0.5]} />
-        <meshStandardMaterial color={PORCELAIN} roughness={0.35} />
-      </mesh>
-      <mesh position={[0.5, 2.3, -0.8]}>
-        <boxGeometry args={[0.4, 0.1, 0.2]} />
-        <meshStandardMaterial color="#f5b81c" />
-      </mesh>
     </group>
   );
 }
@@ -115,8 +125,13 @@ function Toilet({ isFlushing, reduceMotion, onFlushed }: Omit<ToiletFlushProps, 
 export function ToiletFlush({ size, ...toiletProps }: ToiletFlushProps) {
   return (
     <View pointerEvents="none" style={{ width: size, height: size }} accessibilityRole="image">
-      <Canvas camera={{ position: [0, 2.4, 6], fov: 32 }} gl={{ antialias: true, alpha: true }} style={styles.canvas} onCreated={({ camera }) => camera.lookAt(0, 1.3, 0)}>
-        <ambientLight intensity={1.1} />
+      <Canvas
+        camera={{ position: [0, 2.2, 5], fov: 32 }}
+        gl={{ antialias: true, alpha: true }}
+        style={styles.canvas}
+        onCreated={({ camera }) => camera.lookAt(0, 1.0, 0)}
+      >
+        <ambientLight intensity={1.7} />
         <hemisphereLight args={["#e8f2ff", "#8a7f76", 0.5]} />
         <directionalLight position={[2, 4, 6]} intensity={1.4} />
         <Toilet {...toiletProps} />
