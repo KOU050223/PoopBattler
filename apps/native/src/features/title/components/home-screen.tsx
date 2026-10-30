@@ -8,11 +8,12 @@ import { PoopmSprite } from "@/features/battle/components/poopm-sprite";
 import toiletImage from "../../../../assets/design/home-toilet.png";
 import mealImage from "../../../../assets/design/home-meal.png";
 import logImage from "../../../../assets/design/home-log.png";
+import gachaImage from "../../../../assets/design/home-gacha.png";
 import { useStreak } from "@/features/streak/use-streak";
 import { colors, spacing } from "@/design";
 import { SceneBackground } from "@/design/kids";
 
-import { bubbleSizes, companionSize } from "../home-layout";
+import { bubbleSizes, companionSize, gachaBubbleSize } from "../home-layout";
 import { useCompanion } from "../use-companion";
 import { homePalette } from "../home-palette";
 import { HomeHalo } from "./home-halo";
@@ -44,6 +45,7 @@ export function HomeScreen() {
             // 開発メニューへの入口。以前のタイトル画面と同じく開発ビルドだけ。
             onLongPress={__DEV__ ? () => router.push("/dev") : undefined}
           />
+          <IconBubble size={gachaBubbleSize(bubbles.small)} image={gachaImage} label={t("Gacha.open")} onPress={() => router.push("/gacha")} />
         </View>
         <View style={styles.tabs}>
           <HomeSideTab
@@ -87,7 +89,8 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   top: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingLeft: spacing.lg },
-  gear: { paddingTop: spacing.sm },
+  // 下の泡の列は3つで幅がいっぱいなので、ガチャは歯車の下に置く。
+  gear: { paddingTop: spacing.sm, gap: spacing.md, alignItems: "flex-start" },
   tabs: { gap: spacing.sm, alignItems: "flex-end" },
   companion: { flex: 1, alignItems: "center", justifyContent: "center" },
   bottom: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: spacing.lg },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bubbleSizes, companionSize, haloLayout } from "./home-layout";
+import { bubbleSizes, companionSize, gachaBubbleSize, haloLayout } from "./home-layout";
 
 const BUBBLE_COUNT_GAP_AND_PADDING = 32 + 12;
 
@@ -96,5 +96,15 @@ describe("haloLayout", () => {
     const large = bubbleSizes(375).large;
     expect(companionSize(height, large, 20)).toBeGreaterThanOrEqual(160);
     expect(-haloLayout(375, large).top).toBeLessThanOrEqual(24);
+  });
+});
+
+describe("gachaBubbleSize", () => {
+  it("下の小さい泡の4分の3", () => {
+    expect(gachaBubbleSize(104)).toBe(78);
+  });
+
+  it("小さい泡が最小でもタップできる大きさ 44 を保つ", () => {
+    expect(gachaBubbleSize(44)).toBe(44);
   });
 });
