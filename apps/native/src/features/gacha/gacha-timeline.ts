@@ -35,8 +35,10 @@ export type TimelineFrame = {
   toiletScale: number;
   /** 石の落下の進み 0〜1。null は石が見えない。 */
   stoneProgress: number | null;
-  /** 水と渦に使う、回転フェーズの進み 0〜1。 */
+  /** 渦に使う、回転フェーズの進み 0〜1。 */
   spinProgress: number;
+  /** 水面の高さ倍率（1=満水）。流れて空になり、止まる瞬間に戻る。 */
+  water: number;
   isHandlePressed: boolean;
 };
 
@@ -60,6 +62,7 @@ const IDLE_FRAME: TimelineFrame = {
   toiletScale: 1,
   stoneProgress: 0,
   spinProgress: 0,
+  water: 1,
   isHandlePressed: false,
 };
 
@@ -87,6 +90,7 @@ export function frameAt(elapsedMs: number | null, isReduced = false): TimelineFr
       toiletScale: lerp(1, MIN_TOILET_SCALE, easeInOutCubic(p)),
       stoneProgress: null,
       spinProgress: p,
+      water: waterLevel(p),
       isHandlePressed: true,
     };
   }
@@ -100,6 +104,7 @@ export function frameAt(elapsedMs: number | null, isReduced = false): TimelineFr
       toiletScale: lerp(MIN_TOILET_SCALE, 1, easeOutBack(q)),
       stoneProgress: null,
       spinProgress: 1,
+      water: easeOutExpo(q),
       isHandlePressed: false,
     };
   }

@@ -7,7 +7,7 @@ import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { loadGlb } from "@/features/poopm-3d/poopm-3d-glb-loader";
 
 import { TOILET_GLB_MODULE } from "../toilet-glb-module";
-import { IDLE_CAMERA, cameraPosition, frameAt, swirlAngle, waterLevel, type Phase } from "../gacha-timeline";
+import { IDLE_CAMERA, cameraPosition, frameAt, swirlAngle, type Phase } from "../gacha-timeline";
 
 type ToiletFlushProps = {
   isFlushing: boolean;
@@ -25,12 +25,13 @@ const MODEL_SCALE = 4.9;
 const MODEL_CENTER = { x: -0.15, z: 0.195 };
 const WATER = "#9fdcf7";
 const SWIRL_DOT_COUNT = 6;
-// 便座の開口の中心と水面の高さ（モデル座標）。
-const BOWL_CENTER = { x: -0.152, y: 0.205, z: 0.145 };
-const WATER_RADIUS = 0.075;
-const SWIRL_RADIUS = 0.045;
-const SWIRL_DOT_SIZE = 0.012;
-const WATER_THICKNESS = 0.015;
+// 便器の内側の底（y=0.158、x -0.217〜-0.086、z 0.063〜0.226）に合わせた水面。底より少し上に置く。
+const BOWL_CENTER = { x: -0.1515, y: 0.17, z: 0.1445 };
+const WATER_RX = 0.06;
+const WATER_RZ = 0.075;
+const SWIRL_RADIUS = 0.035;
+const SWIRL_DOT_SIZE = 0.009;
+const WATER_THICKNESS = 0.012;
 // フタは蝶番（背面側のふち）を軸に、前を持ち上げて立てる。
 const LID_NODE = "Group";
 const LID_HINGE = { x: -0.152, y: 0.24, z: 0.266 };
@@ -41,7 +42,7 @@ const HANDLE_PRESS_RAD = 0.5;
 // 注視点は便器の中ほど。縮むときは便器と一緒に下がる。
 const TARGET_Y = 1.0;
 // 石は便器の真上に浮かび、押すと開口へ落ちる。
-const STONE_HOVER_Y = 0.45;
+const STONE_HOVER_Y = 0.4;
 const STONE_SIZE = 0.02;
 const STONE_BOB = 0.01;
 const GOLD = "#f5b81c";
@@ -122,7 +123,7 @@ function Toilet({ isFlushing, reduceMotion, onSlam, onFlushed }: Omit<ToiletFlus
     state.camera.lookAt(0, targetY, 0);
 
     scene?.getObjectByName("HandlePivot")?.rotation.set(0, 0, frame.isHandlePressed ? HANDLE_PRESS_RAD : 0);
-    if (water.current) water.current.scale.y = Math.max(0.001, waterLevel(frame.spinProgress));
+    if (water.current) water.current.scale.y = Math.max(0.001, frame.water);
     if (swirl.current) {
       swirl.current.rotation.y = reduceMotion ? 0 : swirlAngle(frame.spinProgress);
       swirl.current.visible = frame.phase === "spin";
@@ -146,10 +147,13 @@ function Toilet({ isFlushing, reduceMotion, onSlam, onFlushed }: Omit<ToiletFlus
         <group rotation={[0, Math.PI, 0]}>
           <group position={[-MODEL_CENTER.x, 0, -MODEL_CENTER.z]}>
             <primitive object={scene} />
-            <mesh ref={water} position={[BOWL_CENTER.x, BOWL_CENTER.y, BOWL_CENTER.z]}>
-              <cylinderGeometry args={[WATER_RADIUS, WATER_RADIUS, WATER_THICKNESS, 32]} />
-              <meshStandardMaterial color={WATER} roughness={0.15} />
-            </mesh>
+            {/* 底の長方形に合わせて楕円へ伸ばす。水位（scale.y）は内側の mesh だけを動かす。 */}
+            <group position={[BOWL_CENTER.x, BOWL_CENTER.y, BOWL_CENTER.z]} scale={[WATER_RX, 1, WATER_RZ]}>
+              <mesh ref={water}>
+                <cylinderGeometry args={[1, 1, WATER_THICKNESS, 32]} />
+                <meshStandardMaterial color={WATER} roughness={0.15} />
+              </mesh>
+            </group>
             <mesh ref={stone} position={[BOWL_CENTER.x, STONE_HOVER_Y, BOWL_CENTER.z]}>
               <octahedronGeometry args={[STONE_SIZE, 0]} />
               <meshStandardMaterial color={GOLD} emissive={GOLD} emissiveIntensity={0.5} roughness={0.25} />

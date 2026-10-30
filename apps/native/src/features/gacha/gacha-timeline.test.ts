@@ -75,6 +75,13 @@ describe("frameAt（通常）", () => {
     expect(frameAt(TOTAL_MS).camera).toEqual(RESULT_CAMERA);
   });
 
+  it("水は回転の終わりに空になり、止まる瞬間から戻って満水になる", () => {
+    expect(frameAt(DROP_MS - 1).water).toBe(1);
+    expect(frameAt(SPIN_END - 0.001).water).toBeCloseTo(0, 1);
+    expect(frameAt(SPIN_END + SLAM_MS / 4).water).toBeGreaterThan(0.5);
+    expect(frameAt(TOTAL_MS).water).toBe(1);
+  });
+
   it("レバーは回転の間だけ押されている", () => {
     expect([frameAt(DROP_MS - 1), frameAt(DROP_MS + 1), frameAt(SPIN_END + 1)].map((f) => f.isHandlePressed)).toEqual([
       false,
