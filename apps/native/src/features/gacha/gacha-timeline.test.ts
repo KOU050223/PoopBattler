@@ -63,6 +63,11 @@ describe("frameAt（通常）", () => {
     expect(frameAt(DROP_MS + 300).toiletYaw).toBeLessThan(Math.PI / 2);
   });
 
+  it("回転が始まって最初の 0.3 秒では、カメラの俯角は 10° も変わらない（便器が傾いて見えない）", () => {
+    const change = Math.abs(frameAt(DROP_MS + 300).camera.elevationDeg - DROP_CAMERA.elevationDeg);
+    expect(change).toBeLessThan(10);
+  });
+
   it("便器が四分の一回転するころには、カメラは大きく引いている", () => {
     const quarterTurn = Array.from({ length: SPIN_MS }, (_, ms) => frameAt(DROP_MS + ms)).find((f) => f.toiletYaw >= Math.PI / 2);
     expect(quarterTurn?.camera.distance).toBeGreaterThan((DROP_CAMERA.distance + WIDE_CAMERA.distance) / 2);

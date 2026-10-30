@@ -88,8 +88,12 @@ export function frameAt(elapsedMs: number | null, isReduced = false): TimelineFr
     const p = (elapsed - DROP_MS) / SPIN_MS;
     return {
       phase: "spin",
-      // カメラは先に勢いよく引き、近距離でタンクが鉢に重なって回り込む場面を短くする。
-      camera: lerpCamera(DROP_CAMERA, WIDE_CAMERA, easeOutCubic(p)),
+      // 距離は先に勢いよく引き、近距離でタンクが鉢に回り込む場面を短くする。
+      // 角度（俯角）は同じ速さで動かさない。急に変わると便器が前へ傾いたように見える。
+      camera: {
+        distance: lerp(DROP_CAMERA.distance, WIDE_CAMERA.distance, easeOutCubic(p)),
+        elevationDeg: lerp(DROP_CAMERA.elevationDeg, WIDE_CAMERA.elevationDeg, easeInOutCubic(p)),
+      },
       toiletYaw: Math.PI * 2 * SPIN_TURNS * easeInPow(p, SPIN_EASE_POWER),
       toiletScale: lerp(1, MIN_TOILET_SCALE, easeInOutCubic(p)),
       stoneProgress: null,
