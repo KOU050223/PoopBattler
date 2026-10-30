@@ -22,11 +22,12 @@ describe("POOPM_3D_MOTION", () => {
     }
   });
 
-  it("idle と special_charge はループ、それ以外は1回再生", () => {
+  it("idle・special_charge・run はループ、それ以外は1回再生", () => {
     expect(POOPM_3D_MOTION.idle.loop).toBe("repeat");
     expect(POOPM_3D_MOTION.special_charge.loop).toBe("repeat");
+    expect(POOPM_3D_MOTION.run.loop).toBe("repeat");
     for (const motion of POOPM_3D_BATTLE_MOTIONS) {
-      if (motion === "idle" || motion === "special_charge") continue;
+      if (motion === "idle" || motion === "special_charge" || motion === "run") continue;
       expect(POOPM_3D_MOTION[motion].loop).toBe("once");
     }
   });

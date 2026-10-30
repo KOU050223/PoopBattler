@@ -35,6 +35,7 @@ export const POOPM_3D_CLIPS = [
   "ko",
   "lose",
   "win",
+  "run",
 ] as const;
 export type Poopm3DClip = (typeof POOPM_3D_CLIPS)[number];
 
