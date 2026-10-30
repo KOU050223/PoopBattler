@@ -45,12 +45,17 @@ function presetOf(presetId: string): StatPreset {
 }
 
 export function buildSessionOptions(setup: RaceSetup, seed: number): SessionOptions {
+  return buildPlayerSessionOptions(presetOf(setup.presetId).stats, setup.isCollisions, seed);
+}
+
+/** 走者のステータスを直接渡して開始条件を作る。本編は相棒のステータスをここへ渡す */
+export function buildPlayerSessionOptions(playerStats: RunnerStats, isCollisions: boolean, seed: number): SessionOptions {
   // 名前の並びはレース本体の乱数を使わず、別に作る。名前を変えてもレースの展開が変わらないように
   const opponentNames = shuffle(createRng(seed), OPPONENT_NAMES).slice(0, RUNNER_COUNT - 1);
   return {
     seed,
-    racers: { player: { ...presetOf(setup.presetId).stats } },
-    collisions: setup.isCollisions,
+    racers: { player: { ...playerStats } },
+    collisions: isCollisions,
     runnerNames: [PLAYER_NAME, ...opponentNames],
   };
 }

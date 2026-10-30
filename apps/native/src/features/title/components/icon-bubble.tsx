@@ -1,3 +1,5 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
+import type { ComponentProps } from "react";
 import { Image, Pressable, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
 import Animated from "react-native-reanimated";
 
@@ -8,10 +10,13 @@ import { homePalette } from "../home-palette";
 
 // 絵は泡の内側に少し小さい円で収める（画面案: 152/104 に対して 116/78）。
 const IMAGE_RATIO = 0.75;
+const ICON_RATIO = 0.5;
 
 type IconBubbleProps = {
   label: string;
-  image: ImageSourcePropType;
+  // 絵がない泡（「あそびかた」など）は iconName で Ionicons を出す。どちらか一方を渡す。
+  image?: ImageSourcePropType;
+  iconName?: ComponentProps<typeof Ionicons>["name"];
   onPress: () => void;
   // large はホームの「うんちする」だけに使う。
   variant?: "large" | "small";
@@ -20,7 +25,7 @@ type IconBubbleProps = {
 };
 
 // design の BubbleButton はラベルだけでピル形のため、絵入りの丸い泡をホーム専用に持つ。
-export function IconBubble({ label, image, onPress, variant = "small", size }: IconBubbleProps) {
+export function IconBubble({ label, image, iconName, onPress, variant = "small", size }: IconBubbleProps) {
   const { animatedStyle, onPressIn, onPressOut } = usePressSpring();
   const isLarge = variant === "large";
   const imageSize = Math.round(size * IMAGE_RATIO);
@@ -30,7 +35,11 @@ export function IconBubble({ label, image, onPress, variant = "small", size }: I
       <Animated.View style={[styles.column, animatedStyle]}>
         <View style={[styles.circle, isLarge ? styles.circleLarge : styles.circleSmall, { width: size, height: size }]}>
           <View style={[styles.highlight, isLarge ? styles.highlightLarge : styles.highlightSmall]} />
-          <Image source={image} style={{ width: imageSize, height: imageSize, borderRadius: imageSize / 2 }} resizeMode="cover" />
+          {image ? (
+            <Image source={image} style={{ width: imageSize, height: imageSize, borderRadius: imageSize / 2 }} resizeMode="cover" />
+          ) : iconName ? (
+            <Ionicons name={iconName} size={Math.round(size * ICON_RATIO)} color={colors.ink} />
+          ) : null}
         </View>
         <View style={[styles.pill, isLarge ? styles.pillLarge : styles.pillSmall]}>
           <Text style={[styles.label, isLarge ? styles.labelLarge : styles.labelSmall]}>{label}</Text>

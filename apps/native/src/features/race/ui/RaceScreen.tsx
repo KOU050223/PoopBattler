@@ -47,6 +47,7 @@ export function RaceScreen({ onExit }: RaceScreenProps) {
     return (
       <RaceView
         key={screen.runId}
+        isSeedShown
         options={screen.options}
         onOver={(result) => setScreen({ phase: "result", seed: screen.seed, result })}
         onQuit={() => setScreen({ phase: "setup" })}
@@ -54,7 +55,7 @@ export function RaceScreen({ onExit }: RaceScreenProps) {
     );
   }
   if (screen.phase === "result") {
-    return <ResultView result={screen.result} seed={screen.seed} onRetry={() => setScreen({ phase: "setup" })} onExit={onExit} />;
+    return <ResultView result={screen.result} seed={screen.seed} primaryLabel="もう一度" onPrimary={() => setScreen({ phase: "setup" })} secondaryLabel="戻る" onSecondary={onExit} />;
   }
   return <SetupView setup={setup} onChange={setSetup} onStart={start} onBack={onExit} />;
 }
@@ -119,7 +120,8 @@ function SetupView({ setup, onChange, onStart, onBack }: { setup: RaceSetup; onC
 
 // ---- レース ----
 
-function RaceView({ options, onOver, onQuit }: { options: SessionOptions; onOver: (result: RaceResultView) => void; onQuit: () => void }) {
+/** isSeedShown は dev 用。本編ではユーザーに内部の数字を見せない */
+export function RaceView({ options, onOver, onQuit, isSeedShown = false }: { options: SessionOptions; onOver: (result: RaceResultView) => void; onQuit: () => void; isSeedShown?: boolean }) {
   const insets = useSafeAreaInsets();
   const isMotionReduced = useReducedMotion();
   const run = useRaceRun(options, onOver);
@@ -175,7 +177,7 @@ function RaceView({ options, onOver, onQuit }: { options: SessionOptions; onOver
         <Pressable accessibilityRole="button" accessibilityLabel="レースをやめる" onPress={onQuit} style={styles.quit}>
           <Text style={styles.quitLabel}>やめる</Text>
         </Pressable>
-        <Text style={styles.seed}>seed {options.seed}</Text>
+        {isSeedShown ? <Text style={styles.seed}>seed {options.seed}</Text> : null}
       </View>
     </GestureHandlerRootView>
   );
@@ -185,7 +187,17 @@ function RaceView({ options, onOver, onQuit }: { options: SessionOptions; onOver
 
 const GRADE_COLORS = { S: colors.flushEdge, A: colors.sparkBlue, B: colors.pencilGray, C: colors.fadedGray } as const;
 
-function ResultView({ result, seed, onRetry, onExit }: { result: RaceResultView; seed: number; onRetry: () => void; onExit: () => void }) {
+interface ResultViewProps {
+  result: RaceResultView;
+  /** 渡したときだけ seed を表示する（dev 用） */
+  seed?: number;
+  primaryLabel: string;
+  onPrimary: () => void;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
+}
+
+export function ResultView({ result, seed, primaryLabel, onPrimary, secondaryLabel, onSecondary }: ResultViewProps) {
   const insets = useSafeAreaInsets();
   return (
     <View style={styles.page}>
@@ -225,13 +237,13 @@ function ResultView({ result, seed, onRetry, onExit }: { result: RaceResultView;
               <Text key={text} style={styles.highlight}>{text}</Text>
             ))}
           </View>
-          <Text style={styles.seedNote}>seed {seed}</Text>
+          {seed === undefined ? null : <Text style={styles.seedNote}>seed {seed}</Text>}
         </View>
       </ScrollView>
       <View style={[styles.actions, { paddingBottom: insets.bottom + spacing.md }]}>
         <View style={styles.actionsInner}>
-          <Button label="もう一度" onPress={onRetry} />
-          <Button label="戻る" variant="secondary" onPress={onExit} />
+          <Button label={primaryLabel} onPress={onPrimary} />
+          {secondaryLabel && onSecondary ? <Button label={secondaryLabel} variant="secondary" onPress={onSecondary} /> : null}
         </View>
       </View>
     </View>
