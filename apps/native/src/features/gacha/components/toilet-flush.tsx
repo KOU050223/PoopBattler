@@ -36,10 +36,8 @@ const WATER_EMPTY_SCALE = 0.84;
 const SWIRL_RADIUS = 0.035;
 const SWIRL_DOT_SIZE = 0.009;
 const SWIRL_LIFT = 0.006;
-// フタは蝶番（背面側のふち）を軸に、前を持ち上げて立てる。
+// フタは隠す。開けて立てると、タンクの手前に同じ色の板が重なって「便器が二つ」に見えるため。
 const LID_NODE = "Group";
-const LID_HINGE = { x: -0.152, y: 0.24, z: 0.266 };
-const LID_OPEN_RAD = 1.7;
 const HANDLE_NODE = "toiletSquare_1";
 const HANDLE_CENTER = { x: -0.044, y: 0.386, z: 0.302 };
 const HANDLE_PRESS_RAD = 0.5;
@@ -106,13 +104,10 @@ function Toilet({ isFlushing, reduceMotion, onSlam, onFlushed }: Omit<ToiletFlus
   const scene = useMemo(() => {
     if (!gltf) return null;
     const copy = gltf.scene.clone(true);
-    // 頂点が原点基準で入っているため、軸の位置に置いた空のグループへ入れ替えて回す。
-    const lid = copy.getObjectByName(LID_NODE);
+    // レバーは頂点が原点基準で入っているため、軸の位置に置いた空のグループへ入れ替えて回す。
     const handle = copy.getObjectByName(HANDLE_NODE);
-    if (lid) {
-      const pivot = withPivot(lid, LID_HINGE, "LidPivot");
-      pivot.rotation.x = LID_OPEN_RAD;
-    }
+    const lid = copy.getObjectByName(LID_NODE);
+    if (lid) lid.visible = false;
     if (handle) withPivot(handle, HANDLE_CENTER, "HandlePivot");
     return copy;
   }, [gltf]);
