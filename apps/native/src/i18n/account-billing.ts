@@ -27,6 +27,14 @@ export const accountBillingJa = {
     deleteUnavailable:
       "アカウントの削除は現在準備中です。削除すると食事・排便・バトルの記録と図鑑がすべて消えます。",
     deletePending: "準備中",
+    deleteAction: "アカウントを削除する",
+    planLabel: "プラン",
+    planNone: "未登録",
+    planLoading: "読み込んでいます…",
+    planUnknown: "確認できませんでした",
+    planActive: "プレミアム",
+    planLapsed: "お支払い確認中",
+    viewPlan: "プランを見る",
   },
   Billing: {
     premiumTitle: "プレミアム",
@@ -44,7 +52,7 @@ export const accountBillingJa = {
     restore: "以前の購入を復元する",
     restoring: "復元しています…",
     purchaseTitle: "プレミアム",
-    purchaseDescription: "週次レポートの分析がすべて見られます。",
+    purchaseDescription: "週間レポートの分析がすべて見られます。",
     loading: "読み込んでいます…",
     unavailable: "課金機能はこの環境ではまだ使えません。配布版のアプリでご利用いただけます。",
     noOffers: "現在購入できるプランがありません。",
@@ -57,11 +65,15 @@ export const accountBillingJa = {
     reflected: "プレミアムが有効になりました。",
     failed: "処理を完了できませんでした。時間をおいてもう一度お試しください。",
     autoRenewNote:
-      "購読は自動更新されます。管理・解約はiPhoneの設定の「Apple Account」→「サブスクリプション」からいつでも行えます。",
+      "サブスクリプションは自動更新されます。解約は、更新日の24時間前までにApp Storeの設定から行えます。",
     openReport: "レポートを見る",
     periodMonthly: "月額",
     periodYearly: "年額",
     periodWeekly: "週額",
+    featureDaily: "毎日の回数と、便の形の内訳",
+    featureCompare: "過去4週間との比較",
+    featureRatio: "すっきり・出にくかった割合の変化",
+    priceNote: "価格はApp Storeの表示に合わせて変わります。",
   },
 };
 
@@ -92,6 +104,14 @@ export const accountBillingEn = {
     deleteUnavailable:
       "Account deletion isn't available yet. Deleting removes all meal, bowel, and battle records and your collection.",
     deletePending: "Coming soon",
+    deleteAction: "Delete account",
+    planLabel: "Plan",
+    planNone: "Not subscribed",
+    planLoading: "Loading…",
+    planUnknown: "Couldn't check",
+    planActive: "Premium",
+    planLapsed: "Payment check needed",
+    viewPlan: "See plans",
   },
   Billing: {
     premiumTitle: "Premium",
@@ -121,10 +141,14 @@ export const accountBillingEn = {
     reflected: "Premium is now active.",
     failed: "Couldn't complete the request. Please try again later.",
     autoRenewNote:
-      "Subscriptions renew automatically. Manage or cancel anytime from your iPhone Settings → \"Apple Account\" → \"Subscriptions\".",
+      "Subscriptions renew automatically. To cancel, do so at least 24 hours before the renewal date in your App Store settings.",
     openReport: "View report",
     periodMonthly: "monthly",
     periodYearly: "yearly",
     periodWeekly: "weekly",
+    featureDaily: "Daily counts and a breakdown of stool shapes",
+    featureCompare: "Comparison with the past 4 weeks",
+    featureRatio: "Changes in the share of easy vs. hard days",
+    priceNote: "Prices follow what the App Store shows.",
   },
 };

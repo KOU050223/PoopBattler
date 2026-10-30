@@ -16,6 +16,7 @@ export default function DevMenuScreen() {
       <Button label="うんちレース（遊べる）" variant="secondary" onPress={() => router.push("/dev/race")} />
       <Button label="レースのオーバーレイ" variant="secondary" onPress={() => router.push("/dev/race-overlay")} />
       <Button label="ジェスチャー検証" variant="secondary" onPress={() => router.push("/dev/gesture-probe")} />
+      <Button label="部品集（デザイン確認）" variant="secondary" onPress={() => router.push("/dev/design-gallery")} />
     </View>
   );
 }

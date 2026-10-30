@@ -3,86 +3,114 @@ import { StyleSheet, Text, View } from "react-native";
 
 import type { WeeklyReport } from "@poopbattler/domain/report/weekly-report";
 
-import { cardStyle } from "@/components/ui";
-import { colors, fonts, spacing } from "@/theme";
+import { colors, fontFamily, fontSize, spacing } from "@/design";
+import { ParentCard } from "@/design/parent";
 
-/** Display the shared metrics without recalculating rates or entitlement in the UI. */
-export function ReportHighlights({ report }: { report: WeeklyReport }) {
+import { toComparisonRows, type ComparisonRow } from "./report-view-model";
+
+type Value = ComparisonRow["current"];
+
+/** 値の表示。null は「出せない」で、0 とは別物として — にする。 */
+function useFormatValue() {
   const { t } = useTranslation();
-  const { summary, comparison } = report;
-  const current = comparison.current;
-  const baseline = comparison.pastFourWeeks;
-  const percentage = (value: number | null) => value === null ? t("Report.missingValue") : `${value}%`;
-  const rows = [
-    { label: t("Report.bowelCount"), current: t("Report.times", { count: current.bowelCount }), baseline: baseline.bowelCount === 0 ? t("Report.missingValue") : t("Report.weeklyAverage", { count: comparison.pastFourWeekAverageBowelCount }) },
-    { label: t("Report.shapeHard"), current: percentage(current.shape.hard.rate), baseline: percentage(baseline.shape.hard.rate) },
-    { label: t("Report.shapeWellFormed"), current: percentage(current.shape.well_formed.rate), baseline: percentage(baseline.shape.well_formed.rate) },
-    { label: t("Report.shapeSoft"), current: percentage(current.shape.soft.rate), baseline: percentage(baseline.shape.soft.rate) },
-    { label: t("Report.easyRate"), current: percentage(current.easyRate), baseline: percentage(baseline.easyRate) },
-    { label: t("Report.hardRate"), current: percentage(current.hardRate), baseline: percentage(baseline.hardRate) },
+  return (value: Value) => {
+    if (value === null) return t("Report.missingValue");
+    return value.unit === "percent" ? `${value.value}%` : t("Report.times", { count: value.value });
+  };
+}
+
+/** 上部の3つの数字。割合の計算は domain 側の値をそのまま表示する。 */
+export function ReportStats({ report }: { report: WeeklyReport }) {
+  const { t } = useTranslation();
+  const format = useFormatValue();
+  const [count, wellFormed, easy] = toComparisonRows(report);
+  const stats = [
+    { label: t("Report.statCount"), value: format(count.current), accent: null },
+    { label: t("Report.statWellFormed"), value: format(wellFormed.current), accent: colors.leaf },
+    { label: t("Report.statEasy"), value: format(easy.current), accent: colors.sky },
   ];
 
   return (
-    <View style={styles.stack}>
-      <View style={styles.card}>
-        <Text style={styles.heading} accessibilityRole="header">{t("Report.highlights")}</Text>
-        <View style={styles.metrics}>
-          <Metric label={t("Report.bowelCount")} value={t("Report.times", { count: summary.bowelCount })} detail={t("Report.thisWeek")} />
-          <Metric label={t("Report.recordDays")} value={t("Report.days", { count: summary.recordedDays })} detail={t("Report.thisWeek")} />
-          <Metric label={t("Report.shapeWellFormed")} value={percentage(summary.metrics.shape.well_formed.rate)} detail={t("Report.rateBasis")} />
-          <Metric label={t("Report.easyRate")} value={percentage(summary.metrics.easyRate)} detail={t("Report.rateBasis")} />
-        </View>
-        {current.bowelCount === 0 ? <Text style={styles.note}>{t("Report.currentEmpty")}</Text> : null}
-      </View>
-      <View style={styles.card}>
-        <Text style={styles.heading} accessibilityRole="header">{t("Report.comparisonTitle")}</Text>
-        <Text style={styles.note}>{t("Report.comparisonDescription")}</Text>
-        {baseline.bowelCount === 0 ? <Text style={styles.note}>{t("Report.baselineEmpty")}</Text> : null}
-        {rows.map((row) => (
-          <View key={row.label} style={styles.row} accessible accessibilityLabel={`${row.label}。${t("Report.currentPeriod")} ${row.current}。${t("Report.baselinePeriod")} ${row.baseline}`}>
-            <Text style={styles.label}>{row.label}</Text>
-            <View style={styles.values}>
-              <View style={styles.period}>
-                <Text style={styles.periodLabel}>{t("Report.currentPeriod")}</Text>
-                <Text style={styles.currentValue}>{row.current}</Text>
+    <View style={styles.stats}>
+      {stats.map((stat) => (
+        <View key={stat.label} style={styles.stat}>
+          <ParentCard>
+            <View style={styles.statBody} accessible accessibilityLabel={`${stat.label} ${stat.value}`}>
+              <View style={styles.statLabelLine}>
+                {stat.accent ? <View style={[styles.dot, { backgroundColor: stat.accent }]} /> : null}
+                <Text style={styles.statLabel} numberOfLines={1}>{stat.label}</Text>
               </View>
-              <View style={styles.period}>
-                <Text style={styles.periodLabel}>{t("Report.baselinePeriod")}</Text>
-                <Text style={styles.baselineValue}>{row.baseline}</Text>
-              </View>
+              <Text style={styles.statValue} adjustsFontSizeToFit numberOfLines={1}>{stat.value}</Text>
             </View>
-          </View>
-        ))}
-        <Text style={styles.note}>{t("Report.sampleNote", { current: current.bowelCount, baseline: baseline.bowelCount })}</Text>
-        <Text style={styles.note}>{t("Report.comparisonNote")}</Text>
-      </View>
+          </ParentCard>
+        </View>
+      ))}
     </View>
   );
 }
 
-function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
+/** 今週と過去4週間（今週を除く）の比較表。 */
+export function ReportComparison({ report }: { report: WeeklyReport }) {
+  const { t } = useTranslation();
+  const format = useFormatValue();
+  const { current, pastFourWeeks } = report.comparison;
+  const rowLabels: Record<ComparisonRow["key"], string> = {
+    count: t("Report.rowCount"),
+    wellFormed: t("Report.rowWellFormed"),
+    easy: t("Report.rowEasy"),
+    hard: t("Report.rowHard"),
+  };
+
   return (
-    <View style={styles.metric} accessible accessibilityLabel={`${label} ${value}。${detail}`}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.periodLabel}>{detail}</Text>
+    <View style={styles.comparison}>
+      <ParentCard>
+        <View style={styles.table}>
+          <View style={styles.tableRow}>
+            <View style={styles.rowLabel} />
+            <Text style={[styles.periodHead, styles.cell]}>{t("Report.currentPeriod")}</Text>
+            <Text style={[styles.periodHead, styles.cell]}>{t("Report.baselinePeriod")}</Text>
+          </View>
+          {toComparisonRows(report).map((row) => (
+            <View
+              key={row.key}
+              style={[styles.tableRow, styles.rowDivider]}
+              accessible
+              accessibilityLabel={`${rowLabels[row.key]}。${t("Report.currentPeriod")} ${format(row.current)}。${t("Report.baselinePeriod")} ${format(row.baseline)}`}
+            >
+              <Text style={[styles.rowLabel, styles.rowLabelText]}>{rowLabels[row.key]}</Text>
+              <Text style={[styles.cell, styles.currentValue]}>{format(row.current)}</Text>
+              <Text style={[styles.cell, styles.baselineValue]}>{format(row.baseline)}</Text>
+            </View>
+          ))}
+        </View>
+      </ParentCard>
+      {current.bowelCount === 0 ? <Text style={styles.note}>{t("Report.currentEmpty")}</Text> : null}
+      {pastFourWeeks.bowelCount === 0 ? <Text style={styles.note}>{t("Report.baselineEmpty")}</Text> : null}
+      {current.bowelCount > 0 && pastFourWeeks.bowelCount > 0 ? (
+        <Text style={styles.note}>{t("Report.sampleNote", { current: current.bowelCount, baseline: pastFourWeeks.bowelCount })}</Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  stack: { gap: spacing.lg },
-  card: { ...cardStyle, padding: spacing.lg },
-  heading: { fontFamily: fonts.black, fontSize: 18, color: colors.charcoal },
-  metrics: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, marginTop: spacing.lg },
-  metric: { flexBasis: "45%", flexGrow: 1, minWidth: 130, backgroundColor: colors.blushWash, borderRadius: 10, padding: spacing.md, gap: spacing.sm },
-  label: { fontFamily: fonts.bold, fontSize: 14, color: colors.charcoal, flexShrink: 1 },
-  metricValue: { fontFamily: fonts.black, fontSize: 26, color: colors.charcoal, fontVariant: ["tabular-nums"] },
-  note: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 21, color: colors.pencilGray, marginTop: spacing.md },
-  row: { paddingVertical: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.blushWash, gap: spacing.sm },
-  values: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
-  period: { flexBasis: "45%", flexGrow: 1, minWidth: 120, gap: 4 },
-  periodLabel: { fontFamily: fonts.regular, fontSize: 12, color: colors.pencilGray, flexShrink: 1 },
-  currentValue: { fontFamily: fonts.bold, fontSize: 19, color: colors.charcoal, fontVariant: ["tabular-nums"] },
-  baselineValue: { fontFamily: fonts.regular, fontSize: 19, color: colors.charcoal, fontVariant: ["tabular-nums"] },
+  stats: { flexDirection: "row", gap: spacing.sm },
+  stat: { flex: 1, minWidth: 0 },
+  statBody: { padding: spacing.md, gap: spacing.xs },
+  statLabelLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  statLabel: { flexShrink: 1, fontFamily: fontFamily.jaBold, fontSize: fontSize.caption, color: colors.inkSoft },
+  // 親の画面のトークンに大きな数字用が無いため、子ども用の見出しサイズを借りる。
+  statValue: { fontFamily: fontFamily.numExtraBold, fontSize: fontSize.childTitle, color: colors.ink },
+  comparison: { gap: spacing.sm },
+  table: { paddingHorizontal: spacing.lg, paddingVertical: spacing.xs },
+  tableRow: { flexDirection: "row", alignItems: "center", minHeight: 44, gap: spacing.sm },
+  rowDivider: { borderTopWidth: 1, borderTopColor: colors.line },
+  rowLabel: { flex: 1.6, minWidth: 0 },
+  rowLabelText: { fontFamily: fontFamily.jaBold, fontSize: fontSize.caption, color: colors.ink },
+  cell: { flex: 1, textAlign: "right" },
+  periodHead: { fontFamily: fontFamily.jaBold, fontSize: fontSize.caption, color: colors.inkSoft },
+  currentValue: { fontFamily: fontFamily.numExtraBold, fontSize: fontSize.body, color: colors.ink },
+  baselineValue: { fontFamily: fontFamily.numBold, fontSize: fontSize.body, color: colors.inkSoft },
+  note: { fontFamily: fontFamily.jaMedium, fontSize: fontSize.caption, lineHeight: 19, color: colors.inkSoft, paddingHorizontal: spacing.sm },
 });

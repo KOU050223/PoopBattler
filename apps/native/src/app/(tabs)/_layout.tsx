@@ -43,7 +43,10 @@ export default function TabsLayout() {
   return (
     <Tabs
       initialRouteName="battle"
+      // ホーム（P4 T1）ができるまでタブへの入口はない。ルートは残す。
+      tabBar={() => null}
       screenOptions={{
+        headerShown: false,
         headerTitle: t("Common.headerAppNameShort"),
         headerTitleStyle: headerTitleStyle,
         headerRight: () => (

@@ -7,7 +7,7 @@ export type PickResult =
 
 const options: ImagePicker.ImagePickerOptions = {
   mediaTypes: ["images"],
-  // 圧縮して JPEG 化する（HEIC を避け、5MB 制限にも収まりやすくする）。
+  // 圧縮して JPEG 化する（HEIC を避け、20MB 制限に余裕で収める）。
   quality: 0.7,
   allowsEditing: false,
   // フォームが pageSheet の Modal のため、ピッカーも sheet で重ねると

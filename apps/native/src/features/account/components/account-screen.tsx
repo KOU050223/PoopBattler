@@ -4,24 +4,24 @@ import { useFocusEffect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
   SIGNED_OUT_ACCOUNT_STATUS,
   type AccountStatus,
 } from "@poopbattler/domain/account/account.types";
 
-import { Button, cardStyle } from "@/components/ui";
+import { colors, fontFamily, fontSize, radius, spacing } from "@/design";
+import { NoticeCard, ParentButton, ParentCard, ParentScreen } from "@/design/parent";
 import { accountGateway, iapGateway } from "@/gateways";
 import { getSupabase } from "@/lib/supabase";
 import { runGoogleOAuthFlow, type GoogleAuthFailureReason } from "@/features/account/google-identity";
 import { waitForEntitlement } from "@/features/billing/iap-gateway";
 import type { SubscriptionSnapshot } from "@/features/billing/subscription-status";
 import { formatJstDate } from "@/features/report/report-format";
-import { colors, fonts, spacing } from "@/theme";
 
 import { watchAccountStatus } from "../account-watch";
+import { planView } from "./plan-view";
 
 // openAuthSessionAsync はこのスキームへの遷移を捕まえる。dev build では
 // poopbattler://auth/callback になる（app.json の scheme 済み）。
@@ -38,7 +38,7 @@ const GOOGLE_ERROR_KEYS: Record<GoogleAuthFailureReason, string> = {
 
 export function AccountScreen() {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [status, setStatus] = useState<AccountStatus>(SIGNED_OUT_ACCOUNT_STATUS);
   const [snapshot, setSnapshot] = useState<SubscriptionSnapshot | null>(null);
   const [snapshotLoaded, setSnapshotLoaded] = useState(false);
@@ -57,13 +57,7 @@ export function AccountScreen() {
   );
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.lg }]}
-    >
-      <Text style={styles.title} accessibilityRole="header">{t("Pages.account.title")}</Text>
-      <Text style={styles.lead}>{t("Pages.account.description")}</Text>
-
+    <ParentScreen title={t("Pages.account.title")} onBack={() => (router.canGoBack() ? router.back() : router.replace("/parent"))}>
       <GoogleLinkCard status={status} onLinked={setStatus} />
       <PremiumCard
         snapshot={snapshot}
@@ -71,7 +65,7 @@ export function AccountScreen() {
         onChanged={reloadSnapshot}
       />
       <DeleteCard />
-    </ScrollView>
+    </ParentScreen>
   );
 }
 
@@ -123,66 +117,61 @@ function GoogleLinkCard({ status, onLinked }: {
 
   if (status.hasGoogleIdentity) {
     return (
-      <View style={styles.card}>
-        <View style={styles.statusRow}>
-          <Ionicons name="checkmark-circle" size={18} color={colors.flushEdge} />
-          <Text style={styles.cardTitle}>{t("Account.linkedTitle")}</Text>
-        </View>
+      <NoticeCard
+        tone="info"
+        title={t("Account.linkedTitle")}
+        icon={<Ionicons name="checkmark-circle" size={20} color={colors.sky} />}
+      >
         <Text style={styles.cardNote}>
           {status.email
             ? t("Account.linkedDescription", { email: status.email })
             : t("Account.linkedDescriptionNoEmail")}
         </Text>
-      </View>
+      </NoticeCard>
     );
   }
 
   return (
-    <View style={[styles.card, styles.warnCard]}>
-      <Text style={styles.cardTitle}>{t("Account.anonymousTitle")}</Text>
+    <NoticeCard
+      tone="warn"
+      title={t("Account.anonymousTitle")}
+      icon={<Ionicons name="warning-outline" size={20} color={colors.sunset} />}
+    >
       <Text style={styles.cardNote}>{t("Account.anonymousWarning")}</Text>
 
-      <View style={styles.buttonColumn}>
-        <Button
-          label={pending === "link" ? t("Account.working") : t("Account.link")}
-          onPress={() => void run("link")}
-          disabled={pending !== null}
-          icon={<Ionicons name="logo-google" size={16} color={colors.paperWhite} />}
-        />
-      </View>
+      <ParentButton
+        label={pending === "link" ? t("Account.working") : t("Account.link")}
+        onPress={() => void run("link")}
+        disabled={pending !== null}
+        icon={<Ionicons name="logo-google" size={16} color={colors.ink} />}
+      />
 
       {confirmingSignIn ? (
         <View style={styles.confirmBox}>
-          <Text style={styles.confirmText}>{t("Account.signInWarning")}</Text>
-          <View style={styles.buttonColumn}>
-            <Button
-              label={pending === "sign-in" ? t("Account.working") : t("Account.signIn")}
-              onPress={() => void run("sign-in")}
-              disabled={pending !== null}
-            />
-            <Button
-              label={t("Account.cancel")}
-              onPress={() => setConfirmingSignIn(false)}
-              disabled={pending !== null}
-              variant="secondary"
-            />
-          </View>
-        </View>
-      ) : (
-        <View style={styles.buttonColumn}>
-          <Button
-            label={t("Account.returnToLinked")}
-            onPress={() => setConfirmingSignIn(true)}
+          <Text style={styles.cardNote}>{t("Account.signInWarning")}</Text>
+          <ParentButton
+            label={pending === "sign-in" ? t("Account.working") : t("Account.signIn")}
+            onPress={() => void run("sign-in")}
             disabled={pending !== null}
-            variant="secondary"
+          />
+          <ParentButton
+            label={t("Account.cancel")}
+            onPress={() => setConfirmingSignIn(false)}
+            disabled={pending !== null}
           />
         </View>
+      ) : (
+        <ParentButton
+          label={t("Account.returnToLinked")}
+          onPress={() => setConfirmingSignIn(true)}
+          disabled={pending !== null}
+        />
       )}
 
       {message ? (
         <Text style={styles.message} accessibilityLiveRegion="polite">{message}</Text>
       ) : null}
-    </View>
+    </NoticeCard>
   );
 }
 
@@ -229,109 +218,91 @@ function PremiumCard({ snapshot, loaded, onChanged }: {
     }
   };
 
-  return (
-    <View style={styles.card}>
-      <View style={styles.statusRow}>
-        <Ionicons name="star" size={18} color={colors.flushEdge} />
-        <Text style={styles.cardTitle}>{t("Billing.premiumTitle")}</Text>
-      </View>
+  const view = planView(snapshot, loaded);
 
-      {!loaded || snapshot === null ? (
-        <ActivityIndicator color={colors.flushEdge} style={styles.loader} />
-      ) : snapshot.status === "subscribed" ? (
-        <View>
-          <Text style={styles.cardNote}>{t("Billing.subscribedTitle")}</Text>
-          {snapshot.cancelAtPeriodEnd && snapshot.periodEnd ? (
-            <Text style={styles.cardNote}>
-              {t("Billing.scheduledUntil", { date: formatJstDate(snapshot.periodEnd) })}
-            </Text>
-          ) : null}
-          {snapshot.provider === "apple" ? (
-            <Text style={styles.cardNote}>{t("Billing.appleManaged")}</Text>
+  return (
+    <ParentCard>
+      <View style={styles.cardBody}>
+        <View style={styles.planRow}>
+          <View style={styles.planText}>
+            <Text style={styles.planLabel}>{t("Account.planLabel")}</Text>
+            <Text style={styles.planName}>{t(view.nameKey)}</Text>
+          </View>
+          {view.canViewPlan ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/purchase")}
+              style={({ pressed }) => [styles.planPill, pressed && styles.pressed]}
+            >
+              <Text style={styles.planPillText}>{t("Account.viewPlan")}</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.goldEdge} />
+            </Pressable>
           ) : null}
         </View>
-      ) : snapshot.status === "lapsed" ? (
-        <View>
-          <Text style={styles.cardTitle}>{t("Billing.lapsedTitle")}</Text>
+
+        {view.body === "loading" || snapshot === null ? (
+          <ActivityIndicator color={colors.pink} style={styles.loader} />
+        ) : snapshot.status === "subscribed" ? (
+          <View style={styles.notes}>
+            {snapshot.cancelAtPeriodEnd && snapshot.periodEnd ? (
+              <Text style={styles.cardNote}>
+                {t("Billing.scheduledUntil", { date: formatJstDate(snapshot.periodEnd) })}
+              </Text>
+            ) : null}
+            {snapshot.provider === "apple" ? (
+              <Text style={styles.cardNote}>{t("Billing.appleManaged")}</Text>
+            ) : null}
+          </View>
+        ) : snapshot.status === "lapsed" ? (
           <Text style={styles.cardNote}>
             {t(snapshot.provider === "apple" ? "Billing.lapsedApple" : "Billing.lapsedOther")}
           </Text>
-        </View>
-      ) : snapshot.status === "not-subscribed" ? (
-        <View>
-          <Text style={styles.cardNote}>{t("Billing.notSubscribed")}</Text>
-          <View style={styles.buttonColumn}>
-            <Button
-              label={t("Billing.goPurchase")}
-              onPress={() => router.push("/purchase")}
-              icon={<Ionicons name="sparkles" size={16} color={colors.paperWhite} />}
-            />
-          </View>
-        </View>
-      ) : (
-        // unknown: 「未購読」と誤表示しないよう状態は出さない
-        <Text style={styles.cardNote}>{t("Common.errorDescription")}</Text>
-      )}
+        ) : snapshot.status === "not-subscribed" ? null : (
+          // unknown: 「未購読」と誤表示しないよう状態は出さない
+          <Text style={styles.cardNote}>{t("Common.errorDescription")}</Text>
+        )}
 
-      {restoring ? (
-        <ActivityIndicator color={colors.flushEdge} style={styles.loader} />
-      ) : (
-        <View style={styles.buttonColumn}>
-          <Button label={t("Billing.restore")} onPress={() => void restore()} variant="secondary" />
-        </View>
-      )}
+        {restoring ? (
+          <ActivityIndicator color={colors.pink} style={styles.loader} />
+        ) : (
+          <ParentButton label={t("Billing.restore")} onPress={() => void restore()} />
+        )}
 
-      {notice ? (
-        <Text style={styles.message} accessibilityLiveRegion="polite">{notice}</Text>
-      ) : null}
-    </View>
+        {notice ? (
+          <Text style={styles.message} accessibilityLiveRegion="polite">{notice}</Text>
+        ) : null}
+      </View>
+    </ParentCard>
   );
 }
 
 function DeleteCard() {
   const { t } = useTranslation();
   return (
-    <View style={styles.card}>
-      <Text style={[styles.cardTitle, { color: colors.dangerEdge }]}>{t("Account.deleteTitle")}</Text>
+    <View style={styles.delete}>
       {/* web と同じサーバーサイド削除経路は native から叩ける API として
           まだ存在しないため、ここは準備中として残す。 */}
       <Text style={styles.cardNote}>{t("Account.deleteUnavailable")}</Text>
-      <View style={styles.disabledButton}>
-        <Text style={styles.disabledButtonText}>{t("Account.deletePending")}</Text>
-      </View>
+      <ParentButton variant="danger-text" label={t("Account.deleteAction")} onPress={() => {}} disabled />
+      <Text style={styles.caption}>{t("Account.deletePending")}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
-  title: { fontFamily: fonts.black, fontSize: 26, color: colors.charcoal, letterSpacing: -0.5 },
-  lead: { fontFamily: fonts.regular, fontSize: 14, color: colors.pencilGray, marginTop: 4, marginBottom: spacing.lg },
-  card: { ...cardStyle, padding: spacing.lg, marginBottom: spacing.lg },
-  warnCard: { borderColor: "#e0b23c" },
-  cardTitle: { fontFamily: fonts.black, fontSize: 17, color: colors.charcoal, letterSpacing: -0.2 },
-  cardNote: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: colors.pencilGray, marginTop: spacing.sm },
-  statusRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  buttonColumn: { marginTop: spacing.md, gap: spacing.sm },
-  confirmBox: {
-    marginTop: spacing.md,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.cottonPink,
-    backgroundColor: colors.paperWhite,
-    padding: spacing.md,
-  },
-  confirmText: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.charcoal },
-  loader: { marginTop: spacing.md, alignSelf: "flex-start" },
-  message: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.charcoal, marginTop: spacing.md },
-  disabledButton: {
-    marginTop: spacing.md,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.cottonPink,
-    paddingVertical: spacing.sm,
-    alignItems: "center",
-  },
-  disabledButtonText: { fontFamily: fonts.bold, fontSize: 14, color: colors.pencilGray },
+  cardBody: { padding: spacing.lg, gap: spacing.md },
+  cardNote: { fontFamily: fontFamily.jaMedium, fontSize: fontSize.body, lineHeight: 24, color: colors.ink },
+  notes: { gap: spacing.sm },
+  confirmBox: { borderRadius: radius.card / 2, backgroundColor: colors.paper, padding: spacing.md, gap: spacing.sm },
+  loader: { alignSelf: "flex-start" },
+  message: { fontFamily: fontFamily.jaMedium, fontSize: fontSize.caption, lineHeight: 19, color: colors.ink },
+  planRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
+  planText: { flex: 1, minWidth: 0 },
+  planLabel: { fontFamily: fontFamily.jaMedium, fontSize: fontSize.caption, color: colors.inkSoft },
+  planName: { fontFamily: fontFamily.jaBold, fontSize: fontSize.title, color: colors.ink },
+  planPill: { flexDirection: "row", alignItems: "center", gap: spacing.xs, minHeight: 44, paddingHorizontal: spacing.md, borderRadius: radius.pill, backgroundColor: `${colors.gold}33` },
+  planPillText: { fontFamily: fontFamily.jaBold, fontSize: fontSize.caption, color: colors.goldEdge },
+  pressed: { opacity: 0.7 },
+  delete: { marginTop: spacing.xl, alignItems: "center", gap: spacing.xs },
+  caption: { fontFamily: fontFamily.jaMedium, fontSize: fontSize.caption, color: colors.inkSoft },
 });

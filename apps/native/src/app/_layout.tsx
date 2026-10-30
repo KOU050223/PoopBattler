@@ -1,6 +1,5 @@
 import "@/i18n";
 
-import { Nunito_500Medium, Nunito_700Bold, Nunito_800ExtraBold } from "@expo-google-fonts/nunito";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -10,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { Text } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { fontAssets } from "@/design";
 import { ensureAnonymousSession } from "@/lib/anonymous-session";
 import { bindAutoRefreshToAppState, getSupabase } from "@/lib/supabase";
 import { colors, fonts } from "@/theme";
@@ -22,7 +22,7 @@ void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { t } = useTranslation();
-  const [fontsLoaded, fontError] = useFonts({ Nunito_500Medium, Nunito_700Bold, Nunito_800ExtraBold });
+  const [fontsLoaded, fontError] = useFonts(fontAssets);
 
   useEffect(() => {
     const supabase = getSupabase();
@@ -45,18 +45,23 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         {/* タブ外の詳細画面はヘッダー + 戻るボタンを出す（web のページ内遷移に相当）。
             ヘッダー中央は web と同じく固定ワードマーク。ページ名は各画面内の大見出しが担う。 */}
-        {(["meals", "report", "account", "dev/index", "dev/toilet-detect", "dev/poopm-3d"] as const).map((name) => (
+        {(["meals", "dev/index", "dev/toilet-detect", "dev/poopm-3d", "dev/design-gallery"] as const).map((name) => (
           <Stack.Screen
             key={name}
             name={name}
             options={{
-              headerShown: true,
+              headerShown: name !== "meals",
               headerTitle: () => (
                 <Text style={{ fontFamily: fonts.black, fontSize: 16, color: colors.charcoal }}>{t("Common.headerAppNameShort")}</Text>
               ),
             }}
           />
         ))}
+        {/* 親の画面は ParentScreen が自前のヘッダー（戻る + 見出し）を持つので、ワードマークのヘッダーは出さない。 */}
+        <Stack.Screen name="parent" />
+        <Stack.Screen name="report" />
+        <Stack.Screen name="account" />
+        <Stack.Screen name="purchase" />
       </Stack>
     </SafeAreaProvider>
   );

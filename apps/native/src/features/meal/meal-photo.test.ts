@@ -12,7 +12,7 @@ describe("storePickedPhoto", () => {
     expect(put).toHaveBeenCalledWith(ID, expect.any(ArrayBuffer));
   });
 
-  it("5MB超は保存せず too_large", async () => {
+  it("20MB超は保存せず too_large", async () => {
     const put = vi.fn();
     await expect(storePickedPhoto("u", { readBytes: async () => new Uint8Array(MEAL_PHOTO_MAX_SIZE_BYTES + 1), store: { put }, newId: () => ID }))
       .rejects.toMatchObject({ code: "too_large" });

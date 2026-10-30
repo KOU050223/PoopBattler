@@ -1,7 +1,7 @@
 {
   "Common": {
-    "appName": "踏ん張れ！ブリュレイド！！",
-    "headerAppName": "踏ん張れ！ブリュレイド！！",
+    "appName": "ふんばれ！ブリュレイド！！",
+    "headerAppName": "ふんばれ！ブリュレイド！！",
     "headerAppNameShort": "ブリュレイド",
     "language": "言語",
     "loading": "読み込んでいます…",
@@ -42,7 +42,7 @@
   "Home": {
     "description": "食べたものを記録して、うんちモンスターとのバトルに挑みましょう。",
     "start": "はじめる",
-    "gameTitle": "踏ん張れ！ブリュレイド！！",
+    "gameTitle": "ふんばれ！ブリュレイド！！",
     "tagline": "トイレの時間が、バトルになる。",
     "supportingCopy": "遊んだ結果として、食事と排便のログが残る。",
     "enableShake": "シェイクでなかまをよぶ",

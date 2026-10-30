@@ -58,7 +58,7 @@ PoopBattler のUIは以下を基本方針とする。
 「かわいい × バカゲー × 妙にちゃんとしている」
 
 ゲームの題材はコミカルだが、
-UIそのものを意図的にダサくしたり子供向けにしない。
+UIそのものを意図的にダサくしない。
 
 The visual humor should come from the concept and details,
 not from intentionally making the interface ugly.
