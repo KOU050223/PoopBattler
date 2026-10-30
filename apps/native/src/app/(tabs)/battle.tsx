@@ -1,3 +1,3 @@
-import { BattleScreen } from "@/features/battle/components/battle-screen";
+import { ToiletRaceScreen } from "@/features/race/ui/ToiletRaceScreen";
 
-export default BattleScreen;
+export default ToiletRaceScreen;

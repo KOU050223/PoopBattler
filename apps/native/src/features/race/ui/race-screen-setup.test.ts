@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSessionOptions, DEFAULT_SETUP, OPPONENT_NAMES, PLAYER_NAME, seedOfClock, STAT_PRESETS } from "./race-screen-setup";
+import { buildPlayerSessionOptions, buildSessionOptions, DEFAULT_SETUP, OPPONENT_NAMES, PLAYER_NAME, seedOfClock, STAT_PRESETS } from "./race-screen-setup";
 
 const TOTAL_STATS = 15;
 
@@ -54,5 +54,21 @@ describe("buildSessionOptions", () => {
 
   it("同じシードなら同じ名前の並びになる", () => {
     expect(buildSessionOptions(DEFAULT_SETUP, 42).runnerNames).toEqual(buildSessionOptions(DEFAULT_SETUP, 42).runnerNames);
+  });
+});
+
+describe("buildPlayerSessionOptions", () => {
+  it("渡したステータスがそのまま自分に入る", () => {
+    const stats = { stamina: 2, power: 9, technique: 4 };
+
+    expect(buildPlayerSessionOptions(stats, true, 1).racers.player).toEqual(stats);
+  });
+
+  it("渡したオブジェクトを後から書き換えてもレースの条件は変わらない", () => {
+    const stats = { stamina: 2, power: 9, technique: 4 };
+    const options = buildPlayerSessionOptions(stats, true, 1);
+    stats.power = 0;
+
+    expect(options.racers.player.power).toBe(9);
   });
 });
