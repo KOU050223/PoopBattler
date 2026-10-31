@@ -27,7 +27,7 @@ class FallbackBoundary extends Component<{ onError: () => void; children: ReactN
   }
 }
 
-// ホームの相棒。3D が描ける状態になるまで・失敗したときは従来の 2D を出す。
+// ホームの相棒。3D が描けるまでは何も出さず（旧 2D が一瞬見えて切り替わるのを避ける）、失敗したときだけ 2D を出す。
 // 3D は触れない（pointerEvents none）ので、タップは親の Pressable がそのまま受ける。
 export function HomeCompanion({ appearance, size }: { appearance: PoopmAppearance; size: number }) {
   const [isReady, setIsReady] = useState(false);
@@ -36,11 +36,10 @@ export function HomeCompanion({ appearance, size }: { appearance: PoopmAppearanc
   const handleFail = useCallback(() => setHasFailed(true), []);
 
   const height = Math.round(size * SPRITE_HEIGHT_RATIO);
-  const showsSprite = !isReady || hasFailed;
 
   return (
     <View style={{ width: size, height }}>
-      {showsSprite && <PoopmSprite appearance={appearance} hitKey={0} size={size} />}
+      {hasFailed && <PoopmSprite appearance={appearance} hitKey={0} size={size} />}
       {!hasFailed && (
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, !isReady && styles.hidden]}>
           <FallbackBoundary onError={handleFail}>
@@ -53,6 +52,6 @@ export function HomeCompanion({ appearance, size }: { appearance: PoopmAppearanc
 }
 
 const styles = StyleSheet.create({
-  // 読み込み中も Canvas は生かしておく（unmount すると読み込みが始まらない）。2D と重ならないよう透明にする。
+  // 読み込み中も Canvas は生かしておく（unmount すると読み込みが始まらない）。未完成のモデルが見えないよう透明にする。
   hidden: { opacity: 0 },
 });
