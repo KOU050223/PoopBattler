@@ -10,6 +10,7 @@ export const homeJa = {
     companionHint: "{name}のあいぼうがめんをひらく",
     settings: "ほごしゃメニュー",
     companionMessage: "きょうも ここで まってたブリ",
+    stoneGain: "いし +{count}こ もらったよ！",
   },
 };
 
@@ -24,5 +25,6 @@ export const homeEn = {
     companionHint: "Open {name}'s page",
     settings: "Parent menu",
     companionMessage: "I was waiting right here today!",
+    stoneGain: "+{count} stones!",
   },
 };

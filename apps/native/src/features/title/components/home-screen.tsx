@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DEFAULT_APPEARANCE, appearanceForCharacter } from "@/features/battle/poopm-appearance";
@@ -8,8 +8,9 @@ import toiletImage from "../../../../assets/design/home-toilet.png";
 import mealImage from "../../../../assets/design/home-meal.png";
 import logImage from "../../../../assets/design/home-log.png";
 import gachaImage from "../../../../assets/design/home-gacha.png";
+import { useStoneClaim } from "@/features/gacha/use-stone-claim";
 import { useStreak } from "@/features/streak/use-streak";
-import { colors, spacing } from "@/design";
+import { colors, fontFamily, fontSize, radius, spacing } from "@/design";
 import { SceneBackground } from "@/design/kids";
 
 import { bubbleSizes, companionSize, gachaBubbleSize } from "../home-layout";
@@ -21,6 +22,7 @@ import { GearButton } from "./gear-button";
 import { HomeSideTab } from "./home-side-tab";
 import { IconBubble } from "./icon-bubble";
 import { SpeechBubble } from "./speech-bubble";
+import { StoneGain } from "./stone-gain";
 
 
 export function HomeScreen() {
@@ -28,6 +30,7 @@ export function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { streakDays, todayCount } = useStreak();
   const companion = useCompanion();
+  const { stones, gained, acknowledge } = useStoneClaim();
   const { width, height } = useWindowDimensions();
   const bubbles = bubbleSizes(width);
   const companionPx = companionSize(height, bubbles.large, insets.top + insets.bottom);
@@ -46,6 +49,9 @@ export function HomeScreen() {
             onLongPress={__DEV__ ? () => router.push("/dev") : undefined}
           />
           <IconBubble size={gachaBubbleSize(bubbles.small)} image={gachaImage} label={t("Gacha.open")} onPress={() => router.push("/gacha")} />
+          <View style={styles.stoneCount}>
+            <Text style={styles.stoneCountText}>{t("Gacha.stones", { count: stones })}</Text>
+          </View>
         </View>
         <View style={styles.tabs}>
           <HomeSideTab
@@ -83,6 +89,7 @@ export function HomeScreen() {
           <IconBubble size={bubbles.small} image={logImage} label={t("NativeHome.log")} onPress={() => router.push("/(tabs)/logs")} />
         </View>
       </View>
+      {gained > 0 ? <StoneGain count={gained} label={t("NativeHome.stoneGain", { count: gained })} onDone={acknowledge} /> : null}
     </SceneBackground>
   );
 }
@@ -91,6 +98,8 @@ const styles = StyleSheet.create({
   top: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingLeft: spacing.lg },
   // 下の泡の列は3つで幅がいっぱいなので、ガチャは歯車の下に置く。
   gear: { paddingTop: spacing.sm, gap: spacing.md, alignItems: "flex-start" },
+  stoneCount: { alignSelf: "center", paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, backgroundColor: colors.paper },
+  stoneCountText: { fontFamily: fontFamily.jaBold, fontSize: fontSize.caption, color: colors.ink },
   tabs: { gap: spacing.sm, alignItems: "flex-end" },
   companion: { flex: 1, alignItems: "center", justifyContent: "center" },
   bottom: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: spacing.lg },

@@ -11,6 +11,8 @@ export const parentMenuJa = {
     premiumBadge: "プレミアム",
     summaryLabel: "今週の記録",
     summary: "{count}回 ・ {days}日連続",
+    debugStones: "デバッグ: いしをもらう",
+    debugStonesDescription: "ホームに戻って、いしが増える演出を見る（開発ビルドだけ）",
     familyNote: "購入はApp Storeのファミリー共有で、保護者の承認を求める設定にできます。",
   },
 };
@@ -27,6 +29,8 @@ export const parentMenuEn = {
     premiumBadge: "Premium",
     summaryLabel: "This week",
     summary: "{count} logs ・ {days}-day streak",
+    debugStones: "Debug: get stones",
+    debugStonesDescription: "Go back home and watch the stone gain (dev builds only)",
     familyNote: "Purchases can require a parent's approval through App Store Family Sharing.",
   },
 };
