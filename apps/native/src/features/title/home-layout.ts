@@ -35,6 +35,12 @@ export function bubbleSizes(windowWidth: number) {
   };
 }
 
+// 歯車の下に置くガチャの泡。下の小さい泡より一回り小さくして、相棒・吹き出しに被らないようにする。
+const GACHA_BUBBLE_RATIO = 0.75;
+export function gachaBubbleSize(smallBubbleSize: number) {
+  return Math.max(MIN_BUBBLE_SIZE, Math.floor(smallBubbleSize * GACHA_BUBBLE_RATIO));
+}
+
 // 吹き出し・相棒・下の泡が縦に重ならないよう、画面の高さに合わせて相棒を小さくする。
 export function companionSize(windowHeight: number, largeBubbleSize: number, verticalInsets: number) {
   const reserved =

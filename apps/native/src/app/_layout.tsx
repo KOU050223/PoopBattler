@@ -62,6 +62,7 @@ export default function RootLayout() {
         <Stack.Screen name="report" />
         <Stack.Screen name="account" />
         <Stack.Screen name="purchase" />
+        <Stack.Screen name="gacha" />
       </Stack>
     </SafeAreaProvider>
   );

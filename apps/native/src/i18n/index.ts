@@ -10,6 +10,7 @@ import { aibouEn, aibouJa } from "./aibou";
 import { homeEn, homeJa } from "./home";
 import { parentMenuEn, parentMenuJa } from "./parent-menu";
 import { gohanEn, gohanJa } from "./gohan";
+import { gachaEn, gachaJa } from "./gacha";
 import { defaultLocale, resolveLocale } from "./locale";
 // web と同じ辞書を相対参照で共有する（コピーしない）。
 import en from "../../../web/messages/en.json";
@@ -23,8 +24,8 @@ const withBattle = <T extends { Battle: object }>(base: T, extra: object): T => 
 
 void i18next.use(initReactI18next).init({
   resources: {
-    ja: { translation: { ...withBattle(ja, battleMessagesJa), ...accountBillingJa, ...parentMenuJa, ...gohanJa, ...kirokuJa, ...homeJa, ...aibouJa, Report: { ...ja.Report, ...reportJa } } },
-    en: { translation: { ...withBattle(en, battleMessagesEn), ...accountBillingEn, ...parentMenuEn, ...gohanEn, ...kirokuEn, ...homeEn, ...aibouEn, Report: { ...en.Report, ...reportEn } } },
+    ja: { translation: { ...withBattle(ja, battleMessagesJa), ...accountBillingJa, ...parentMenuJa, ...gohanJa, ...kirokuJa, ...homeJa, ...aibouJa, ...gachaJa, Report: { ...ja.Report, ...reportJa } } },
+    en: { translation: { ...withBattle(en, battleMessagesEn), ...accountBillingEn, ...parentMenuEn, ...gohanEn, ...kirokuEn, ...homeEn, ...aibouEn, ...gachaEn, Report: { ...en.Report, ...reportEn } } },
   },
   lng: resolveLocale(getLocales()[0]?.languageCode),
   fallbackLng: defaultLocale,

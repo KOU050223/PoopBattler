@@ -5,7 +5,7 @@ export type StreakResult = {
 };
 
 /** 端末ローカル時間の日付を、時刻・夏時間に依存しない通し日番号にする。 */
-function toLocalDayNumber(date: Date): number {
+export function toLocalDayNumber(date: Date): number {
   return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000);
 }
 
