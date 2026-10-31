@@ -11,7 +11,7 @@ const SMALL_BUBBLE_COUNT = 2;
 const SCREEN_PADDING = SPACING_LG * 2;
 const BUBBLE_GAP = SPACING_MD;
 
-export const MAX_COMPANION_SIZE = 240;
+export const MAX_COMPANION_SIZE = 300;
 export const MIN_COMPANION_SIZE = 160;
 // PoopmSprite は幅 size に対して高さ size * 260 / 207。
 const SPRITE_HEIGHT_RATIO = 260 / 207;
@@ -42,11 +42,11 @@ export function gachaBubbleSize(smallBubbleSize: number) {
 }
 
 // 吹き出し・相棒・下の泡が縦に重ならないよう、画面の高さに合わせて相棒を小さくする。
-export function companionSize(windowHeight: number, largeBubbleSize: number, verticalInsets: number) {
+export function companionSize(windowHeight: number, largeBubbleSize: number, verticalInsets: number, maxSize = MAX_COMPANION_SIZE) {
   const reserved =
     verticalInsets + SPACING_MD * 2 + TABS_HEIGHT + SPEECH_BUBBLE_HEIGHT + largeBubbleSize + BUBBLE_LABEL_HEIGHT;
   const fitting = Math.floor((windowHeight - reserved) / SPRITE_HEIGHT_RATIO);
-  return Math.min(MAX_COMPANION_SIZE, Math.max(MIN_COMPANION_SIZE, fitting));
+  return Math.min(maxSize, Math.max(MIN_COMPANION_SIZE, fitting));
 }
 
 // 台座（真っ白で不透明な大きな楕円）。左が高く右へ下がり、ラベルのピルが乗る面になる。

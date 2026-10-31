@@ -4,7 +4,7 @@ import { View } from "react-native";
 import type { Group, PerspectiveCamera } from "three";
 
 import { Poopm3DModel, type Poopm3DMotionRequest } from "../../poopm-3d/components/poopm-3d-model";
-import { runnerAppearanceOf } from "./Runners3D";
+import { runnerAppearance } from "./runner-appearance";
 
 /** 表彰台の1段の幅。RN 側の名前の列も同じ 3 等分で並べるので、幅の合計 = 画面の横幅になる */
 const SLOT_WIDTH = 2.2;
@@ -100,7 +100,7 @@ function PodiumStep({ entry, riseSec, isReducedMotion }: { entry: PodiumStageEnt
       </group>
       <group ref={runnerRef}>
         <Poopm3DModel
-          appearance={runnerAppearanceOf(entry.runnerIndex)}
+          appearance={runnerAppearance(entry.runnerIndex)}
           motion={entry.place === 1 ? WIN_MOTION : IDLE_MOTION}
           position={[0, MODEL_FEET_DROP * MODEL_SCALE, 0]}
           scale={MODEL_SCALE}

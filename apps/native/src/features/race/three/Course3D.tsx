@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber/native";
 import {
   BufferAttribute,
@@ -6,12 +6,10 @@ import {
   DataTexture,
   DoubleSide,
   InstancedMesh,
-  LinearFilter,
   NearestFilter,
   Object3D,
   PlaneGeometry,
   RGBAFormat,
-  SRGBColorSpace,
   UnsignedByteType,
 } from "three";
 
@@ -19,10 +17,12 @@ import { COURSE } from "../config";
 import { createRng } from "../rng";
 import type { Course, CoursePoint, MiniGame, Race, Terrain } from "../types";
 import { buildCurb, buildRoad, type RibbonData } from "./course-mesh";
+import { loadFaceTexture } from "../../poopm-3d/poopm-3d-face-texture";
 import { CROWD, crowdHop, placeCrowd } from "./crowd";
-import { CROWD_VARIANTS, renderCrowdAtlas } from "./crowd-sprite";
+import { CROWD_VARIANTS } from "./crowd-sprite";
 import { Scenery3D } from "./Scenery3D";
 
+const crowdAtlasModule: number = require("../../../../assets/race/crowd-atlas.png");
 /** 観客の配置のシード。コースが同じなら同じ見た目にする */
 const CROWD_SEED = 20260101;
 const GATE_COLOR = "#000437";
@@ -72,18 +72,12 @@ function spriteGeometry(variant: number): BufferGeometry {
   const geometry = new PlaneGeometry(CROWD.spriteSize, CROWD.spriteSize);
   geometry.translate(0, CROWD.spriteSize / 2, 0);
   const uv = geometry.getAttribute("uv");
-  for (let i = 0; i < uv.count; i++) uv.setX(i, (variant + uv.getX(i)) / CROWD_VARIANTS);
+  // アトラスは PNG の読み込み順（上の行が先、flipY=false）なので、v は上下を反転して当てる
+  for (let i = 0; i < uv.count; i++) {
+    uv.setX(i, (variant + uv.getX(i)) / CROWD_VARIANTS);
+    uv.setY(i, 1 - uv.getY(i));
+  }
   return geometry;
-}
-
-function crowdAtlasTexture(): DataTexture {
-  const { pixels, width, height } = renderCrowdAtlas();
-  const texture = new DataTexture(pixels, width, height, RGBAFormat, UnsignedByteType);
-  texture.magFilter = LinearFilter;
-  texture.minFilter = LinearFilter;
-  texture.colorSpace = SRGBColorSpace;
-  texture.needsUpdate = true;
-  return texture;
 }
 
 /** 道の進行方向 +x、横 +z の局所座標にそろえる土台（three の rotation.y = -h） */
@@ -241,14 +235,23 @@ function Crowd({ raceRef, isReducedMotion }: { raceRef: RefObject<Race>; isReduc
     return Array.from({ length: CROWD_VARIANTS }, (_, variant) => items.filter((item) => item.variant === variant));
   }, [raceRef]);
   const geometries = useMemo(() => Array.from({ length: CROWD_VARIANTS }, (_, variant) => spriteGeometry(variant)), []);
-  const texture = useMemo(crowdAtlasTexture, []);
+  const [texture, setTexture] = useState<DataTexture | null>(null);
+  useEffect(() => {
+    let isAlive = true;
+    // 共有キャッシュのテクスチャなので dispose しない。読めなければ観客なしで走れる
+    loadFaceTexture(crowdAtlasModule)
+      .then((loaded) => isAlive && setTexture(loaded))
+      .catch((error: unknown) => console.warn("[race] 観客の画像を読めなかった。観客なしで続ける:", error));
+    return () => {
+      isAlive = false;
+    };
+  }, []);
   const dummy = useMemo(() => new Object3D(), []);
   useEffect(
     () => () => {
       geometries.forEach((geometry) => geometry.dispose());
-      texture.dispose();
     },
-    [geometries, texture],
+    [geometries],
   );
 
   useFrame(({ camera }) => {
@@ -269,6 +272,7 @@ function Crowd({ raceRef, isReducedMotion }: { raceRef: RefObject<Race>; isReduc
     });
   });
 
+  if (!texture) return null;
   return (
     <>
       {groups.map((items, variant) => (

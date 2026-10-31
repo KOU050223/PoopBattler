@@ -55,7 +55,6 @@ export function HomeScreen() {
         </View>
         <View style={styles.tabs}>
           <HomeSideTab
-            label={name}
             value={t("NativeHome.streak", { count: streakDays })}
             icon="happy-outline"
             iconColor={colors.leaf}
@@ -71,7 +70,9 @@ export function HomeScreen() {
       </View>
 
       <View style={styles.companion}>
-        <SpeechBubble message={t("NativeHome.companionMessage")} />
+        <View style={styles.speech}>
+          <SpeechBubble message={t("NativeHome.companionMessage")} />
+        </View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("NativeHome.companionHint", { name })}
@@ -102,6 +103,8 @@ const styles = StyleSheet.create({
   stoneCountText: { fontFamily: fontFamily.jaBold, fontSize: fontSize.caption, color: colors.ink },
   tabs: { gap: spacing.sm, alignItems: "flex-end" },
   companion: { flex: 1, alignItems: "center", justifyContent: "center" },
+  // 左上のガチャ・いしのラベルと被らないよう、吹き出しは右へ寄せる。
+  speech: { alignSelf: "flex-end", paddingRight: spacing.lg },
   bottom: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: spacing.lg },
   subActions: { flexDirection: "row", gap: spacing.md },
 });

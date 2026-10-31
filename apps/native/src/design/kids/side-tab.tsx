@@ -4,12 +4,12 @@ import { fontFamily } from "../fonts";
 import { colors, fontSize, radius, spacing } from "../tokens";
 
 // 表示専用。押せると誤解されないよう、onPress は props に持たない。厚みも影もつけない。
-export type SideTabProps = { label: string; value?: string };
+export type SideTabProps = { label?: string; value?: string };
 
 export function SideTab({ label, value }: SideTabProps) {
   return (
     <View style={styles.tab} accessibilityRole="text">
-      <Text style={styles.label}>{label}</Text>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
       {value ? <Text style={styles.value}>{value}</Text> : null}
     </View>
   );

@@ -3,8 +3,7 @@ import { useCallback, useReducer, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { keyValueStorage } from "@/adapters/storage";
-import { BattleCompletionFlow, type BattleCompletedPayload } from "@/features/battle/components/battle-completion-flow";
-import { BattleResultView } from "@/features/battle/components/battle-result-view";
+import { BattleCompletionFlow } from "@/features/battle/components/battle-completion-flow";
 import { loadBattlePartyIds } from "@/features/collection/party-lineup-storage";
 import { ensureAnonymousSession } from "@/lib/anonymous-session";
 import { getSupabase } from "@/lib/supabase";
@@ -16,8 +15,6 @@ import { RaceTitle } from "./RaceTitle";
 import { PodiumThenResult, RaceView } from "./RaceScreen";
 import { buildPlayerSessionOptions, seedOfClock } from "./race-screen-setup";
 
-type Completed = BattleCompletedPayload;
-
 /**
  * トイレで記録するときの本編画面：レース → 結果 → 記録。1回の記録につきレースは1本だけ（連戦・延長なし）。
  * 記録のサーバー契約は旧バトルと同じ（start_battle で battleId を確保 → 記録フロー → complete_battle）。
@@ -27,7 +24,6 @@ export function ToiletRaceScreen() {
   const { t } = useTranslation();
   const [flow, dispatch] = useReducer(reduceToiletFlow, IDLE_PHASE);
   const [seed, setSeed] = useState(0);
-  const [completed, setCompleted] = useState<Completed | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,10 +66,6 @@ export function ToiletRaceScreen() {
     if (battleId) dispatch({ type: "skip", battleId });
   };
 
-  if (completed) {
-    return <BattleResultView completed={completed} onDone={() => router.replace("/")} doneLabel={t("Battle.backHome")} />;
-  }
-
   if (flow.phase === "race") {
     return (
       <RaceView
@@ -93,7 +85,7 @@ export function ToiletRaceScreen() {
     return (
       <BattleCompletionFlow
         battleId={flow.battleId}
-        onCompleted={setCompleted}
+        onCompleted={() => router.replace("/")}
         onAbandon={() => router.replace("/")}
       />
     );
