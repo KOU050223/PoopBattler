@@ -7,7 +7,7 @@ import { CameraRig } from "./CameraRig";
 import { Course3D } from "./Course3D";
 import { Runners3D } from "./Runners3D";
 
-const SKY_COLOR = "#ffe0ef";
+const SKY_COLOR = "#bfe4fa";
 const FOG_NEAR = 50;
 const FOG_FAR = 190;
 const INITIAL_CAMERA_POSITION: [number, number, number] = [0, 8, -16];
@@ -32,7 +32,7 @@ export function RaceStage3D({ raceRef, cameraRef, isReducedMotion = false, child
     <Canvas camera={{ position: INITIAL_CAMERA_POSITION, fov: INITIAL_FOV, near: 0.3, far: CAMERA_FAR }} gl={{ antialias: true }} style={{ flex: 1 }}>
       <color attach="background" args={[SKY_COLOR]} />
       <fog attach="fog" args={[SKY_COLOR, FOG_NEAR, FOG_FAR]} />
-      <hemisphereLight args={["#ffffff", "#f3b8cf", 0.95]} />
+      <hemisphereLight args={["#ffffff", "#9fcf8a", 0.95]} />
       <directionalLight position={[30, 60, 20]} intensity={0.55} />
       <Course3D raceRef={raceRef} isReducedMotion={isReducedMotion} />
       <Runners3D raceRef={raceRef} isReducedMotion={isReducedMotion} />
