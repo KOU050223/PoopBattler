@@ -7,6 +7,7 @@ import {
   MAX_CLAIM_DAYS,
   PULL_COST,
   STONES_PER_DAY,
+  addStones,
   claimStones,
   pullGacha,
   type GachaState,
@@ -100,5 +101,12 @@ describe("pullGacha", () => {
 
   it("乱数が1に近くても範囲外にならない", () => {
     expect(pullGacha(withStones(PULL_COST), () => 0.9999999).status).toBe("ok");
+  });
+});
+
+describe("addStones", () => {
+  it("石だけが増え、受け取り済みの日は動かない", () => {
+    const base = withStones(1, { lastClaimedDay: 100 });
+    expect(addStones(base, STONES_PER_DAY)).toEqual({ ...base, stones: 1 + STONES_PER_DAY });
   });
 });

@@ -2,8 +2,9 @@ import type { HeadId } from "../battle/poopm-appearance";
 import { toLocalDayNumber } from "../streak/calc-streak";
 import { GACHA_HEADS, GACHA_POOPMS, POOPM_CHANCE, type GachaItem } from "./gacha-pool";
 
-// 石は「1回分 = 2個」で数える。重複したとき半分（1個）だけ返すため、整数のまま扱える単位にしている。
-export const STONES_PER_DAY = 2;
+// 石は整数で数える。ガチャ1回 = 2個で、重複したとき半分（1個）を返す。
+// 1日分は 3個（#261）。バランスは調整前の仮値なので、ここだけ変えれば全体に効く。
+export const STONES_PER_DAY = 3;
 export const PULL_COST = 2;
 export const DUPLICATE_REFUND = 1;
 // 久しぶりに開いても石が溜まりすぎないようにする（溜め込み前提の遊び方にしない）。
@@ -35,6 +36,11 @@ export function claimStones(state: GachaState, loggedAt: readonly (string | Date
   }
   const grantedDays = Math.min(days.size, MAX_CLAIM_DAYS);
   return { ...state, stones: state.stones + grantedDays * STONES_PER_DAY, lastClaimedDay: today - 1 };
+}
+
+/** 開発用。日をまたがず石だけを足す（受け取り済みの日は動かさない）。 */
+export function addStones(state: GachaState, amount: number): GachaState {
+  return { ...state, stones: state.stones + amount };
 }
 
 export type PullResult =

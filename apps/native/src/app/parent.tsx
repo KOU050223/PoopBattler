@@ -11,6 +11,7 @@ import { weekSummaryToShow, type WeekSummary, type WeekSummaryState } from "@/fe
 import { toLoggedAtList } from "@/features/streak/use-streak";
 import { calcStreak } from "@/features/streak";
 import { battleHistoryGateway } from "@/gateways";
+import { grantDebugStones } from "@/features/gacha/debug-stones";
 
 function useWeekSummary(): WeekSummary | null {
   const [state, setState] = useState<WeekSummaryState>({ status: "loading" });
@@ -77,6 +78,16 @@ export default function ParentMenuScreen() {
           onPress={() => router.push("/account")}
         />
       </ParentCard>
+      {__DEV__ ? (
+        <ParentCard>
+          <MenuRow
+            icon="bug-outline"
+            label={t("ParentMenu.debugStones")}
+            description={t("ParentMenu.debugStonesDescription")}
+            onPress={() => void grantDebugStones()}
+          />
+        </ParentCard>
+      ) : null}
       <Text style={styles.note}>{t("ParentMenu.familyNote")}</Text>
     </ParentScreen>
   );
