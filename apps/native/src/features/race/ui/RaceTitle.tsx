@@ -5,8 +5,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import Svg, { Ellipse } from "react-native-svg";
 
-import { PoopmSprite } from "@/features/battle/components/poopm-sprite";
 import { DEFAULT_APPEARANCE, appearanceForCharacter } from "@/features/battle/poopm-appearance";
+import { HomeCompanion } from "@/features/title/components/home-companion";
 import { IconBubble } from "@/features/title/components/icon-bubble";
 import { SpeechBubble } from "@/features/title/components/speech-bubble";
 import { bubbleSizes, companionSize } from "@/features/title/home-layout";
@@ -21,10 +21,9 @@ import { raceGroundLayout } from "./race-title-ground";
 const BACK_BUTTON_SIZE = 52;
 /** 右上の補助の泡は、主役のレースより一回り小さくする */
 const SIDE_BUBBLE_RATIO = 0.8;
-const MAX_CENTER_COMPANION_SIZE = 200;
-// ホームの背景絵の地面（淡い黄緑の楕円）に寄せた色。背景の草の色が端末の切り方で変わっても浮かないよう半透明にする
+const MAX_CENTER_COMPANION_SIZE = 340;
+// ホームの背景絵の地面（淡い黄緑の楕円）に寄せた色。不透明にして、背景の絵の上に台座として載せる
 const GROUND_FILL = "#eef7c8";
-const GROUND_OPACITY = 0.75;
 
 interface RaceTitleProps {
   isStarting: boolean;
@@ -43,7 +42,7 @@ export function RaceTitle({ isStarting, errorMessage, onStart, onSkip, onBack }:
   const bubbles = bubbleSizes(width);
   const sideSize = Math.round(bubbles.small * SIDE_BUBBLE_RATIO);
   // 中央の列は 吹き出し・相棒・大きい泡 を縦に積むので、泡の分だけ相棒を縮める
-  const companionPx = Math.min(companionSize(height, bubbles.large, insets.top + insets.bottom), MAX_CENTER_COMPANION_SIZE);
+  const companionPx = companionSize(height, bubbles.large, insets.top + insets.bottom, MAX_CENTER_COMPANION_SIZE);
   const appearance = companion ? appearanceForCharacter(companion.characterId) : DEFAULT_APPEARANCE;
   // 通信中は二重に押せないようにする。泡は disabled を持たないので、押されても何もしない関数にする
   const ignoreWhileStarting = (action: () => void) => () => {
@@ -62,14 +61,14 @@ export function RaceTitle({ isStarting, errorMessage, onStart, onSkip, onBack }:
       <View style={styles.center}>
         <SpeechBubble message={errorMessage ?? t("Battle.raceCompanionMessage")} />
         <View style={{ width: companionPx }}>
-          <RaceGround companionSize={companionPx} />
-          <PoopmSprite appearance={appearance} hitKey={0} size={companionPx} />
+          <RaceGround companionSize={companionPx} windowWidth={width} />
+          <HomeCompanion appearance={appearance} size={companionPx} />
         </View>
       </View>
 
       {/* ホームと見分けがつくよう、レースは画面の中央の下に置き、左下にスキップを置く。親指が届く画面下にまとめる */}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing.md }]}>
-        <IconBubble variant="large" size={bubbles.large} image={toiletImage} label={isStarting ? t("Battle.loading") : t("Battle.raceStartShort")} onPress={ignoreWhileStarting(onStart)} />
+        <IconBubble variant="large" size={bubbles.large} image={toiletImage} label={t("Battle.raceStartShort")} onPress={ignoreWhileStarting(onStart)} />
         <View style={[styles.cornerSlot, { left: spacing.lg, bottom: insets.bottom + spacing.md }]}>
           <IconBubble size={sideSize} iconName="play-skip-forward" label={t("Battle.raceSkipShort")} onPress={ignoreWhileStarting(onSkip)} />
         </View>
@@ -79,8 +78,8 @@ export function RaceTitle({ isStarting, errorMessage, onStart, onSkip, onBack }:
 }
 
 // 相棒の足元に敷く静止の地面。タップもスクリーンリーダーも素通りさせる（HomeHalo と同じ扱い）
-function RaceGround({ companionSize }: { companionSize: number }) {
-  const { width, height, left, top } = raceGroundLayout(companionSize);
+function RaceGround({ companionSize, windowWidth }: { companionSize: number; windowWidth: number }) {
+  const { width, height, left, top } = raceGroundLayout(companionSize, windowWidth);
   return (
     <View
       pointerEvents="none"
@@ -89,7 +88,7 @@ function RaceGround({ companionSize }: { companionSize: number }) {
       style={{ position: "absolute", width, height, left, top }}
     >
       <Svg width={width} height={height}>
-        <Ellipse cx={width / 2} cy={height / 2} rx={width / 2} ry={height / 2} fill={GROUND_FILL} fillOpacity={GROUND_OPACITY} />
+        <Ellipse cx={width / 2} cy={height / 2} rx={width / 2} ry={height / 2} fill={GROUND_FILL} />
       </Svg>
     </View>
   );
@@ -109,7 +108,8 @@ function BackButton({ label, onPress }: { label: string; onPress: () => void }) 
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.skySoft },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.sm },
+  // 相棒と地面は下の泡の近くへ寄せる（吹き出しも相棒について下がる）
+  center: { flex: 1, alignItems: "center", justifyContent: "flex-end", gap: spacing.sm },
   topActions: { alignItems: "flex-start", gap: spacing.sm, paddingHorizontal: spacing.lg },
   bottom: { alignItems: "center" },
   cornerSlot: { position: "absolute" },
