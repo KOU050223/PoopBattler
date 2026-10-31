@@ -32,6 +32,8 @@ export function tallyFrame(tally: RaceTally, frame: { raceEvents: readonly RaceE
 
 export interface ResultRow {
   place: number;
+  /** Runner.index。表彰台で走者の見た目を引くのに使う */
+  runnerIndex: number;
   name: string;
   statsText: string;
   timeSec: number;
@@ -66,6 +68,7 @@ export function buildResult(race: Race, tally: RaceTally, runnerNames: readonly 
   const topSec = entries[0].timeSec;
   const rows: ResultRow[] = entries.map((entry, i) => ({
     place: i + 1,
+    runnerIndex: entry.runner.index,
     name: entry.runner.isPlayer ? PLAYER_SHORT_NAME : (runnerNames[entry.runner.index] ?? `${entry.runner.index}番`),
     statsText: statsLabel(entry.runner.stats),
     timeSec: entry.timeSec,
@@ -98,3 +101,19 @@ export function buildResult(race: Race, tally: RaceTally, runnerNames: readonly 
 }
 
 export const formatTime = (sec: number): string => `${formatSec(sec)}秒`;
+
+/** 表彰台に上げる人数。issue #273 で「3位まで」と決めた */
+export const PODIUM_SIZE = 3;
+
+export interface PodiumView {
+  /** 1〜3位（走者が3人未満ならその人数） */
+  winners: ResultRow[];
+  /** 表彰圏外のときだけ、自分の行。表彰台に立っていれば null */
+  outsidePlayer: ResultRow | null;
+}
+
+export function buildPodium(result: RaceResultView): PodiumView {
+  const winners = result.rows.slice(0, PODIUM_SIZE);
+  const outsidePlayer = result.rows.slice(PODIUM_SIZE).find((row) => row.isPlayer) ?? null;
+  return { winners, outsidePlayer };
+}
