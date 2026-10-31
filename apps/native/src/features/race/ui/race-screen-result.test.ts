@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createSession, runFrame } from "../session";
-import { buildResult, createTally, formatTime, tallyFrame } from "./race-screen-result";
+import { buildPodium, buildResult, createTally, formatTime, tallyFrame } from "./race-screen-result";
 import { buildSessionOptions, DEFAULT_SETUP } from "./race-screen-setup";
 import { RACE_TIME_LIMIT_MS } from "./race-screen-timing";
 
@@ -99,5 +99,27 @@ describe("buildResult（途中で時間切れになったレース）", () => {
 describe("formatTime", () => {
   it("小数第2位までの秒", () => {
     expect(formatTime(12.345)).toBe("12.35秒");
+  });
+});
+
+describe("buildPodium", () => {
+  const row = (place: number, isPlayer = false) => ({ place, runnerIndex: place - 1, name: `n${place}`, statsText: "", timeSec: place, gapSec: place - 1, isPlayer, isEstimated: false });
+  const resultOf = (rows: ReturnType<typeof row>[]) => ({ title: "", subtitle: "", playerPlace: rows.find((r) => r.isPlayer)?.place ?? 0, rows, zoneGrades: [], highlights: [] });
+
+  it("上位3人を表彰台に上げ、自分が3位以内なら圏外枠は出さない", () => {
+    const podium = buildPodium(resultOf([row(1), row(2), row(3, true), row(4)]));
+
+    expect(podium.winners.map((r) => r.place)).toEqual([1, 2, 3]);
+    expect(podium.outsidePlayer).toBeNull();
+  });
+
+  it("自分が4位以下なら、その行を圏外枠に返す", () => {
+    const podium = buildPodium(resultOf([row(1), row(2), row(3), row(4), row(5, true)]));
+
+    expect(podium.outsidePlayer?.place).toBe(5);
+  });
+
+  it("走者が3人未満でも落ちない", () => {
+    expect(buildPodium(resultOf([row(1, true)])).winners).toHaveLength(1);
   });
 });

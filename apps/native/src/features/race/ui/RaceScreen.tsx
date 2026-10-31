@@ -10,6 +10,7 @@ import { useReducedMotion } from "@/features/sumo/ui/use-reduced-motion";
 import { colors, fonts, radius, spacing } from "@/theme";
 
 import { RaceStage3D } from "../three/RaceStage3D";
+import { PodiumView } from "./PodiumView";
 import { RaceOverlay } from "./RaceOverlay";
 import { formatTime, type RaceResultView } from "./race-screen-result";
 import { useRaceRun } from "./race-screen-run";
@@ -55,7 +56,7 @@ export function RaceScreen({ onExit }: RaceScreenProps) {
     );
   }
   if (screen.phase === "result") {
-    return <ResultView result={screen.result} seed={screen.seed} primaryLabel="もう一度" onPrimary={() => setScreen({ phase: "setup" })} secondaryLabel="戻る" onSecondary={onExit} />;
+    return <PodiumThenResult result={screen.result} seed={screen.seed} primaryLabel="もう一度" onPrimary={() => setScreen({ phase: "setup" })} secondaryLabel="戻る" onSecondary={onExit} />;
   }
   return <SetupView setup={setup} onChange={setSetup} onStart={start} onBack={onExit} />;
 }
@@ -186,6 +187,13 @@ export function RaceView({ options, onOver, onQuit, isSeedShown = false }: { opt
 // ---- 結果 ----
 
 const GRADE_COLORS = { S: colors.flushEdge, A: colors.sparkBlue, B: colors.pencilGray, C: colors.fadedGray } as const;
+
+/** 表彰画面 → 結果の詳細、の順に見せる。表彰は見たら戻れない一方向なので、状態はここだけで持つ */
+export function PodiumThenResult(props: ResultViewProps) {
+  const [isPodiumDone, setIsPodiumDone] = useState(false);
+  if (!isPodiumDone) return <PodiumView result={props.result} onContinue={() => setIsPodiumDone(true)} />;
+  return <ResultView {...props} />;
+}
 
 interface ResultViewProps {
   result: RaceResultView;

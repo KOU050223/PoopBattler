@@ -13,7 +13,7 @@ import { loadOwnedCharacterIds, startBattleAction } from "@/features/battle/supa
 import { companionRunnerStats } from "../companion-stats";
 import { IDLE_PHASE, reduceToiletFlow } from "../toilet-flow";
 import { RaceTitle } from "./RaceTitle";
-import { RaceView, ResultView } from "./RaceScreen";
+import { PodiumThenResult, RaceView } from "./RaceScreen";
 import { buildPlayerSessionOptions, seedOfClock } from "./race-screen-setup";
 
 type Completed = BattleCompletedPayload;
@@ -86,7 +86,7 @@ export function ToiletRaceScreen() {
   }
 
   if (flow.phase === "result") {
-    return <ResultView result={flow.result} primaryLabel={t("Battle.raceToRecord")} onPrimary={() => dispatch({ type: "toRecord" })} />;
+    return <PodiumThenResult result={flow.result} primaryLabel={t("Battle.raceToRecord")} onPrimary={() => dispatch({ type: "toRecord" })} />;
   }
 
   if (flow.phase === "record") {
