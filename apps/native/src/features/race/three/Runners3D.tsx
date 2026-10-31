@@ -2,11 +2,11 @@ import { useMemo, useRef, useState, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber/native";
 import type { Group } from "three";
 
-import type { BodyColorId, EyeId, MouthId } from "../../battle/poopm-appearance";
-import { Poopm3DModel, type Poopm3DAppearance, type Poopm3DMotionRequest } from "../../poopm-3d/components/poopm-3d-model";
+import { Poopm3DModel, type Poopm3DMotionRequest } from "../../poopm-3d/components/poopm-3d-model";
 import { RUNNER_COUNT } from "../config";
 import type { Race } from "../types";
 import { pickRunnerMotion, runnerCadence, type RunnerMotion } from "./runner-motion";
+import { runnerAppearance } from "./runner-appearance";
 import { createRunnerPose, poseRunner } from "./runner-pose";
 
 /** モデル空間で足先は原点より 2.25 下（poopm-3d-camera.ts の MODEL_FEET_Y） */
@@ -23,16 +23,7 @@ const SHADOW_MIN_SCALE = 0.55;
 const SHADOW_LIFT = 0.03;
 const MARKER = { inner: 0.95, outer: 1.2, color: "#ff7aac" };
 
-/** プレイヤー（0 番）だけ他と見分けがつく色。残りは互いに離れた色を順に当てる */
-const BODY_COLORS: readonly BodyColorId[] = ["red", "blue", "green", "orange", "purple", "cyan", "gold", "mint"];
-const EYES: readonly EyeId[] = ["eye-a", "eye-b", "eye-c", "eye-d", "eye-e", "eye-f", "eye-g", "eye-h"];
-const MOUTHS: readonly MouthId[] = ["mouth-a", "mouth-b", "mouth-c", "mouth-d", "mouth-e", "mouth-f", "mouth-g", "mouth-h"];
 const INITIAL_MOTIONS: Poopm3DMotionRequest[] = Array.from({ length: RUNNER_COUNT }, () => ({ name: "idle", nonce: 0 }));
-
-/** 走者番号に当てる見た目。表彰台でも同じ子が同じ色で出るよう共有する */
-export function runnerAppearanceOf(index: number): Poopm3DAppearance {
-  return { color: BODY_COLORS[index % BODY_COLORS.length], eyes: EYES[index % EYES.length], mouth: MOUTHS[index % MOUTHS.length], head: "none" };
-}
 
 interface RunnerRefs {
   root: Group | null;
@@ -97,7 +88,7 @@ export function Runners3D({ raceRef, isReducedMotion }: Runners3DProps) {
                 refs.current[index].tilt = group;
               }}
             >
-              <Poopm3DModel appearance={runnerAppearanceOf(index)} motion={motions[index]} timeScaleRef={cadences.current[index]} position={[0, MODEL_FEET_DROP * RUNNER_MODEL_SCALE, 0]} scale={RUNNER_MODEL_SCALE} />
+              <Poopm3DModel appearance={runnerAppearance(index)} motion={motions[index]} timeScaleRef={cadences.current[index]} position={[0, MODEL_FEET_DROP * RUNNER_MODEL_SCALE, 0]} scale={RUNNER_MODEL_SCALE} />
             </group>
           </group>
           <group
