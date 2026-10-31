@@ -1,24 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 
 import { isBattleGoneMessage } from "@poopbattler/domain/battle/complete-battle-error";
-import {
-  lastSessionPhotoId,
-  postBattleCompleteLabel,
-  postBattleMealChanceCopy,
-} from "@poopbattler/domain/battle/post-battle-meal-session";
 import type { BowelLog } from "@poopbattler/domain/records/bowel-log.types";
-import { getMealFoodGroupLabel } from "@poopbattler/domain/records/meal.types";
 
 import { getSupabase } from "@/lib/supabase";
 import { colors, elevation, fontSize, fonts, radius, spacing } from "@/theme";
 
-import { mealGateway } from "@/gateways";
-import { MealLogForm } from "../../meal/components/meal-log-form";
-import type { MealLog } from "../../meal/meal-gateway";
-import { dateFormatter } from "@/components/ui";
 import { completeBattleForSession, type CompleteBattleResult } from "../supabase-gateway";
 import { BowelForm } from "./bowel-form";
 import { Button } from "./ui";
@@ -38,50 +28,28 @@ type BattleCompletionFlowProps = {
 };
 
 /**
- * 勝利後の完了フロー。web の BattleCompletionFlow と同じ遷移:
- * 排便ログ → 食事記録セッション（任意・何件でも）→ 結果確定。
- * 排便ログは完了までクライアントに保持し、食事セッションの完了で一括確定する。
+ * 勝利後の完了フロー。排便ログを送ったら、食事の画面を挟まずにそのまま結果を確定する。
+ * 食事の記録は別の入口（meals 画面）で行う。
  */
 export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: BattleCompletionFlowProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const submittingRef = useRef(false);
-  const [bowelLog, setBowelLog] = useState<BowelLog | null>(null);
-  const [sessionLogs, setSessionLogs] = useState<MealLog[]>([]);
-  const [existingMealLogCount, setExistingMealLogCount] = useState(0);
-  const [mealFormVisible, setMealFormVisible] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 確率案内の母数。読めなくても記録・完了はできるので失敗は握りつぶす。
-  useEffect(() => {
-    let alive = true;
-    void mealGateway().getMealLogs()
-      .then((logs) => {
-        if (alive) setExistingMealLogCount(logs.length);
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  const finish = async () => {
-    if (!bowelLog || submittingRef.current) return;
+  const finish = async (bowelLog: BowelLog) => {
+    if (submittingRef.current) return;
     submittingRef.current = true;
     setCompleting(true);
     setError(null);
     try {
-      const result = await completeBattleForSession(getSupabase(), {
-        battleId,
-        bowelLog,
-        sessionMealLogIds: sessionLogs.map((log) => log.id),
-      });
+      const result = await completeBattleForSession(getSupabase(), { battleId, bowelLog, sessionMealLogIds: [] });
       if (!result.success) {
         setError(result.message);
         return;
       }
-      onCompleted({ result, mealPhotoId: lastSessionPhotoId(sessionLogs) });
+      onCompleted({ result, mealPhotoId: null });
     } catch {
       setError(t("Battle.completeError"));
     } finally {
@@ -92,54 +60,15 @@ export function BattleCompletionFlow({ battleId, onCompleted, onAbandon }: Battl
 
   const pad = { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.lg };
 
-  if (!bowelLog) {
-    return (
-      <ScrollView style={styles.screen} contentContainerStyle={[pad, styles.gap, styles.scrollBottom]} keyboardShouldPersistTaps="handled">
-        <View style={styles.card}>
-          <Text style={styles.title} accessibilityRole="header">{t("Battle.completeTitle")}</Text>
-          <Text style={styles.body}>{t("Battle.completeBody")}</Text>
-        </View>
-        <BowelForm submitting={false} onSubmit={setBowelLog} />
-        {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-        {error && isBattleGoneMessage(error) ? <Button label={t("Battle.abandon")} variant="secondary" onPress={onAbandon} /> : null}
-      </ScrollView>
-    );
-  }
-
   return (
     <ScrollView style={styles.screen} contentContainerStyle={[pad, styles.gap, styles.scrollBottom]} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
-        <Text style={styles.title} accessibilityRole="header">{t("Battle.mealBoostTitle")}</Text>
-        <Text style={styles.body}>{postBattleMealChanceCopy(existingMealLogCount, sessionLogs.length)}</Text>
+        <Text style={styles.title} accessibilityRole="header">{t("Battle.completeTitle")}</Text>
+        <Text style={styles.body}>{t("Battle.completeBody")}</Text>
       </View>
-      {sessionLogs.length > 0 ? (
-        <View style={styles.card}>
-          <View style={styles.sessionHeader}>
-            <Text style={styles.sessionTitle}>{t("Battle.sessionMeals")}</Text>
-            <Text style={styles.caption}>{t("Records.count", { count: sessionLogs.length })}</Text>
-          </View>
-          {sessionLogs.map((log) => (
-            <View key={log.id} style={styles.sessionRow}>
-              <Text style={styles.sessionFoods}>{log.foodGroups.map(getMealFoodGroupLabel).join("・")}</Text>
-              <Text style={styles.caption}>{dateFormatter(i18n.language, log.eatenAt)}</Text>
-            </View>
-          ))}
-          <Text style={styles.hint}>{t("Battle.sessionMealsHint")}</Text>
-        </View>
-      ) : null}
-      <Button variant="secondary" label={t("Records.addMeal")} onPress={() => setMealFormVisible(true)} />
-      <Button
-        label={completing ? t("Battle.submitting") : postBattleCompleteLabel(sessionLogs.length)}
-        disabled={completing}
-        onPress={() => void finish()}
-      />
+      <BowelForm submitting={completing} onSubmit={(log) => void finish(log)} />
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       {error && isBattleGoneMessage(error) ? <Button label={t("Battle.abandon")} variant="secondary" onPress={onAbandon} /> : null}
-      <MealLogForm
-        visible={mealFormVisible}
-        onClose={() => setMealFormVisible(false)}
-        onSaved={(log) => setSessionLogs((current) => [...current, log])}
-      />
     </ScrollView>
   );
 }
@@ -151,11 +80,5 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.paperWhite, borderRadius: radius.lg, padding: spacing.xl, gap: spacing.sm, ...elevation.card },
   title: { fontFamily: fonts.black, fontSize: fontSize.title, color: colors.charcoal },
   body: { fontFamily: fonts.regular, fontSize: fontSize.body, lineHeight: 22, color: colors.charcoal },
-  hint: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.pencilGray },
-  caption: { fontFamily: fonts.bold, fontSize: 12, color: colors.pencilGray },
   error: { fontFamily: fonts.bold, fontSize: fontSize.body, color: colors.dangerEdge },
-  sessionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
-  sessionTitle: { fontFamily: fonts.bold, fontSize: fontSize.body, color: colors.charcoal },
-  sessionRow: { gap: 2 },
-  sessionFoods: { fontFamily: fonts.bold, fontSize: fontSize.body, color: colors.charcoal },
 });
