@@ -8,7 +8,7 @@ import { SideTab } from "@/design/kids";
 const ICON_CIRCLE = 40;
 
 type HomeSideTabProps = {
-  label: string;
+  label?: string;
   value?: string;
   icon: ComponentProps<typeof Ionicons>["name"];
   iconColor: string;
