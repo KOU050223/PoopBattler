@@ -21,6 +21,7 @@ import type { Course, CoursePoint, MiniGame, Race, Terrain } from "../types";
 import { buildCurb, buildRoad, type RibbonData } from "./course-mesh";
 import { CROWD, crowdHop, placeCrowd } from "./crowd";
 import { CROWD_VARIANTS, renderCrowdAtlas } from "./crowd-sprite";
+import { Scenery3D } from "./Scenery3D";
 
 /** 観客の配置のシード。コースが同じなら同じ見た目にする */
 const CROWD_SEED = 20260101;
@@ -28,7 +29,7 @@ const GATE_COLOR = "#000437";
 const POLE_COLOR = "#4b4b4b";
 const WATER_COLOR = "#9fd8f2";
 const FINISH_COLOR = "#ff7aac";
-const GROUND_COLOR = "#fff3f8";
+const GROUND_COLOR = "#a6dc7e";
 const GROUND_SIZE = 3000;
 const GROUND_Y = -0.05;
 const ZONE_GATE_COLORS: Record<MiniGame, string> = { dash: "#ff7aac", hurdle: "#ffa53c", bridge: "#a77b4f", swipe: "#1cb0f6" };
@@ -321,6 +322,7 @@ export function Course3D({ raceRef, isReducedMotion }: Course3DProps) {
       <Bridges course={course} />
       <Hurdles course={course} />
       <Lines course={course} />
+      <Scenery3D course={course} />
       <Crowd raceRef={raceRef} isReducedMotion={isReducedMotion} />
     </group>
   );
